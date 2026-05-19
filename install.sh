@@ -54,9 +54,12 @@ for skill in "${SKILLS[@]}"; do
         continue
     fi
     if [ -d "$TARGET_DIR/$skill" ]; then
-        echo -e "${YELLOW}⚠${NC}  Já existe: $skill — fazendo backup .bak"
-        rm -rf "$TARGET_DIR/$skill.bak"
-        mv "$TARGET_DIR/$skill" "$TARGET_DIR/$skill.bak"
+        # Move backups pra FORA de ~/.claude/skills/ pra não aparecerem no Claude Code
+        BACKUP_DIR="${HOME}/.claude/skills-backup"
+        mkdir -p "$BACKUP_DIR"
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        echo -e "${YELLOW}⚠${NC}  Já existe: $skill — backup em ~/.claude/skills-backup/"
+        mv "$TARGET_DIR/$skill" "$BACKUP_DIR/$skill-$TIMESTAMP"
     fi
     cp -r "$SRC_DIR/$skill" "$TARGET_DIR/"
     echo -e "${GREEN}✓${NC} Instalada: $skill"
