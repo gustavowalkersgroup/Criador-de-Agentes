@@ -1,0 +1,205 @@
+# CUFs (Custom User Fields) da Plataforma NexTags
+
+> Lista completa dos campos personalizados nativos do sistema NexTags. Use estes campos em vez de placeholders genéricos (`[nome]`, `[email]`, etc.) ao gerar exemplos no prompt.
+
+---
+
+## REGRA DE OURO
+
+**NUNCA use placeholders genéricos** como `[nome]`, `[cliente]`, `[email]`, `[primeiro nome]`, `[telefone]` etc. nos exemplos do prompt.
+
+**SEMPRE use os CUFs nativos** quando existir um campo equivalente no sistema, com a sintaxe `{{nome_do_campo}}` (duas chaves). A plataforma NexTags interpola automaticamente em runtime.
+
+**Use somente se for necessário.** Não force interpolação onde texto neutro funciona melhor (ex: "Oi! Como posso te ajudar?" pode ser mais natural que "Oi, {{first_name}}! Como posso te ajudar?" em alguns contextos).
+
+**Fallback quando o CUF estiver vazio:** sempre que usar `{{first_name}}` ou similar, considere o caso "campo vazio" (cliente sem cadastro). Para isso, ou ofereça uma variante neutra no prompt, ou confie que a plataforma renderiza vazio sem o nome (e a frase deve continuar fazendo sentido).
+
+---
+
+## Gerenciamento de contatos e contas
+
+| CUF | Descrição |
+|---|---|
+| `{{first_name}}` | Primeiro nome do usuário. Personalização amigável. |
+| `{{last_name}}` | Sobrenome. Personalização mais formal. |
+| `{{full_name}}` | Nome completo (primeiro + sobrenome). |
+| `{{email}}` | E-mail do usuário. |
+| `{{phone}}` | Telefone do usuário. |
+| `{{user_country}}` | País do usuário. |
+| `{{user_state}}` | Estado/região do usuário. |
+| `{{user_city}}` | Cidade do usuário. |
+| `{{gender}}` | Gênero do usuário. |
+| `{{locale}}` | Localidade completa (ex: `en_US`). |
+| `{{locale2}}` | Idioma abreviado (ex: `en`). |
+| `{{username}}` | Username do Instagram. |
+| `{{profile_pic}}` | URL da foto de perfil. |
+| `{{timezone}}` | Fuso horário do usuário. |
+| `{{user_id}}` | ID interno NexTags. |
+| `{{subscribed_date}}` | Data de inscrição. |
+| `{{fb_chat_link}}` | Link direto da inbox do Messenger. |
+| `{{inbox_link}}` | Link da inbox NexTags (acesso de admin/agente). |
+| `{{me}}` | Link de visualização/exclusão de dados (GDPR). |
+| `{{webchat}}` | Link de chat na web. |
+| `{{user_code}}` | Código único de rastreamento. |
+| `{{user_hash}}` | Hash único do usuário. |
+| `{{user_external_id}}` | ID externo (Messenger/Instagram). |
+| `{{user_source}}` | Origem do usuário (ex: anúncio, comentário). |
+| `{{user_channel}}` | Canal principal (Messenger, Webchat). |
+| `{{user_tags}}` | Lista de tags do usuário. |
+| `{{current_user_time}}` | Hora local atual do usuário. |
+| `{{last_seen}}` | Última vez visto. |
+| `{{last_interaction}}` | Timestamp da última interação. |
+| `{{last_text_input}}` | Última mensagem de texto enviada. |
+| `{{last_input}}` | Última entrada (texto/imagem/vídeo/áudio/arquivo). |
+| `{{last_input_type}}` | Tipo da última entrada. |
+| `{{last_btt_title}}` | Título do último botão clicado. |
+| `{{last_ref}}` | Último link de referência clicado. |
+| `{{last_ad}}` | ID do último anúncio (Facebook). |
+| `{{consecutive_failed_reply}}` | Nº de respostas com falha consecutivas. |
+| `{{chat_history}}` | Últimas 50 mensagens trocadas. |
+| `{{chat_history_large}}` | Últimas 200 mensagens trocadas. |
+| `{{chat_history_details}}` | 50 últimas mensagens + detalhes do remetente. |
+| `{{chat_history_details_large}}` | 200 últimas mensagens + detalhes do remetente. |
+| `{{last_points}}` | Pontuação mais recente de questionário. |
+| `{{user_notes}}` | Todas as notas adicionadas ao perfil. |
+| `{{last_user_note}}` | Nota/comentário mais recente do perfil. |
+| `{{last_call_recorded}}` | URL da última chamada gravada (Twilio). |
+| `{{last_step}}` | ID do PASSO da última etapa em fluxo publicado. |
+| `{{current_step}}` | ID do PASSO atualmente ativo. |
+| `{{assigned_admin_name}}` | Nome do admin atribuído. |
+| `{{assigned_admin_id}}` | ID do admin atribuído. |
+| `{{account_name}}` | Nome da conta NexTags. |
+| `{{account_id}}` | ID da conta NexTags. |
+| `{{account_image}}` | Imagem da conta. |
+| `{{api_key}}` | Chave API da conta. |
+
+## Instagram
+
+| CUF | Descrição |
+|---|---|
+| `{{ig_user_name}}` | Username do Instagram do usuário. |
+| `{{ig_followers}}` | Total de seguidores. |
+| `{{ig_verified}}` | Conta verificada (true/false). |
+| `{{ig_follow_business}}` | Usuário segue a conta business (true/false). |
+| `{{ig_business_follow_user}}` | Conta business segue o usuário (true/false). |
+| `{{last_story_id}}` | ID da última story respondida. |
+| `{{last_fb_comment}}` | Texto do último comentário (cross IG/FB). |
+| `{{last_post_id}}` | ID do último post comentado (cross IG/FB). |
+| `{{last_comment_id}}` | ID do último comentário (cross IG/FB). |
+| `{{last_commented_post_text}}` | Legenda completa do post comentado. |
+
+## Facebook Messenger
+
+| CUF | Descrição |
+|---|---|
+| `{{page_user_name}}` | Username de quem interage via Messenger. |
+| `{{total_new_tagged}}` | Nº de usuários novos marcados em comentário. |
+| `{{total_tagged}}` | Nº total de usuários marcados em comentário. |
+
+## Localização
+
+| CUF | Descrição |
+|---|---|
+| `{{last_latitude}}` | Última latitude conhecida (se compartilhou localização). |
+| `{{last_longitude}}` | Última longitude conhecida. |
+
+## Agendamentos
+
+| CUF | Descrição |
+|---|---|
+| `{{booking_date}}` | Data do agendamento. |
+| `{{booking_link}}` | Link de confirmação/detalhes do agendamento. |
+| `{{booking_id}}` | ID único do agendamento. |
+| `{{booking_calendar}}` | Calendário associado. |
+
+## Ecommerce (Catálogo META)
+
+| CUF | Descrição |
+|---|---|
+| `{{cart_checkout_link}}` | Link de checkout do carrinho. |
+| `{{cart_last_item_name}}` | Nome do último item adicionado ao carrinho. |
+| `{{cart_last_item_quantity}}` | Quantidade do último item. |
+| `{{cart_num_items}}` | Total de itens no carrinho. |
+| `{{cart_other_fees}}` | Taxas adicionais. |
+| `{{cart_shipping_cost}}` | Custo de envio. |
+| `{{cart_subtotal}}` | Subtotal antes de impostos/taxas. |
+| `{{cart_total}}` | Total final do carrinho. |
+| `{{shop_link}}` | Link da loja. |
+| `{{money_symbol}}` | Símbolo da moeda. |
+| `{{order_coupon_code}}` | Código do cupom aplicado. |
+| `{{order_coupon_discount}}` | Desconto do cupom. |
+| `{{order_date_account_timezone}}` | Data do pedido (fuso da conta). |
+| `{{order_date_timestamp}}` | Timestamp do pedido. |
+| `{{order_date_utc}}` | Hora UTC do pedido. |
+| `{{order_discount}}` | Total de desconto. |
+| `{{order_email}}` | E-mail do pedido. |
+| `{{order_id}}` | ID único do pedido. |
+| `{{order_name}}` | Nome de quem fez o pedido. |
+| `{{order_payment_method}}` | Método de pagamento. |
+| `{{order_phone}}` | Telefone do pedido. |
+| `{{order_products}}` | Lista de produtos. |
+| `{{order_shipping_type}}` | Tipo de envio. |
+| `{{order_shipping_address1}}` | Linha 1 do endereço. |
+| `{{order_shipping_address2}}` | Linha 2 (apto, complemento). |
+| `{{order_shipping_city}}` | Cidade do envio. |
+| `{{order_shipping_cost}}` | Custo de envio do pedido. |
+| `{{order_shipping_state}}` | Estado do envio. |
+| `{{order_shipping_zip}}` | CEP. |
+| `{{order_shipping_country}}` | País do envio. |
+| `{{order_shipping}}` | Informações completas de envio. |
+| `{{order_status}}` | Status do pedido. |
+| `{{order_subtotal}}` | Subtotal antes de impostos/envio. |
+| `{{order_taxes}}` | Total de impostos. |
+| `{{order_total}}` | Valor total do pedido. |
+| `{{product_name}}` | Nome do produto (uso com gatilhos). |
+| `{{product_quantity}}` | Quantidade do produto. |
+| `{{product_id}}` | ID único do produto. |
+
+---
+
+## Como aplicar no prompt
+
+### ✅ Certo
+
+```
+{"messages":[{"message":{"text":"Oi, {{first_name}}! Como posso te ajudar hoje? 😊"}}]}
+```
+
+A plataforma interpola `{{first_name}}` com o primeiro nome do contato em runtime. Se o cliente não tem nome cadastrado, a plataforma renderiza vazio.
+
+### ❌ Errado
+
+```
+{"messages":[{"message":{"text":"Oi, [nome]! Como posso te ajudar hoje? 😊"}}]}
+{"messages":[{"message":{"text":"Oi, [cliente]! Como posso te ajudar hoje? 😊"}}]}
+{"messages":[{"message":{"text":"Oi, {nome_do_cliente}! Como posso te ajudar hoje? 😊"}}]}
+{"messages":[{"message":{"text":"Oi, $first_name$! Como posso te ajudar hoje? 😊"}}]}
+```
+
+Placeholders entre colchetes `[ ]`, ou com nomes que não são CUFs reais (`{nome_do_cliente}`, `$first_name$`), aparecem literalmente pra cliente. A plataforma NÃO interpola nada que não seja `{{cuf_real}}`.
+
+### ⚠️ Quando NÃO interpolar
+
+Não force o uso de CUFs onde texto neutro funciona melhor:
+
+- **Saudação genérica** (sem nome): "Oi! Tudo bem? Como posso te ajudar?" — funciona pra cliente sem cadastro.
+- **Mensagens curtas de pausa/confirmação**: "Tô olhando aqui pra você!" — não precisa de nome.
+- **Quando o CUF pode estar vazio E não tem fallback**: "Olá, {{first_name}}!" sem alternativa pode virar "Olá, !" se o cliente não tem nome.
+
+**Regra prática:** use CUF em saudações iniciais e em momentos-chave (entrega de info importante, fechamento). Não use em toda mensagem.
+
+---
+
+## Fallback pra CUFs vazios
+
+Quando o prompt usa `{{first_name}}` numa saudação, considere oferecer uma variante neutra no caso "campo vazio". Exemplo no prompt:
+
+```
+**Abertura com nome:**
+{"messages":[{"message":{"text":"Oi, {{first_name}}! Tudo bem?"}}]}
+
+**Abertura sem nome (cliente sem cadastro):**
+{"messages":[{"message":{"text":"Oi! Tudo bem? Como posso te ajudar?"}}]}
+```
+
+A plataforma decide qual usar baseado em se o CUF tá preenchido. Se você não der variante, a frase "Oi, ! Tudo bem?" pode aparecer (estranho mas não quebra).
