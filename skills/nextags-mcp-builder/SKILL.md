@@ -8,6 +8,24 @@ type: tool
 
 Fabrica a **infraestrutura MCP** completa no n8n pra um cliente novo da NexTags. Recebe uns poucos inputs e entrega workflows ativos prontos pra serem consumidos por qualquer agente.
 
+## 🚨 Regra inegociável — pasta e naming no n8n
+
+**Antes de criar qualquer workflow, criar uma pasta com o nome exato do cliente no n8n.**
+
+1. Chamar `search_folders` para verificar se a pasta já existe
+2. Se não existir, criar a pasta (ex: `Veuske`, `Mayuí Fit Wear`) via `create_folder` ou equivalente
+3. Passar `folderId` em **todos** os `create_workflow_from_code` — sem exceção
+4. O **nome do cliente DEVE aparecer no nome de todos os workflows** — MCP, backends, smoke test, refresh, reset
+
+Exemplos corretos:
+- `Veuske MCP` ✅
+- `Veuske Backend — Buscar Cliente` ✅
+- `Veuske Smoke Test (manual)` ✅
+
+Errado:
+- `ZOPPY Backend — Buscar Cliente` ❌ (falta o nome do cliente)
+- `MCP` ❌ (genérico demais)
+
 ## 🚨 Regra inegociável — transporte do MCP
 
 **Todo MCP Server criado por esta skill DEVE usar Streamable HTTP. Nunca SSE.**
@@ -117,12 +135,15 @@ Copia templates de `assets/` e customiza:
 Antes de criar, **valida com `validate_workflow`** do MCP n8n. Depois cria com `create_workflow_from_code`.
 
 **Ordem de criação:**
+0. **Pasta do cliente** — `search_folders` → criar se não existir → guardar `folderId`
 1. Data table de tokens (se OAuth)
-2. Refresh Token workflow (se OAuth)
-3. Reset Token workflow manual (se OAuth)
-4. Smoke Test workflow manual
-5. N Backends dedicados (1 por operação)
-6. MCP Server Trigger workflow (referencia os backends pelo ID)
+2. Refresh Token workflow (se OAuth) — nome: `<Cliente> Refresh Token — <API>`
+3. Reset Token workflow manual (se OAuth) — nome: `<Cliente> Reset Token — <API> (manual)`
+4. Smoke Test workflow manual — nome: `<Cliente> Smoke Test — <API> (manual)`
+5. N Backends dedicados (1 por operação) — nome: `<Cliente> Backend — <Operação>`
+6. MCP Server Trigger workflow — nome: `<Cliente> MCP`
+
+Todos os `create_workflow_from_code` devem incluir o `folderId` da pasta do cliente.
 
 ### Fase 5 — Slim response em todo backend
 
