@@ -16,6 +16,58 @@ O Code node faz essa triagem ANTES de devolver ao MCP.
 
 ---
 
+## ⚠️ O critério que define "essencial": perspectiva do atendimento
+
+**Essencial não é o que parece importante tecnicamente. É o que um cliente pode perguntar.**
+
+Antes de cortar qualquer campo, faça esta pergunta:
+
+> *"Se um cliente mandar mensagem perguntando sobre isso, a IA consegue responder sem esse campo?"*
+
+- **Não** → manter, independente do peso
+- **Talvez** → manter
+- **Nunca** → cortar
+
+### O erro do DOLPS (lição aprendida)
+
+`optimize_response` do n8n foi usado pra reduzir payload. Cortou campos que pareciam "metadata" mas eram essenciais pro atendimento (status de pagamento, data estimada de entrega, itens do pedido). A IA deu respostas incompletas ou erradas. Cliente ficou insatisfeito.
+
+**Conclusão: não use `optimize_response` do n8n. É uma caixa preta que não conhece o contexto do atendimento.** Use sempre Code node manual — você decide o que corta.
+
+### Campos que NUNCA devem ser cortados (por pergunta de cliente)
+
+| Pergunta frequente | Campo obrigatório |
+|---|---|
+| "Qual o status do meu pedido?" | `status`, `status_name` |
+| "Onde está minha encomenda?" | `tracking_code`, `tracking_url` |
+| "Quando chega?" | `estimated_delivery`, `delivery_date`, `shipping_date` |
+| "Meu pagamento foi confirmado?" | `payment_status`, `payment_method` |
+| "Quanto foi meu pedido?" | `total` |
+| "O que comprei?" | `items[].name`, `items[].quantity`, `items[].price` |
+| "Tenho desconto / cashback?" | `coupon.code`, `coupon.value`, `coupon.expires_at`, `giftback.value`, `giftback.expires_at` |
+| "Esse produto tem no estoque?" | `available`, `stock_quantity` |
+| "Quanto custa?" | `price`, `promotional_price` |
+| "Tem no meu tamanho?" | variante `name`/`sku_value` + `available` por variante |
+
+### Campos que podem ser cortados com segurança
+
+- HTML em qualquer campo (limpar, não cortar o campo — ver seção Limpeza de HTML)
+- Múltiplas versões de thumbnail (manter 1 URL https)
+- Campos de auditoria interna (`created_by`, `updated_by`, `audit_log`, `request_id`)
+- Campos de gateway de pagamento internos (`connector_response`, chaves técnicas de transação)
+- Metadados de API (`api_version`, `x_request_id`, paging interno já processado)
+- Campos vazios, null, "0", "0000-00-00", arrays vazios `[]`
+- Campos repetidos que duplicam informação já presente (ex: `status_id` quando `status_name` já diz tudo)
+- Dados geográficos técnicos (`geoCoordinates`, lat/lon) — endereço de entrega em texto já basta
+
+### Regra do "talvez"
+
+Se não tem certeza se o cliente vai perguntar sobre aquele campo: **mantém**. O custo de manter campo desnecessário (alguns tokens extras) é muito menor que o custo de esconder informação necessária (resposta errada do agente, cliente insatisfeito, suporte manual).
+
+O slim deve ser agressivo com lixo técnico — e conservador com dados do cliente/pedido/produto.
+
+---
+
 ## Template base (TODOS os slim Code nodes seguem isso)
 
 ```js

@@ -154,6 +154,10 @@ Aplica Code node de slim em CADA backend (ver `references/slim_response_patterns
 - Limpa HTML em descrições
 - Pega só URL https principal de imagens (descarta thumbs)
 
+**Nunca use `optimize_response` do n8n** — entrega JSON cru via MCP Streamable HTTP (quirk #18) e quando funciona, corta com heurísticas genéricas que não conhecem o contexto do atendimento (lição DOLPS). Use sempre Code node manual.
+
+**Critério de "essencial":** a pergunta não é "esse campo parece técnico?", é "um cliente pode perguntar sobre isso?". Quando em dúvida, manter. Veja `slim_response_patterns.md` §"O critério que define essencial" para tabela completa de campos obrigatórios por pergunta de cliente.
+
 ### Fase 6 — Configurar credenciais no n8n
 
 A skill NÃO consegue criar credenciais via API direto. Apenas:
