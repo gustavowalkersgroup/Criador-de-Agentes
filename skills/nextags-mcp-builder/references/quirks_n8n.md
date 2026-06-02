@@ -534,6 +534,481 @@ Veja o `output` de um `mcp_call` no response do Playground/cliente MCP. Se apare
 
 ---
 
+## 19. `executeWorkflow` com `defineBelow` — valores estáticos chegam como `null` no sub-workflow
+
+### O que acontece
+
+Ao usar `n8n-nodes-base.executeWorkflow` v1.1 com `mappingMode: "defineBelow"`, valores literais no `value` object chegam como `null` no `executeWorkflowTrigger` v1.1 do workflow chamado. Isso vale tanto para strings estáticas quanto para `expr("{{ 'string_literal' }}")`.
+
+Exemplo que **NÃO funciona** no smoke test:
+
+```ts
+// Smoke test chamando backend via executeWorkflow
+workflowInputs: {
+  mappingMode: 'defineBelow',
+  value: {
+    phone: '31983635636',              // ← chega como null
+    phone: expr("{{ '31983635636' }}") // ← também chega como null
+  }
+}
+```
+
+No backend, `$('Entrada').item.json.phone` → `null`.
+
+**ATENÇÃO**: Isso afeta o smoke test (executeWorkflow com valores estáticos). Ver também Quirk #20 — `toolWorkflow` + `$fromAI()` em `defineBelow` também falha com clientes MCP externos (OpenAI, NexTags).
+
+### Como evitar
+
+**Para smoke tests e testes manuais**: use `passThrough` + Set node anterior:
+
+```ts
+// Set node define todos os valores de teste
+const setTestData = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {
+    name: 'Dados do Teste',
+    parameters: {
+      mode: 'manual',
+      assignments: { assignments: [
+        { id: 'a1', name: 'phone', value: '31983635636', type: 'string' },
+        { id: 'a2', name: 'order_id', value: 'uuid-aqui', type: 'string' }
+      ]}
+    }
+  }
+});
+
+// executeWorkflow usa passThrough — o Set node's output flui direto pro backend
+const teste = node({
+  type: 'n8n-nodes-base.executeWorkflow',
+  version: 1.1,
+  config: {
+    name: 'Teste: buscar_cliente',
+    parameters: {
+      source: 'database',
+      workflowId: { __rl: true, mode: 'id', value: 'WORKFLOW_ID' },
+      workflowInputs: { mappingMode: 'passThrough' }  // ← KEY: passThrough não o defineBelow
+    }
+  }
+});
+```
+
+**Para produção com clientes MCP externos (OpenAI, NexTags)**: use `passThrough` no `toolWorkflow` — ver Quirk #20.
+
+### Como detectar
+
+Sub-execução do backend chamado mostra `{"phone": null}` (ou outro campo como null) na saída do nó `Entrada`, mesmo você tendo passado o valor no executeWorkflow caller.
+
+Consequências visíveis:
+- URL com parâmetro vazio: `GET /customers/phone//` → 404
+- URL com "null" string: `GET /customers/phone/null` → 422 "not found"
+- Erros genéricos "Invalid input" da API
+
+Confirmado em 2026-05-26, debugging smoke test Veuske ZOPPY. `buscar_cupom` recebia `{phone: null}` mesmo com `phone: "31983635636"` no defineBelow. Fix com passThrough + Set node funcionou.
+
+---
+
+## 20. `toolWorkflow` NÃO propaga argumentos de clientes MCP externos — em NENHUM modo
+
+### O que acontece
+
+`@n8n/n8n-nodes-langchain.toolWorkflow` v2.2 **não entrega os argumentos da tool call ao backend em nenhuma configuração** quando o MCP é chamado por cliente externo (NexTags, OpenAI Playground, qualquer cliente HTTP).
+
+**Ambos os modos falham:**
+
+```ts
+// FALHA 1 — defineBelow + $fromAI()
+workflowInputs: {
+  mappingMode: 'defineBelow',
+  value: { values: [{ name: 'phone', stringValue: "={{ $fromAI('phone', '...') }}" }] }
+}
+// → backend recebe {"phone": null}
+
+// FALHA 2 — passThrough
+workflowInputs: { mappingMode: 'passThrough' }
+// → backend recebe {"phone": null} (ou {"input": null})
+// o executeWorkflowTrigger cria campos nulos a partir do schema declarado
+// nenhum argumento da tool call chega no item JSON do backend
+```
+
+### Por quê
+
+O MCP trigger v2 (Streamable HTTP) não injeta os argumentos da `tools/call` no item JSON que o `toolWorkflow` recebe. O `$fromAI()` só funciona dentro do contexto de um AI agent nativo n8n (Claude/OpenAI interno). Para clientes externos, nenhum contexto de resolução existe.
+
+Com `passThrough`, o item passado ao backend é vazio (`{}`). O `executeWorkflowTrigger` v1.1 com schema declarado (`workflowInputs.values`) cria campos nulos para cada input declarado — nunca popula com dados reais da tool call.
+
+### Diagnóstico
+
+```json
+// Execução do backend (modo integrated) mostra em "Entrada":
+{"phone": null}
+// parentExecution aponta pro MCP workflow
+// contextData: {} — vazio, sem argumentos da tool call
+```
+
+Debug confirmatório: trocar schema para `[{name: 'input'}]` e chamar com qualquer argumento → resultado sempre `{"input": null}`. Nem `{"arguments": {"input": "..."}}` funciona.
+
+### Fix definitivo — use `httpRequestTool` diretamente no MCP (sem backend, sem credential)
+
+**Padrão preferido (Naah Store / Veuske Shopify):** token hardcoded em `headerParameters`. Sem credencial vinculada — elimina toda a fricção de "credential not assigned", "wrong credential auto-linked", "credential value outdated".
+
+```ts
+const minhaFerramenta = tool({
+  type: 'n8n-nodes-base.httpRequestTool',  // ← NÃO toolWorkflow
+  version: 4.4,
+  config: {
+    name: 'buscar_cliente',
+    parameters: {
+      toolDescription: '...',
+      method: 'GET',
+      url: 'https://veuske.myshopify.com/admin/api/2025-01/customers/search.json',
+      authentication: 'none',          // ← sem credential
+      sendHeaders: true,
+      headerParameters: { parameters: [
+        { name: 'X-Shopify-Access-Token', value: 'shpat_...' },  // ← token literal
+        { name: 'Accept', value: 'application/json' },
+      ]},
+      sendQuery: true,
+      queryParameters: { parameters: [
+        // $fromAI() FUNCIONA aqui para clientes externos
+        { name: 'query', value: "=phone:{{ $fromAI('phone', 'Telefone') }}" }
+      ]}
+    }
+  }
+});
+```
+
+`$fromAI()` em parâmetros de `httpRequestTool` resolve corretamente para clientes MCP externos. É o mesmo mecanismo que o ZOPPY usa.
+
+**Quando usar credential em vez de hardcoded:**
+- Token expira/rotaciona com frequência (OAuth com refresh) — aí faz sentido a indireção
+- Mesma credencial reusada em 10+ workflows — manter sync vale a centralização
+- Auditoria/compliance exige que tokens estejam isolados em credential store
+
+Caso contrário, hardcoded é mais robusto. Ver Quirk #22.
+
+### Quando `toolWorkflow` ainda é válido
+
+Apenas quando o MCP é consumido por um **AI agent interno do n8n** (node `@n8n/n8n-nodes-langchain.agent`). Nesses casos `$fromAI()` funciona porque existe contexto LLM nativo.
+
+### Limitação do `httpRequestTool`
+
+Cada `httpRequestTool` faz **1 HTTP request**. Para operações multi-step (ex: buscar customer_id → listar pedidos), divida em 2 tools separadas. O LLM orquestra a sequência naturalmente.
+
+```
+buscar_cliente(phone) → retorna customer_id
+listar_pedidos(customer_id) → retorna orders
+```
+
+Isso espelha a arquitetura do ZOPPY MCP (5 tools unitárias), que funciona em produção na NexTags.
+
+### Confirmado em
+
+2026-05-27, Veuske Shopify MCP:
+- `toolWorkflow` + `defineBelow` + `$fromAI()` → `{phone: null}` ✗
+- `toolWorkflow` + `passThrough` → `{phone: null}` (debug com schema `[{name:'input'}]` → `{input: null}`) ✗
+- `httpRequestTool` com `$fromAI('phone')` no query param → **FUNCIONA** ✓
+
+2026-05-26, Veuske ZOPPY MCP:
+- `toolWorkflow` + `defineBelow` + `$fromAI()` → `{phone: null}` ✗ (execution #21433253)
+- `httpRequestTool` direto → funciona em produção na NexTags ✓
+
+---
+
+## 21. HTTP Request v4.4 — como enviar JSON array (ou string JSON) como body
+
+### O que acontece
+
+Enviar um array JSON como body (ex: `[{shop: "...", access_token: "..."}]`) via HTTP Request v4.4 é confuso porque o SDK tem parâmetros conflitantes dependendo do `contentType`.
+
+Tentativas que **NÃO funcionam** (validator retorna `valid: true` mas com warnings):
+```ts
+// ❌ Falha: body só permitido com contentType='raw' + specifyBody='string'
+contentType: 'json',
+specifyBody: 'string',
+body: expr('={{ $json.rowBody }}')
+
+// ❌ Falha: specifyBody não permitido com contentType='raw'
+contentType: 'raw',
+specifyBody: expr('"string"'),
+body: expr('={{ $json.rowBody }}')
+
+// ❌ Falha: body não permitido sem specifyBody quando contentType='raw'
+contentType: 'raw',
+rawContentType: 'application/json',
+body: expr('={{ $json.rowBody }}')
+```
+
+### Fix — `jsonParameters: true` + `bodyParametersJson`
+
+```ts
+// ✅ Funciona: 0 warnings, valid: true
+sendBody: true,
+contentType: 'json',
+jsonParameters: true,
+bodyParametersJson: expr('={{ $json.rowBody }}'),
+// rowBody = JSON.stringify([row]) — string como "[{...}]"
+```
+
+Com `jsonParameters: true`, o campo `bodyParametersJson` aceita uma expressão que retorna uma string JSON válida (objeto ou array). O n8n serializa diretamente como body com Content-Type: application/json.
+
+### Onde usar
+
+Sempre que precisar enviar um JSON body que:
+- É um array (não pode ser representado como key-value pairs)
+- Vem de uma expressão dinâmica
+- É uma string JSON já serializada (resultado de `JSON.stringify(...)`)
+
+### Confirmado em
+
+2026-05-27, Shopify OAuth Callback — endpoint `POST /api/v1/data-tables/{id}/rows` da n8n REST API exige body `[{shop, access_token, scope, installed_at}]`. Resolvido com `jsonParameters: true` + `bodyParametersJson: expr('={{ $json.rowBody }}')` onde `rowBody = JSON.stringify([row])`.
+
+---
+
+## 22. Token hardcoded em `headerParameters` > credential `httpHeaderAuth` (padrão Naah Store)
+
+### O que acontece
+
+Configurar `httpRequestTool` com `authentication: 'genericCredentialType'` + `newCredential('X')` no SDK abre 3 portas pra coisa quebrar:
+
+1. **`autoAssignedCredentials: []`** — n8n quase nunca auto-vincula a credencial correta após `update_workflow`. User precisa abrir UI e linkar manualmente. Toda vez que o workflow é atualizado, repete.
+2. **Credencial errada auto-linkada** (Quirk #3) — n8n às vezes pega outra credencial httpHeaderAuth qualquer do projeto.
+3. **Valor da credencial desatualizado** — credencial foi criada com token X há 3 sessions; user e dev acham que está atualizada, mas continua com X. Erros de auth viram pesadelo de debug.
+
+### Como evitar
+
+Quando o token/key é **estático** (não OAuth com refresh), bote direto em `headerParameters`:
+
+```ts
+{
+  authentication: 'none',
+  sendHeaders: true,
+  headerParameters: { parameters: [
+    { name: 'X-Shopify-Access-Token', value: 'shpat_abc123...' },
+    { name: 'Accept', value: 'application/json' },
+  ]},
+  ...
+}
+```
+
+Vantagens:
+- 0 dependência de credencial UI — workflow funciona imediatamente após update
+- Token visível direto no código (auditável em git diff)
+- Sem ambiguidade sobre "qual credencial está vinculada agora"
+- Re-runs de update_workflow não quebram nada
+
+### Quando ainda usar credential
+
+- **OAuth com refresh** — token muda automaticamente, precisa indireção
+- **Múltiplos workflows compartilham mesma key** — alterar em 1 lugar > alterar em N
+- **Compliance / auditoria** — empresa exige que secrets fiquem em credential store, não em workflow JSON
+
+### Padrão de mercado: Naah Store (Shopify)
+
+```ts
+// MCP Shopify Naah Store — funciona em produção há meses
+headerParameters: { parameters: [
+  { name: 'X-Shopify-Access-Token', value: 'shpat_<32-hex-tokens-vão-aqui-em-prod>' },
+  { name: 'Accept', value: 'application/json' }
+]}
+```
+
+Adotado também em Veuske Shopify MCP após bug de credencial desatualizada (atkn_/shpat_ confusion + valor antigo persistido).
+
+### Confirmado em
+
+2026-05-27, Veuske Shopify. Refactor de credential httpHeaderAuth → hardcoded eliminou 3 sessions de debug travado em "Invalid API key or access token". Padrão validado tb na Naah Store.
+
+---
+
+## 23. Shopify removeu o "token estático fácil" — apps novos exigem OAuth flow
+
+### O que acontece
+
+Shopify mudou o processo de criação de apps custom em 2026. Apps **novos** criados via Dev Dashboard ou Partner Dashboard:
+
+- **NÃO mostram** o `shpat_` access token diretamente
+- Mostram apenas: `Client ID`, `Client Secret` (`shpss_...`), scopes e install link
+- Pra obter o `shpat_`, é **obrigatório completar o OAuth flow** (instalar o app na loja)
+
+Apps antigos (Custom Apps legacy criados antes) ainda têm `shpat_` revelado no admin → API credentials → "Reveal token once".
+
+### Confusão comum
+
+`shpss_` aparece na config do app e é fácil confundir com token. **NÃO é.** É o `client_secret` — usado APENAS no fluxo OAuth pra trocar `code` por `access_token`. Nunca use direto como `X-Shopify-Access-Token`.
+
+Formatos:
+| Prefixo | O que é | Onde usar |
+|---|---|---|
+| `shpat_` | Admin API access token | Header `X-Shopify-Access-Token` ← este é o que queremos |
+| `shpss_` | Client secret do app | Body do POST `/admin/oauth/access_token` (parâmetro `client_secret`) |
+| `shppa_` | Partner Access Token | API do Partner Dashboard, não API da loja |
+| `atkn_` | ❌ não existe | Não é formato Shopify válido |
+
+### Como obter o shpat_ (apps novos)
+
+Precisa montar OAuth flow no n8n. 2 workflows webhook:
+
+**1. Página de Instalação** (`/webhook/shopify` ou similar)
+   - Recebe `?shop=loja.myshopify.com&host=...`
+   - Gera URL `https://{shop}/admin/oauth/authorize?client_id=...&scope=...&redirect_uri=...&state=...`
+   - Responde HTML com redirect JS (top-level via App Bridge se possível)
+
+**2. OAuth Callback** (`/webhook/shopify-callback`)
+   - Recebe `?shop=...&code=...&state=...`
+   - POST `https://{shop}/admin/oauth/access_token` com body:
+     - `client_id` (hex 32 chars)
+     - `client_secret` (`shpss_...`)
+     - `code` (do query string)
+   - Resposta tem `{access_token: "shpat_...", scope: "..."}`
+   - Salva na data table + responde HTML com token visível
+
+Template completo: ver Veuske `a2srjFLrwL8RqQey` e `kdgW81VzXjm714xY` na pasta `Veuske` do n8n.
+
+### Pré-requisitos no Partner Dashboard
+
+- App criado em **partners.shopify.com → Apps → Create app**
+- **Configuration → URLs**:
+  - **App URL:** `https://nextags.app.br/webhook/<cliente>-shopify-install`
+  - **Allowed redirection URL(s):** `https://nextags.app.br/webhook/<cliente>-shopify-callback`
+- **API access → Admin API → Scopes:** `read_orders, read_customers, read_products, read_inventory` (ou o que precisar)
+- Loja precisa estar listada em **Test stores** ou ser **Development store**
+
+### Fluxo de uso
+
+1. User abre no browser: `https://nextags.app.br/webhook/<cliente>-shopify-install?shop=loja.myshopify.com`
+2. Redireciona pro `https://loja.myshopify.com/admin/oauth/authorize?...`
+3. User loga (se precisar) e clica **Install app**
+4. Shopify redireciona pro callback com `?code=...`
+5. Callback troca code por `shpat_`, salva, exibe na tela
+6. Dev pega o `shpat_` e cola hardcoded nos headerParameters do MCP (Quirk #22)
+
+### Confirmado em
+
+2026-05-27, Veuske Shopify. Tentamos por horas usar `atkn_...` (que não é formato válido) achando que era o token. OAuth flow funcionou e retornou `shpat_<32-hex>` (token armazenado na data table `Shopify Tokens` do projeto, não em docs).
+
+---
+
+## 24. `jsonParameters + bodyParametersJson` double-encoda o body — use `specifyBody: 'json'` + `jsonBody`
+
+### O que acontece
+
+Em `n8n-nodes-base.httpRequest` v4.4, ao usar:
+```ts
+sendBody: true,
+contentType: 'json',
+jsonParameters: true,
+bodyParametersJson: expr('={{ $json.payloadJson }}')
+```
+onde `$json.payloadJson` é uma string JSON (ex: `'{"phone":"+5511..."}'`), o n8n **double-encoda** o body. A API recebe uma string JSON escapada em vez de um objeto JSON, e não consegue ler os campos corretamente.
+
+Sintoma típico: API retorna erro de campo inválido (ex: `"Invalid phone number"`) mesmo com valor correto, porque o body chegou como `"{\\"phone\\":\\"+5511...\\"}"` (string) em vez de `{"phone":"+5511..."}` (objeto).
+
+### Como evitar
+
+Use `specifyBody: 'json'` + `jsonBody` em vez de `jsonParameters + bodyParametersJson`:
+
+```ts
+// ✅ Funciona — padrão Casa Marquez / NexTags
+sendBody: true,
+contentType: 'json',
+specifyBody: 'json',
+jsonBody: expr('={{ $json.nextagsPayload }}')
+// nextagsPayload = JSON.stringify({phone, email, first_name, ...})
+```
+
+No Code node que prepara o payload:
+```js
+return [{ json: { nextagsPayload: JSON.stringify({ phone, email, actions }) } }];
+```
+
+No HTTP Request node:
+```ts
+specifyBody: 'json',
+jsonBody: '={{ $json.nextagsPayload }}'
+```
+
+### Quando `jsonParameters + bodyParametersJson` funciona
+
+Funciona para arrays (ex: `[{shop, access_token}]`) onde o body É um array — ver Quirk #21. Mas para objetos simples com campos de API, use `specifyBody: 'json'`.
+
+### Confirmado em
+
+2026-05-28, Verdena MARTZ → NexTags. API retornava `"Invalid phone number"` com body correto. Fix: trocar para `specifyBody: 'json'` + `jsonBody`. Passou a retornar `{success: true, contact_created: true}` para 2 contatos novos + 1 existente no mesmo teste.
+
+---
+
+## 25. NexTags `/api/contacts` — formato correto de telefone brasileiro
+
+### O que acontece
+
+A NexTags usa um normalizador específico para telefones brasileiros que remove o nono dígito (9) para DDDs fora da região SE (11–29). Enviar o número "cru" com 9 dígitos causa `"Invalid phone number"` mesmo para números válidos.
+
+### Como evitar
+
+Use a função `fone()` antes de enviar qualquer telefone:
+
+```js
+function fone(t) {
+  if (!t) return '';
+  let d = String(t).replace(/\D/g, '');
+  if (!d.startsWith('55')) d = '55' + d;
+  const ddd = d.slice(2, 4), dddN = parseInt(ddd, 10);
+  let local = d.slice(4);
+  if (local.length < 8) return '';
+  if (dddN >= 11 && dddN <= 29) {
+    if (/^[2345]/.test(local)) { if (local.length === 9 && local[0]==='9') local = local.slice(1); local = local.slice(-8); }
+    else if (local.length === 8) local = '9' + local;
+  } else { if (local.length === 9 && local[0]==='9') local = local.slice(1); local = local.slice(-8); }
+  return '+55' + ddd + local;
+}
+
+// Uso: fone(phone_country_code + phone)
+// Ex: fone('55' + '92991267599') → '+559291267599' (DDD 92, fora de SE)
+// Ex: fone('55' + '22998052905') → '+5522998052905' (DDD 22, dentro de SE)
+```
+
+### Detalhes
+
+- DDDs 11–29 (SP, RJ, ES, MG): números móveis mantêm 9 dígitos (prefixo 9 ativo)
+- DDDs 30+ (restante do Brasil): remove o 9 inicial → 8 dígitos locais
+- NexTags retorna `"Invalid phone number"` se receber 9 dígitos locais para DDD 30+
+- Resultado final sempre: `+55DDD8dígitos` ou `+55DDD9dígitos` dependendo do DDD
+
+### Confirmado em
+
+2026-05-28, Verdena MARTZ. DDD 92 (Manaus) com phone `92991267599` → `fone()` produz `+559291267599` (8 dígitos locais) → `contact_created: true`. Sem `fone()`, `+5592991267599` (9 dígitos) → `"Invalid phone number"`.
+
+---
+
+## 26. NexTags `/api/contacts` — tags e CUFs via `actions[]`, não campos diretos
+
+### O que acontece
+
+A NexTags rejeita corpos com `tags: [...]` ou `custom_fields: {...}` diretos. Esses dados precisam ir dentro de um array `actions[]`.
+
+### Como evitar
+
+```json
+{
+  "phone": "+5511999999999",
+  "email": "...",
+  "first_name": "...",
+  "last_name": "...",
+  "actions": [
+    { "action": "add_tag", "tag_name": "verdena" },
+    { "action": "set_field_value", "field_name": "martz_order_id", "value": "uuid" },
+    { "action": "send_flow", "flow_id": 12345 }
+  ]
+}
+```
+
+### Confirmado em
+
+2026-05-28, Verdena MARTZ. Swagger `POST /api/contacts` mostra esse schema. Padrão também usado em produção no workflow Casa Marquez (ID: TeoaE5eh2HInESNJ).
+
+---
+
 ## Lista crescente
 
 Quando descobrir novo quirk, adicione aqui com:

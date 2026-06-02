@@ -145,6 +145,22 @@ Antes de criar, **valida com `validate_workflow`** do MCP n8n. Depois cria com `
 
 Todos os `create_workflow_from_code` devem incluir o `folderId` da pasta do cliente.
 
+### Fase 4.5 — Se o brief inclui webhooks transacionais (pedido pago/enviado/entregue, carrinho abandonado)
+
+**Leia OBRIGATORIAMENTE** `references/webhook_transactional_pattern.md` antes de gerar qualquer workflow de webhook transacional.
+
+Esse pattern é o padrão **produção testado** (Rafa @Walkers, Veuske 2026-05-28). Cobre:
+
+1. **URL hierárquica:** `/webhook/{cliente}/{plataforma}/{evento}` (não use traços)
+2. **Dedup via Data Table** — só dispara se status mudou (evita replay)
+3. **Switch por `status.alias`**, não por `body.event` — mais robusto
+4. **Helpers JS prontos:** `formatarTelefone` (BR completo), `verificarDado` (default safe), `separarNomeSobrenome`
+5. **HTTP Request com `retryOnFail: true` + `waitBetweenTries: 5000` + `onError: continueErrorOutput`** — não trava chain
+6. **CUFs CamelCase + sufixo de origem** (YMP, SHP) — mais limpo no admin
+7. **Pedido novo = INSERT; pedido existente = UPDATE** no banco de dedup
+
+**NÃO use a v1** (FLOW_MAP por `event`, sem dedup, sem retry, sem helpers) — está deprecada.
+
 ### Fase 5 — Slim response em todo backend
 
 Aplica Code node de slim em CADA backend (ver `references/slim_response_patterns.md`). Reduz payload em 80-95%. Padrão:
@@ -208,6 +224,7 @@ nextags-mcp-builder/
 │   ├── api_discovery.md                  ← descoberta de API a partir de doc
 │   ├── tool_descriptions_guide.md        ← descrições perfeitas pra LLM
 │   ├── slim_response_patterns.md         ← heurísticas de slim por entidade
+│   ├── webhook_transactional_pattern.md  ← 🆕 padrão produção (dedup + retry + helpers)
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢
@@ -215,8 +232,8 @@ nextags-mcp-builder/
 │       ├── martz.md      🟢
 │       ├── nuvemshop.md  🟢
 │       ├── bling.md      🟢
-│       ├── shopify.md    🟡
-│       ├── yampi.md      🟡
+│       ├── shopify.md    🟢
+│       ├── yampi.md      🟢
 │       ├── yever.md      🟡
 │       └── rd_station_crm.md  🟡
 ├── assets/
