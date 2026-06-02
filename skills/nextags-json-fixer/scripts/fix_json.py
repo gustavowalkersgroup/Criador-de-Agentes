@@ -29,6 +29,12 @@ VALID_TEMPLATE_TYPES = {"generic", "button"}
 VALID_BUTTON_TYPES = {"web_url", "postback"}
 VALID_IMAGE_ASPECT_RATIOS = {"horizontal", "square"}
 
+# Formatos de imagem PERMITIDOS pela plataforma NexTags. Qualquer outro
+# (webp, avif, svg, gif) é rejeitado.
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+FORBIDDEN_IMAGE_EXTENSIONS = {".webp", ".avif", ".svg", ".gif", ".bmp",
+                              ".tiff", ".ico", ".heic", ".heif"}
+
 # Ações canônicas + campos obrigatórios.
 CANONICAL_ACTIONS: dict[str, list[str]] = {
     "add_tag":                  ["tag_name"],
@@ -78,6 +84,49 @@ MARKDOWN_PATTERNS = [
     (re.compile(r"^#{1,6}\s+", re.MULTILINE), ""), # # headings
     (re.compile(r"~~(.+?)~~"), r"\1"),             # ~~strike~~
 ]
+
+
+# ----------------------------------------------------------------------
+# Validação de URL de imagem
+# ----------------------------------------------------------------------
+
+def validate_image_url(url: str) -> tuple[str, str | None]:
+    """
+    Retorna ('ok', None) se URL é válida pra imagem JPEG/PNG, ou
+    (status, motivo) caso contrário.
+
+    status ∈ {'ok', 'invalid', 'forbidden_format', 'ambiguous'}
+    """
+    if not isinstance(url, str) or not url.strip():
+        return "invalid", "URL vazia ou ausente"
+    url = url.strip()
+    low = url.lower()
+    if not (low.startswith("http://") or low.startswith("https://")):
+        return "invalid", f"URL não-absoluta (precisa começar com http:// ou https://): '{url[:80]}'"
+    # Extrai parte antes de query/fragment.
+    path = low.split("?", 1)[0].split("#", 1)[0]
+    # Procura a última extensão reconhecível.
+    dot = path.rfind(".")
+    if dot == -1:
+        # Sem extensão — CDN pode estar entregando qualquer formato.
+        return "ambiguous", (
+            f"URL sem extensão clara ('{url[:80]}') — risco de o servidor "
+            f"entregar WebP/AVIF. Validar Content-Type ou substituir por "
+            f"link com extensão .jpg/.jpeg/.png."
+        )
+    ext = path[dot:]
+    if ext in FORBIDDEN_IMAGE_EXTENSIONS:
+        return "forbidden_format", (
+            f"Formato proibido '{ext}' ('{url[:80]}'). Plataforma NexTags "
+            f"só aceita JPEG/PNG. Converter antes de enviar."
+        )
+    if ext in ALLOWED_IMAGE_EXTENSIONS:
+        return "ok", None
+    # Extensão não-reconhecida (ex.: .aspx, .php, query disfarçada).
+    return "ambiguous", (
+        f"Extensão não-reconhecida '{ext}' ('{url[:80]}'). Validar "
+        f"Content-Type antes de enviar — risco de WebP."
+    )
 
 
 # ----------------------------------------------------------------------
@@ -152,8 +201,11 @@ def repair_syntax(s: str, fixes: list[str]) -> str:
     # BOM ou whitespace exótico no início
     s = s.strip()
 
-    # Comentários // e /* */ (LLM às vezes solta)
-    new = re.sub(r"//[^\n]*", "", s)
+    # Comentários // e /* */ (LLM às vezes solta).
+    # CUIDADO: o regex de `//` precisa evitar URLs (https://...). Só pega
+    # `//` que está em início de linha (após whitespace) — não no meio
+    # de strings.
+    new = re.sub(r"^\s*//[^\n]*$", "", s, flags=re.MULTILINE)
     new = re.sub(r"/\*.*?\*/", "", new, flags=re.DOTALL)
     if new != s:
         fixes.append("comentários removidos (JSON não suporta)")
@@ -205,6 +257,17 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
             pending.append(f"{path}.attachment: não é objeto.")
             return msg
 
+        # Fix crítico: se `type` veio DENTRO de `payload`, mover pra FORA.
+        # A plataforma NexTags exige `type` ao lado de `payload`, não dentro.
+        payload = att.get("payload")
+        if isinstance(payload, dict) and "type" in payload and "type" not in att:
+            moved = payload.pop("type")
+            att["type"] = moved
+            fixes.append(
+                f"{path}.attachment: campo `type` estava DENTRO de "
+                f"`payload` — movido pra fora (regra NexTags)"
+            )
+
         atype = att.get("type")
         if atype not in VALID_ATTACHMENT_TYPES:
             pending.append(
@@ -213,7 +276,6 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
             )
             return msg
 
-        payload = att.get("payload")
         if not isinstance(payload, dict):
             pending.append(f"{path}.attachment.payload: não é objeto.")
             return msg
@@ -226,6 +288,22 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                     f"{path}.attachment(payload).url ausente — "
                     f"necessário informar URL do {atype}."
                 )
+            elif atype == "image":
+                # Valida formato — NexTags só aceita JPEG/PNG.
+                status, reason = validate_image_url(url)
+                if status == "forbidden_format":
+                    pending.append(
+                        f"{path}.attachment.payload.url: {reason} "
+                        f"Recomenda-se REMOVER a imagem e manter só texto/botão."
+                    )
+                elif status == "ambiguous":
+                    pending.append(
+                        f"{path}.attachment.payload.url: {reason}"
+                    )
+                elif status == "invalid":
+                    pending.append(
+                        f"{path}.attachment.payload.url: {reason}"
+                    )
 
         # Template
         if atype == "template":
@@ -273,9 +351,16 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                             if changed:
                                 fixes.append(f"{el_path}.{field}: markdown removido")
                                 el[field] = cleaned
-                    if "image_url" in el and (not el["image_url"]
-                                              or not isinstance(el["image_url"], str)):
-                        pending.append(f"{el_path}.image_url ausente.")
+                    if "image_url" in el:
+                        url = el["image_url"]
+                        if not url or not isinstance(url, str):
+                            pending.append(f"{el_path}.image_url ausente.")
+                        else:
+                            status, reason = validate_image_url(url)
+                            if status != "ok":
+                                pending.append(
+                                    f"{el_path}.image_url: {reason}"
+                                )
                     btns = el.get("buttons")
                     if isinstance(btns, list):
                         for bidx, b in enumerate(btns):

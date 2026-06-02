@@ -61,6 +61,8 @@
       typing indicator.
 - [x] Wrapper `message` ausente: embrulho automático.
 - [x] `attachment.type` ∈ {image, video, audio, file, template}.
+- [x] `attachment.type` está FORA de `payload` (move pra fora se estiver dentro).
+- [x] URLs de imagem são absolutas (http://, https://) e em JPEG/PNG (rejeita WebP/AVIF/SVG/GIF).
 - [x] `template_type` ∈ {generic, button}.
 - [x] Carrossel com ≥ 2 elementos.
 - [x] Botões `web_url` com `url`; `postback` com `payload`.

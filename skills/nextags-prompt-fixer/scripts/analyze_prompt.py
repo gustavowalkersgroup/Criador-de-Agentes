@@ -484,6 +484,101 @@ def check_send_flow_without_messages(parsed) -> list[dict]:
     return issues
 
 
+# Formatos de imagem permitidos pela plataforma NexTags.
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+FORBIDDEN_IMAGE_EXTENSIONS = {".webp", ".avif", ".svg", ".gif", ".bmp",
+                              ".tiff", ".ico", ".heic", ".heif"}
+
+
+def check_type_inside_payload(parsed) -> list[dict]:
+    """
+    Detecta o erro mais comum em prompts NexTags: colocar `type` DENTRO
+    de `payload` em vez de ao lado dele.
+
+    ✅ Correto: {"attachment":{"type":"image","payload":{"url":"..."}}}
+    ❌ Errado:  {"attachment":{"payload":{"type":"image","url":"..."}}}
+
+    A plataforma ignora o `type` quando ele está dentro do payload.
+    """
+    issues = []
+    for path, node in walk_json(parsed):
+        if not isinstance(node, dict) or "attachment" not in node:
+            continue
+        att = node["attachment"]
+        if not isinstance(att, dict):
+            continue
+        payload = att.get("payload")
+        if isinstance(payload, dict) and "type" in payload and "type" not in att:
+            issues.append({
+                "path": f"{path}.attachment",
+                "problem": "campo `type` dentro de `payload` — deve ficar FORA, no mesmo nível do payload",
+                "type_value": payload.get("type"),
+            })
+    return issues
+
+
+def _image_url_status(url: str) -> tuple[str, str | None]:
+    """Retorna (status, motivo) — status ∈ ok/forbidden/ambiguous/invalid."""
+    if not isinstance(url, str) or not url.strip():
+        return "invalid", "URL vazia"
+    low = url.strip().lower()
+    if not (low.startswith("http://") or low.startswith("https://")):
+        return "invalid", "URL não-absoluta (sem http/https)"
+    path = low.split("?", 1)[0].split("#", 1)[0]
+    dot = path.rfind(".")
+    if dot == -1:
+        return "ambiguous", "URL sem extensão clara"
+    ext = path[dot:]
+    if ext in FORBIDDEN_IMAGE_EXTENSIONS:
+        return "forbidden", f"formato proibido '{ext}' (NexTags só aceita JPEG/PNG)"
+    if ext in ALLOWED_IMAGE_EXTENSIONS:
+        return "ok", None
+    return "ambiguous", f"extensão '{ext}' não-reconhecida"
+
+
+def check_forbidden_image_formats(parsed) -> list[dict]:
+    """
+    Procura URLs em campos `image_url` (carrossel) e `payload.url`
+    (attachments image) que apontam pra formatos NÃO suportados
+    pela plataforma NexTags (.webp, .avif, .svg, .gif, etc.).
+
+    Plataforma só entrega imagens em JPEG/PNG nos canais (WhatsApp,
+    Instagram, Messenger). Outros formatos quebram a entrega.
+    """
+    issues = []
+    for path, node in walk_json(parsed):
+        if not isinstance(node, dict):
+            continue
+        # Carrossel elements têm image_url direto.
+        if "image_url" in node and isinstance(node["image_url"], str):
+            status, reason = _image_url_status(node["image_url"])
+            if status in ("forbidden", "ambiguous", "invalid"):
+                issues.append({
+                    "path": f"{path}.image_url",
+                    "url": node["image_url"][:120],
+                    "status": status,
+                    "reason": reason,
+                })
+        # Attachment image tem payload.url.
+        # Aceita também `type` dentro do payload (forma errada, mas
+        # ainda queremos flagar a URL).
+        payload_dict = node.get("payload") if isinstance(node.get("payload"), dict) else None
+        type_in_node = node.get("type")
+        type_in_payload = payload_dict.get("type") if payload_dict else None
+        if (type_in_node == "image" or type_in_payload == "image"):
+            url = payload_dict.get("url") if payload_dict else None
+            if isinstance(url, str):
+                status, reason = _image_url_status(url)
+                if status in ("forbidden", "ambiguous", "invalid"):
+                    issues.append({
+                        "path": f"{path}.payload.url",
+                        "url": url[:120],
+                        "status": status,
+                        "reason": reason,
+                    })
+    return issues
+
+
 # ----------------------------------------------------------------------
 # Verificações no nível do prompt inteiro
 # ----------------------------------------------------------------------
@@ -623,6 +718,8 @@ def analyze(content: str) -> dict:
             "carousel_misuse_count": 0,
             "markdown_in_json_count": 0,
             "send_flow_without_messages_count": 0,
+            "type_inside_payload_count": 0,
+            "forbidden_image_formats_count": 0,
             "generic_placeholders_count": 0,
             "forbidden_meta_sections_count": 0,
             "missing_sections_count": 0,
@@ -717,6 +814,24 @@ def analyze(content: str) -> dict:
                 })
                 if not skip_counting:
                     findings["summary"]["send_flow_without_messages_count"] += len(sfwm_issues)
+
+            tip_issues = check_type_inside_payload(parsed)
+            if tip_issues:
+                block_report["issues"].append({
+                    "type": "type_inside_payload",
+                    "details": tip_issues,
+                })
+                if not skip_counting:
+                    findings["summary"]["type_inside_payload_count"] += len(tip_issues)
+
+            img_issues = check_forbidden_image_formats(parsed)
+            if img_issues:
+                block_report["issues"].append({
+                    "type": "forbidden_image_formats",
+                    "details": img_issues,
+                })
+                if not skip_counting:
+                    findings["summary"]["forbidden_image_formats_count"] += len(img_issues)
 
             placeholder_issues = check_generic_placeholders(parsed)
             if placeholder_issues:

@@ -68,6 +68,8 @@
       `assign_conversation`, `unassign_conversation`).
 - [x] Uso de botões apenas com `web_url` externo.
 - [x] Carrosséis com pelo menos 2 elementos.
+- [x] `attachment.type` FORA de `payload` (no mesmo nível).
+- [x] URLs de imagem em JPEG/PNG apenas — WebP/AVIF/SVG/GIF flagados.
 - [x] Ausência de markdown (`**`, `#`, `` ` ``, etc.) dentro de campos
       `text`, `subtitle` e `title` do JSON.
 - [x] Presença das seções de instrução obrigatórias:
@@ -88,6 +90,8 @@
 | Botões usados sem `web_url` | {BUTTON_MISUSE_COUNT} |
 | Carrosséis com menos de 2 itens | {CAROUSEL_MISUSE_COUNT} |
 | Markdown dentro de JSON | {MARKDOWN_IN_JSON_COUNT} |
+| `type` dentro de `payload` (deve ficar fora) | {TYPE_INSIDE_PAYLOAD_COUNT} |
+| Imagens em formato proibido (WebP/AVIF/SVG/GIF) | {FORBIDDEN_IMAGE_FORMATS_COUNT} |
 | Seções obrigatórias faltando | {MISSING_SECTIONS_COUNT} |
 | Exemplos negativos preservados (não contados) | {NEGATIVE_EXAMPLES_SKIPPED} |
 

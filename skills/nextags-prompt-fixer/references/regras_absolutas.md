@@ -446,6 +446,73 @@ Regras:
 
 ---
 
+## 16. Campo `type` dentro de `payload` (erro mais comum em attachments)
+
+**Regra:** em qualquer `attachment`, o campo `type` fica **FORA** de
+`payload`, no mesmo nível dele. A plataforma NexTags ignora o `type`
+quando ele aparece dentro do `payload` — o middleware não consegue
+descobrir que tipo de attachment processar e a mensagem falha.
+
+**Detecção do script:** `analyze_prompt.py` reporta
+`type_inside_payload_count` quando encontra `attachment.payload.type`
+sem `attachment.type` correspondente.
+
+**Antes (errado — `type` dentro do payload):**
+```json
+{"messages":[{"message":{"attachment":{"payload":{"type":"image","url":"https://..."}}}}]}
+```
+
+**Depois (correto — `type` ao lado do payload):**
+```json
+{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"https://..."}}}}]}
+```
+
+A mesma regra vale pra templates:
+```
+✅ {"attachment":{"type":"template","payload":{"template_type":"button",...}}}
+❌ {"attachment":{"payload":{"type":"template","template_type":"button",...}}}
+```
+
+**Como corrigir:** mover o `type` pra fora do payload, sem alterar mais
+nada. É uma transformação puramente estrutural.
+
+---
+
+## 17. Formato de imagem proibido (`.webp`, `.avif`, `.svg`, `.gif`)
+
+**Regra:** a plataforma NexTags entrega imagens nos canais (WhatsApp,
+Instagram, Messenger) e **só aceita JPEG e PNG**. Imagens em outros
+formatos quebram a entrega em pelo menos um canal.
+
+- ✅ Permitidos: `.jpg`, `.jpeg`, `.png` (Content-Type `image/jpeg` ou `image/png`).
+- ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
+
+**Detecção do script:** `analyze_prompt.py` reporta
+`forbidden_image_formats_count` quando encontra URLs em
+`payload.url` (attachment image) ou `image_url` (carrossel) com
+extensão proibida, ambígua (sem extensão clara) ou não-absoluta.
+
+**Cuidado com CDN.** Muitas CDNs servem `.jpg` na URL respondendo
+`Content-Type: image/webp`. A URL parece OK, o canal rejeita. Quando
+a extensão é ambígua (`.aspx`, `.php`, sem extensão), o prompt deve
+instruir o agente a validar o Content-Type via tool MCP — ou,
+preferencialmente, omitir a imagem.
+
+**Como corrigir no prompt:**
+
+1. Se o exemplo de JSON no prompt mostra URL `.webp`/`.avif`/`.svg`/`.gif`:
+   substituir pelo placeholder `<URL_JPG_OU_PNG>` ou por uma URL válida.
+2. Se o prompt menciona `image/webp` ou WebP como permitido:
+   reescrever pra deixar claro que só JPEG/PNG é aceito.
+3. Se o prompt usa imagens via tool MCP: incluir as 4 etapas de
+   validação de imagem (URL absoluta → extensão → Content-Type → falha
+   → omitir). O `prompt_skeleton.md` do creator tem o texto canônico.
+
+**Princípio:** na dúvida sobre formato, REMOVER A IMAGEM. A ausência
+da imagem é preferível a quebrar o envio inteiro no canal.
+
+---
+
 ## 9. O que JAMAIS alterar
 
 - Nome do agente, persona, tom de voz.

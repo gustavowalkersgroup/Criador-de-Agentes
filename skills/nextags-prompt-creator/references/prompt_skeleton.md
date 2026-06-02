@@ -194,7 +194,7 @@ silenciosos (triadores/classificadores), use uma frase curta de transição
 {"messages":[
   {"message":{"attachment":{"type":"image","payload":{"url":"<URL_DA_IMAGEM>"}}}},
   {"message":{"text":"{nome}, esse é o {produto} 🔥 {pitch curto + preço}"}},
-  {"message":{"attachment":{"payload":{"buttons":[{"title":"Comprar agora","type":"web_url","url":"<URL_DO_PRODUTO>"}],"template_type":"button","text":"Pra fechar é só clicar 👇"},"type":"template"}}}
+  {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Pra fechar é só clicar 👇","buttons":[{"title":"Comprar agora","type":"web_url","url":"<URL_DO_PRODUTO>"}]}}}}
 ]}
 
 — Transferência para humano:
@@ -216,6 +216,58 @@ silenciosos (triadores/classificadores), use uma frase curta de transição
   (`— Exemplo X — situação:`). Veja regra #11 em `regras_absolutas.md`.
 - **NUNCA** emita JSON com `send_flow` sem `messages` populado — fluxo não
   dispara. Veja regra #10 em `regras_absolutas.md`.
+- **`attachment.type` fica FORA de `payload`**, no mesmo nível dele. Type
+  dentro do payload é o erro mais comum — middleware ignora. Sempre escrever
+  `{"attachment":{"type":"image","payload":{"url":"..."}}}`, nunca
+  `{"attachment":{"payload":{"type":"image","url":"..."}}}`.
+
+### 🖼️ Regras OBRIGATÓRIAS para imagens (copiar literal no prompt)
+
+Insira este bloco no prompt gerado se a empresa usa imagens de produto
+(via MCP, catálogo, ou qualquer fonte dinâmica):
+
+```
+## VALIDAÇÃO DE IMAGEM (OBRIGATÓRIO)
+
+A plataforma NexTags só entrega imagens em JPEG e PNG. Outros formatos
+(WebP, AVIF, SVG, GIF) quebram a entrega em pelo menos um canal
+(WhatsApp, Instagram, Messenger).
+
+Antes de incluir QUALQUER imagem na resposta, validar em 4 etapas:
+
+ETAPA 1 — URL absoluta
+- URL deve começar com http:// ou https://
+- URL não pode estar vazia
+- Caso contrário: NÃO envie imagem.
+
+ETAPA 2 — Extensão do arquivo
+- Permitido: .jpg, .jpeg, .png
+- Proibido: .webp, .avif, .svg, .gif, .bmp, qualquer outro
+- Caso contrário: NÃO envie imagem.
+
+ETAPA 3 — Cuidado com CDN
+- Muitas CDNs respondem com Content-Type: image/webp mesmo quando a URL
+  termina em .jpg.
+- Se houver ferramenta MCP para consultar headers HTTP, verifique o
+  Content-Type. Só envie se for image/jpeg ou image/png.
+- Sem ferramenta para checar Content-Type, confie apenas em extensão
+  clara (.jpg / .jpeg / .png) — e ainda assim, na dúvida, omita.
+
+ETAPA 4 — Falha na validação
+- Se não for possível garantir JPEG/PNG: envie apenas texto + botão.
+- A ausência da imagem é preferível a quebrar o envio inteiro.
+
+Princípio: na dúvida, REMOVER A IMAGEM.
+```
+
+**Notas para o creator:**
+- Inclua este bloco no prompt SOMENTE se a empresa tem catálogo com
+  imagens (via tool/MCP, scraping de URL de imagem do site, etc).
+- Se o briefing diz "agente não envia imagens", pule este bloco — não
+  precisa instruir sobre algo que o agente não fará.
+- Quando houver tool MCP que retorna URL de imagem (ex: `get_product`,
+  `search_products`), o prompt deve dizer explicitamente: "antes de
+  enviar a imagem retornada por `<tool>`, aplique as 4 etapas acima".
 
 ---
 

@@ -60,6 +60,39 @@ Valores válidos de `type`: `"image"`, `"video"`, `"audio"`, `"file"`.
 
 Qualquer outro valor (`sticker`, `gif`, `location`, etc.) é inválido.
 
+#### ⚠️ Posição do campo `type` (regra mais comum quebrada)
+
+`type` fica **FORA** de `payload`, no mesmo nível dele:
+
+```
+✅ CORRETO:
+{"attachment":{"type":"image","payload":{"url":"..."}}}
+
+❌ ERRADO (type dentro do payload — middleware não reconhece):
+{"attachment":{"payload":{"type":"image","url":"..."}}}
+```
+
+O corretor detecta automaticamente o caso errado e move o `type` pra fora.
+
+#### ⚠️ Formato de imagem permitido
+
+A plataforma NexTags entrega imagens nos canais (WhatsApp, Instagram,
+Messenger) e **só aceita JPEG e PNG**. Outros formatos quebram a entrega
+em pelo menos um canal:
+
+- ✅ Permitidos: `.jpg`, `.jpeg`, `.png` (Content-Type `image/jpeg` ou `image/png`).
+- ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
+
+**Cuidado com CDN.** Muito site/e-commerce serve a mesma URL `.jpg`
+respondendo com `Content-Type: image/webp`. A URL parece OK, mas o
+servidor entrega WebP — e o canal rejeita. Quando a extensão for
+ambígua (`.aspx`, `.php`, sem extensão), a skill marca como pendência:
+validar Content-Type antes de enviar ou substituir a URL.
+
+**Regra de ouro:** se não dá pra garantir que é JPEG/PNG, **remova a
+imagem** e mantenha só texto + botão. A ausência de imagem é preferível
+a quebrar o envio inteiro no canal.
+
 ### 4. Carrossel (generic template)
 
 ```json
@@ -160,7 +193,7 @@ Mapeie pra forma canônica:
 ## Regras gerais de validação
 
 1. **Saída exclusivamente JSON.** Sem markdown, sem fence ` ```json `,
-   sem prosa antes/depois.
+   sem prosa antes/depois. Resposta começa com `{` e termina com `}`.
 2. **Sempre JSON válido** — vírgulas, aspas, chaves balanceadas.
 3. **Aspas retas** `"` — não aspas curvas `"` `"`.
 4. **Sem campos `text`/`title`/`subtitle` com markdown** (`**bold**`,
@@ -171,5 +204,9 @@ Mapeie pra forma canônica:
    `payload`.
 7. **`attachment.type` apenas:** `image`, `video`, `audio`, `file`,
    `template`.
-8. **Typing indicator** é inteiro (não string) e fica entre 1 e 30
-   segundos.
+8. **`attachment.type` FORA de `payload`** (no mesmo nível). Type dentro
+   do payload é o erro mais comum — o middleware ignora.
+9. **Imagens só em JPEG/PNG.** WebP/AVIF/SVG/GIF quebram pelo menos um
+   canal. Quando a extensão é ambígua, validar Content-Type ou remover.
+10. **Typing indicator** é inteiro (não string) e fica entre 1 e 30
+    segundos.
