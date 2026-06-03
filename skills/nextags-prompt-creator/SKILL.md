@@ -104,6 +104,23 @@ relatório. **Nunca chute.**
 
 ### 5. Gera o prompt
 
+**5.0 — Classifique o TIPO de agente ANTES de montar o esqueleto.**
+
+Decida (pelo briefing + perguntas) entre:
+- **Vendas/consultora** → inclua seção 6B (Vendas). Não inclua SAC pesado.
+- **SAC/pós-venda** → inclua seção 8B (SAC). Não inclua framework de vendas.
+- **Triagem/roteador** → use seção 8C (Triagem). REMOVA KB detalhada, vendas, SAC, MCP.
+- **Comercial/SDR (B2B, qualifica lead)** → inclua 6B simplificado + pipeline via
+  set_field_value (stage monotônico + resumo acumulativo) + checklist final.
+- **Misto (vendas + SAC)** → inclua 6B e 8B com uma regra de troca de modo.
+
+Seções universais (TODOS os tipos, bloqueantes): Identidade, Tom de Voz,
+Escopo (com fora-de-escopo→flow_id), Transferência via send_flow, Anti-alucinação,
+Formato JSON. Sem qualquer uma dessas, reprovar.
+
+Ordem recomendada: Contexto Temporal ({{current_user_time}}) primeiro quando houver
+lógica de prazo/saudação; Exemplos JSON verbatim por último (galeria de 5-12 casos).
+
 Use `references/prompt_skeleton.md` como esqueleto e preencha cada seção com:
 
 - **Conteúdo do briefing** para identidade, objetivo, restrições, persona.
@@ -171,7 +188,18 @@ A plataforma NexTags tem um conjunto rico de **Custom User Fields (CUFs)** nativ
 | Status do pedido | `{{order_status}}` |
 | Total do pedido | `{{order_total}}` |
 | Link de checkout | `{{cart_checkout_link}}` |
+| Hora local do cliente (âncora de prazo/saudação) | `{{current_user_time}}` |
 | Última mensagem | `{{last_text_input}}` |
+
+**CUFs de ESCRITA via `set_field_value` (agentes que capturam lead/pipeline):**
+Grave dados SANITIZADOS: telefone sem `+` (`5511XXXXXXXXX`), e-mail em minúsculas,
+valores como `'379.00'` (ponto decimal, sem `R$`). Campos de classificação usam
+enums fechados (ex.: `stage_pipeline: '1'/'2'/'3'`, só avança nunca regride;
+`resumo_comercial` acumulativo: anterior + novo). `set_field_value` SEMPRE antes
+de `send_flow` no array de actions (o flow lê os campos no momento que dispara).
+
+**Regra de Contexto Temporal:** quando houver qualquer lógica de prazo ou saudação
+por horário, use `{{current_user_time}}` e proíba o agente de inventar data/hora.
 
 **Use somente se for necessário.** Não force `{{first_name}}` em toda mensagem — saudação inicial e momentos-chave bastam.
 

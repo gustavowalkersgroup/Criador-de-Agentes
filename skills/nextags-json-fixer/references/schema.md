@@ -22,6 +22,26 @@ ambos):
 Pelo menos uma das duas chaves deve existir. Se ambas estiverem
 ausentes, o JSON é inválido.
 
+### Disparo silencioso (só-`actions`, sem texto ao cliente) — VÁLIDO
+
+É legítimo emitir apenas `actions`, com `messages` ausente OU
+`"messages": []` explícito. Usos reais (4/25): NPS pós-encerramento,
+descadastro pós-confirmação, mockup por IA.
+
+```json
+{"messages":[],"actions":[{"action":"send_flow","flow_id":"1775096402729"}]}
+```
+
+Regra do fixer:
+- `"messages":[]` + `actions` não-vazio → **VÁLIDO**, não inventar mensagem.
+- `messages` ausente + `actions` presente → **VÁLIDO**.
+- Ambas ausentes/vazias → inválido (pendência).
+- ATENÇÃO: `send_flow` "mudo" só é correto para dispara-e-esquece pós-conversa
+  (NPS/mockup/descadastro confirmado). Como mecanismo de HANDOFF principal,
+  a transferência deve vir com `messages` (texto de confirmação). O fixer não
+  reescreve a intenção — apenas registra a observação no relatório quando o
+  único `send_flow` vem sem `messages`.
+
 ---
 
 ## `messages` — array de mensagens
@@ -48,7 +68,13 @@ Cada item do array é:
 ]}
 ```
 
-O `4` significa 4 segundos de "digitando…" antes da próxima mensagem.
+O inteiro (`4`) é o typing indicator: segundos de "digitando…". Posições válidas:
+- **Entre** dois objetos de mensagem (cria nova bolha com pausa).
+- **No início** do array `messages` (pausa de abertura, encadeia com o turno
+  anterior do mesmo atendimento) — VÁLIDO, não remover como "órfão".
+
+`\n` dentro de `text` = multilinha na MESMA bolha (listas, blocos de rastreio).
+`4` = NOVA bolha. São coisas distintas: nunca converter `\n` em `4` nem vice-versa.
 
 ### 3. Attachments (imagem, vídeo, áudio, arquivo)
 
@@ -95,10 +121,21 @@ Tipos de botão válidos:
 
 | `type`     | Campo obrigatório | Função |
 |------------|-------------------|--------|
-| `web_url`  | `url`             | Abre link externo |
-| `postback` | `payload`         | Dispara flow_id na plataforma (igual `send_flow`) |
+| `web_url`  | `url`             | Abre link externo (ÚNICO usado em produção: 7/7) |
+| `postback` | `payload`         | Dispara flow_id (sintaticamente válido, mas 0% de uso real; preferir `send_flow`) |
 
 Botão sem o campo obrigatório → violação.
+
+**Limites de UI (button template) — observados em produção, validar:**
+- **`text` é OBRIGATÓRIO** no payload do button. Button sem `text` → pendência.
+- **Máximo 1 botão** no array `buttons` de um button template. >1 botão →
+  aviso (estoura UI do Messenger); manter o 1º, listar os demais no relatório.
+- **CTA (`title`) ≤ 20 caracteres.** Acima → aviso (não trunca
+  automaticamente; sinaliza).
+- `postback` em button → aviso: "produção usa só `web_url`; postback de
+  transferência deve ser `send_flow` em `actions`."
+- Duas ordens de chave são ambas válidas (não corrigir):
+  `type`→`payload` e `payload`→`type`.
 
 ---
 
@@ -120,10 +157,24 @@ objeto com a chave `action` + campos específicos.
 | Atribuir a admin | `{"action":"assign_conversation","admin_id":"<id>"}` | `admin_id` |
 | Remover atribuição | `{"action":"unassign_conversation"}` | nenhum |
 
-**Importante:** TODAS as 8 ações acima são válidas conforme a
-documentação oficial da NexTags. Esta skill segue à risca esse
-schema — não trata `transfer_conversation_to` / `assign_conversation` /
-`unassign_conversation` como proibidas.
+**Validade vs. boa prática (duas camadas).** As 8 ações acima são
+sintaticamente válidas no runtime — esta skill NÃO quebra um JSON só por
+usar `transfer_conversation_to` / `assign_conversation` /
+`unassign_conversation`. PORÉM, evidência de produção (25 prompts reais):
+**0% dos prompts-ouro usam essas 3 ações**; 100% das transferências de
+qualidade usam `send_flow` com `flow_id`. Os únicos casos com
+`assign_conversation` são exatamente os marcados como desvio.
+
+Regra do fixer:
+- NÃO remover/converter automaticamente `transfer_conversation_to` /
+  `assign_conversation` / `unassign_conversation` (são válidas em runtime).
+- SEMPRE emitir **aviso (não-erro)** no relatório: "Ação X é válida no
+  schema, mas 0% dos prompts-ouro a usam; transferência recomendada =
+  `send_flow`. Se for handoff para humano, considere converter."
+- `admin_id` deve ser um ID/valor limpo. Valor sujo (ex.: `"Estela."` com
+  ponto/espaço/nome em vez de ID) → pendência.
+- A conversão real para `send_flow` é responsabilidade da
+  `nextags-prompt-fixer` (corrige o prompt); aqui só sinalizamos.
 
 ### Aliases comuns que o agente costuma errar
 
@@ -139,6 +190,13 @@ Mapeie pra forma canônica:
 | `transfer`, `transfer_to_human`, `transferHuman` | `transfer_conversation_to` (com `value:"human"`) |
 | `assign`, `assignTo`, `assign_to` | `assign_conversation` |
 | `unassign`, `unassign_admin` | `unassign_conversation` |
+| `connect_user_to_human` | `send_flow` (flow de transferência → pendência de `flow_id`) |
+| `transferir_atendimento`, `transferir_suporte`, `transfer_support` | `send_flow` (→ pendência de `flow_id`) |
+| `buscar_pedido`, `Rastreio_Shp()`, `Rotativo()` | função legada de plataforma antiga — não é ação NexTags. Remover do `actions` → pendência (lógica deve vir do MCP/flow) |
+
+**Sintaxe legada com `()` ou `{{...}}` em valor de ação** (ex.: `Rotativo()`,
+`{{NumeroPedidoShopify}}`) → não é JSON-action válido. Marcar como pendência;
+não tentar "consertar" para uma ação inventada.
 
 ---
 
@@ -173,3 +231,21 @@ Mapeie pra forma canônica:
    `template`.
 8. **Typing indicator** é inteiro (não string) e fica entre 1 e 30
    segundos.
+
+---
+
+## Convenções de produção que o fixer NÃO deve "corrigir"
+
+1. **Placeholders dinâmicos** — `{nome}`, `{{first_name}}`,
+   `{{current_user_time}}`, `<CHECKOUT_URL>`, `[nome]` são intencionais
+   (dados vindos de CUF/tool/MCP). NÃO normalizar nem flaggar como "valor
+   faltando". Só sinalizar se houver MISTURA de 4 estilos no mesmo bloco
+   (aviso de inconsistência, não erro).
+2. **`flow_id` numérico de 13 dígitos** (`17xxxxxxxxxxx`) é o formato real;
+   não confundir com placeholder.
+3. **Ordem de ações** — convenção-ouro (Nex/Uni): `set_field_value` ANTES de
+   `send_flow`. NÃO reordenar automaticamente; opcionalmente sugerir no
+   relatório se `send_flow` vier antes de `set_field_value` no mesmo array.
+4. **`set_field_value` com resumo/briefing pro humano** (ex.:
+   `field_name:"assunto_ticket"`) antes de `send_flow` é padrão recomendado,
+   não erro.

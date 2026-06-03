@@ -52,6 +52,29 @@ options: ["WhatsApp", "Instagram Direct", "Facebook Messenger",
 
 ---
 
+## 1.0 Tipo de agente (PERGUNTA-CHAVE — define quais seções gerar)
+```
+options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
+          "Comercial/SDR (B2B)", "Misto (vendas + SAC)"]
+```
+
+## 1.5 Perguntas condicionais por tipo
+
+**Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom —
+e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
+
+**Se SAC:** quais MOTIVOS de contato atende (rastreio/troca/devolução/avaria/...)?
+há flow_id por motivo ou um geral? qual a tool/sistema que é fonte de verdade de
+ENVIO (≠ e-commerce)? há fluxo de NPS pós-atendimento (flow_id)?
+
+**Se COMERCIAL/SDR:** quais campos do CRM capturar via set_field_value (pipeline,
+resumo, faturamento)? horário de expediente?
+
+**Todos:** há horário de atendimento humano (expediente)? respostas fixas para
+casos sensíveis (atacado, parceria, vagas)?
+
+---
+
 ## 2. Tools e fluxos
 
 ### 2.1 O agente vai usar tools (MCP)?

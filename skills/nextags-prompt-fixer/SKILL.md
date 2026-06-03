@@ -22,6 +22,15 @@ humano dono do projeto pode tomar (ex.: "qual é o ID do fluxo de
 transferência?"), a skill **deixa um placeholder marcado** e lista no
 relatório como pendência.
 
+**Relação com a `nextags-json-fixer`.** Há uma divergência APARENTE entre as
+duas: a json-fixer trata `transfer_conversation_to`/`assign_conversation`/
+`unassign_conversation` como válidas; esta skill as desencoraja. Não é
+conflito — são camadas distintas. A json-fixer valida o JSON que a plataforma
+ACEITA em runtime (não quebrar output já entregue). Esta skill dita o que se
+deve ESCREVER num prompt novo (boa prática). Os 25 prompts de produção
+confirmam: 0% das transferências de qualidade usam essas ações; todas usam
+`send_flow`. Ver Regra 2 em `regras_absolutas.md`.
+
 ## Quando essa skill se aplica
 
 Use sempre que o usuário mencionar:
@@ -109,6 +118,11 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | Menção em prosa a ação proibida | Reescrever a instrução para usar `send_flow`. |
 | Seção obrigatória faltando | Inserir placeholder com bloco-padrão sugerido (não inventar regras de negócio) + listar como pendência. |
 | **Seção proibida no prompt** (Auditoria, Changelog, Pendências, TODO, Notas internas, metadata expandido `**Versão:**`, `**Data:**`) | **Remover INTEIRA do prompt**. Migrar o conteúdo pro relatório (seção "Histórico de mudanças", "Pendências para revisão humana" ou "Notas técnicas/TODO"). Ver Regra 15 em `regras_absolutas.md`. |
+| Função de transferência inventada/legada (`connect_user_to_human`, `transferir_suporte`, `Rotativo()`) | Converter pra `send_flow` + placeholder de `flow_id`; funções de DADO viram pendência (tool/MCP). Ver Regra 2b. |
+| `send_flow` SÓ-actions em NPS/descadastro/mockup | **NÃO corrigir** se for caso whitelistado (Regra 10, exceção de disparo silencioso). Na dúvida → pendência. |
+| `assign_conversation` com `admin_id` = nome ("Estela.") | Converter pra `send_flow`; nunca adivinhar o ID. Ver Regra 2. |
+| Ordem `send_flow` antes de `set_field_value` | Reordenar: campos PRIMEIRO, `send_flow` por último (senão campos chegam vazios). Ver Regra 16. |
+| `>1` botão / CTA >20 chars / `postback` / botão de carrinho pra produto | Ver Regra 17 (limites de UI do botão). |
 
 ### 4. Versionamento do arquivo corrigido
 

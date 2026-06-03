@@ -132,6 +132,10 @@ Aplica Code node de slim em CADA backend (ver `references/slim_response_patterns
 - Extrai só campos essenciais
 - Limpa HTML em descrições
 - Pega só URL https principal de imagens (descarta thumbs)
+- Classifica campos: exibível / `_internal` (classificação) / PII mascarada (ver `slim_response_patterns.md`)
+- Traduz enums técnicos para label PT (`in_transit`→"Em trânsito") mantendo o cru em `_internal`
+- Distingue vazio (`empty:true`) de erro técnico (`transient:true`)
+- Preserva identificadores opacos (`cart_id`/`phash`/`customer_id`) byte a byte
 
 ### Fase 6 — Configurar credenciais no n8n
 
@@ -148,6 +152,13 @@ Salva relatório em `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`
 - IDs dos workflows criados
 - Credencial(is) que o usuário precisa criar/vincular
 - Como testar (curl no endpoint, ou via Smoke Test workflow)
+- **Metadados de governança pro prompt-creator** (por tool):
+  - `classe` semântica (leitura/catalogo/transacional/logistica-FdV/cadastro/auxiliar)
+  - campos PROIBIDOS de exibir e campos de USO INTERNO
+  - mapa de tradução de enums aplicado no slim
+  - pipeline de encadeamento (saída→entrada) com chaves opacas a copiar literal
+  - frases de AUSÊNCIA de capacidade (ex: "não há tool de cotação de frete")
+  - boilerplate "nunca exponha o nome técnico da tool"
 - Próximos passos sugeridos:
   - **Se cliente também precisa de prompt:** "use `nextags-prompt-creator` em seguida — passa nome da loja, site, descrição do negócio"
   - **Se infra é pra plugar num prompt existente:** "URL do MCP acima — configura na NexTags como conector"
