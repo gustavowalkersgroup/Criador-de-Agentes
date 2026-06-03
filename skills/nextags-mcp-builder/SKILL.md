@@ -169,6 +169,10 @@ Aplica Code node de slim em CADA backend (ver `references/slim_response_patterns
 - Extrai só campos essenciais
 - Limpa HTML em descrições
 - Pega só URL https principal de imagens (descarta thumbs)
+- Classifica campos: exibível / `_internal` (classificação) / PII mascarada (ver `slim_response_patterns.md`)
+- Traduz enums técnicos para label PT (`in_transit`→"Em trânsito") mantendo o cru em `_internal`
+- Distingue vazio (`empty:true`) de erro técnico (`transient:true`)
+- Preserva identificadores opacos (`cart_id`/`phash`/`customer_id`) byte a byte
 - **Imagens: incluir validação de formato.** A NexTags só entrega JPEG/PNG nos canais. CDNs (Shopify, VTEX, Nuvemshop, Cloudinary) servem WebP por padrão e quebram WhatsApp/Instagram. Estratégias detalhadas: `references/image_validation.md`. No mínimo, anexar campo `image_format_hint` na resposta do slim baseado em heurística de extensão (`likely_jpeg_or_png` / `forbidden_format` / `unknown_validate_before_send`); preferível incluir uma tool `validate_image_url` que faz HEAD HTTP e devolve Content-Type. Sempre avisar o usuário se a API fonte serve WebP — pra que o prompt do agente seja calibrado pra omitir imagem na dúvida.
 
 **Nunca use `optimize_response` do n8n** — entrega JSON cru via MCP Streamable HTTP (quirk #18) e quando funciona, corta com heurísticas genéricas que não conhecem o contexto do atendimento (lição DOLPS). Use sempre Code node manual.
@@ -190,6 +194,13 @@ Salva relatório em `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`
 - IDs dos workflows criados
 - Credencial(is) que o usuário precisa criar/vincular
 - Como testar (curl no endpoint, ou via Smoke Test workflow)
+- **Metadados de governança pro prompt-creator** (por tool):
+  - `classe` semântica (leitura/catalogo/transacional/logistica-FdV/cadastro/auxiliar)
+  - campos PROIBIDOS de exibir e campos de USO INTERNO
+  - mapa de tradução de enums aplicado no slim
+  - pipeline de encadeamento (saída→entrada) com chaves opacas a copiar literal
+  - frases de AUSÊNCIA de capacidade (ex: "não há tool de cotação de frete")
+  - boilerplate "nunca exponha o nome técnico da tool"
 - Próximos passos sugeridos:
   - **Se cliente também precisa de prompt:** "use `nextags-prompt-creator` em seguida — passa nome da loja, site, descrição do negócio"
   - **Se infra é pra plugar num prompt existente:** "URL do MCP acima — configura na NexTags como conector"
@@ -230,6 +241,16 @@ grep -rE 'shpat_[a-f0-9]{32}|shpss_[a-f0-9]{32}|shpca_[a-f0-9]+|atkn_|TR56[a-zA-
 ```
 
 Se retornar algo, mascara antes de comitar.
+
+### Fronteira IA ↔ fluxo — tool devolve SLIM, fluxo faz o pesado
+
+A tool/MCP entrega dados **SLIM** (o mínimo pra IA conversar e decidir). A
+**apresentação pesada** (catálogo grande, vários carrosséis, PDF/documento) e a
+**coleta estruturada complexa** (medidas, formulário) são de **FLUXOS de bot**:
+a IA dispara `send_flow` pro fluxo pré-montado — ela **não** monta payload
+gigante e a tool **não** devolve tudo cru. É o que justifica o slim e a economia
+de token (ver `references/slim_response_patterns.md`). Coleta de 1-2 campos = IA
+grava com `set_field_value`; coleta complexa = fluxo.
 
 ### Descrições de tools são vida ou morte
 

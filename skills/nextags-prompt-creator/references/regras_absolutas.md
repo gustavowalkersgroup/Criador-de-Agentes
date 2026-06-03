@@ -42,52 +42,60 @@ de inventar valor.
 
 ---
 
-## 2. Ações proibidas
+## 2. Handoff: `send_flow` é o padrão; `transfer_conversation_to`/`assign_conversation` são casos especiais
 
-A plataforma usa fluxos para qualquer transferência ou roteamento. As ações
-abaixo **nunca** devem aparecer em JSON gerado pelo agente:
+Todas as 8 ações da plataforma são **válidas** em runtime. O ponto aqui é de
+**preferência**, não de proibição:
 
-- `transfer_conversation_to`
-- `assign_conversation`
-- `unassign_conversation`
+- **`send_flow` (com `flow_id`) = handoff PADRÃO.** É o mecanismo oficial de
+  transferência/roteamento. Sempre que houver um flow configurado, use ele.
+- **`transfer_conversation_to` = FALLBACK** quando NÃO há flow de transferência
+  configurado no projeto. É rede de segurança, **não é proibida**. Quando der pra
+  usar `send_flow`, prefira `send_flow`.
+- **`assign_conversation` / `unassign_conversation` = caso especial RARO**
+  (atribuir/remover um atendente específico via `admin_id`), definido pelo humano.
+  Não sugerir por default, mas **não bloquear** — é válida.
 
-**Como corrigir:** substitua por `send_flow` apontando para o fluxo de
-transferência configurado no projeto.
+**Como migrar quando faz sentido:** se há flow de transferência configurado e o
+prompt usa `transfer_conversation_to` como rota principal, troque por `send_flow`
+apontando para o fluxo de transferência do projeto.
 
-**Antes:**
+**Antes (rota principal, mas há flow configurado):**
 ```json
 {"messages":[{"message":{"text":"Vou te transferir."}}],
  "actions":[{"action":"transfer_conversation_to","value":"human"}]}
 ```
 
-**Depois:**
+**Depois (preferir send_flow quando há flow):**
 ```json
 {"messages":[{"message":{"text":"Vou te transferir."}}],
  "actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DE_TRANSFERENCIA>"}]}
 ```
 
-⚠️ Se o `flow_id` correto não estiver definido no prompt, **mantenha o
-placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no relatório:
-"⚠️ Definir o ID do fluxo de transferência antes de subir em produção."
+⚠️ Se NÃO há flow de transferência configurado, `transfer_conversation_to` é
+fallback legítimo — mantenha. Se o `flow_id` correto não estiver definido no
+prompt, **mantenha o placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no
+relatório: "⚠️ Definir o ID do fluxo de transferência antes de subir em produção."
 
 ---
 
-## 3. Botões sem `web_url`
+## 3. Botões: `web_url` precisa de `url`; limite de 1 link por mensagem
 
-**Regra:** botões só existem para abrir links externos. Tudo mais (sim/não,
-menus, confirmações) deve ser texto simples.
+**Regra:**
+- Botão `web_url` SEMPRE precisa de `url` (sem `url`, não abre nada).
+- **No máximo 1 botão `web_url` por mensagem** (restrição do WhatsApp para link).
+- Botão `postback` (dispara um fluxo ao clicar) é **permitido** — podem até 3 —
+  mas a IA **raramente** usa. Para sim/não e menus simples, prefira a pergunta em texto.
 
-**Detecção do script:** bloco com `template_type: "button"` que tem botão
-sem `type: "web_url"` ou sem `url`.
+**Detecção do script (BLOQUEIA):** bloco com `template_type: "button"` que tem
+botão `web_url` sem `url`, ou mais de 1 botão `web_url` na mesma mensagem.
 
 **Como corrigir:**
-- Se o botão era para abrir um link externo mas faltou a URL → marque como
-  pendente (precisa que alguém forneça a URL).
-- Se o botão era pra qualquer outra coisa → **converta o JSON inteiro em
-  texto simples**, fazendo a pergunta na própria mensagem e aguardando
-  resposta livre do cliente.
+- Botão `web_url` sem `url` → se era pra abrir um link, marque como pendente
+  (precisa da URL); se não era um link de verdade, converta em texto simples.
+- Para confirmações sim/não → prefira texto simples com a pergunta na própria mensagem.
 
-**Antes (botão sendo usado como menu — ERRADO):**
+**Antes (sim/não como botões — prefira texto):**
 ```json
 {"messages":[{"message":{"attachment":{"payload":{"buttons":[
   {"title":"Sim","type":"postback","payload":"YES"},
@@ -127,41 +135,44 @@ imagem como attachment.
 
 ---
 
-## 5. Markdown dentro do JSON
+## 5. Markdown dentro do JSON (WA-markup OK; markdown-padrão vaza)
 
-**Regra:** mensagens são texto puro, como WhatsApp. Nada de `**negrito**`,
-`# títulos`, `` `código` `` ou bullets `- item` dentro dos campos `text`,
-`subtitle` ou `title`.
+**Regra:** as mensagens renderizam como no WhatsApp.
 
-**Como corrigir:** retire o markdown e deixe o texto cru. Para ênfase,
-prefira reescrever a frase ou usar pausas com mensagens separadas.
+- **PERMITIDO — marcação estilo WhatsApp:** `*negrito*` (asterisco ÚNICO),
+  `_itálico_`, `~tachado~`. Renderiza certinho na plataforma (o cliente testou).
+- **PROIBIDO — markdown-PADRÃO (vaza literal):** asterisco-duplo `**bold**`,
+  título com hashtag `# título`, link `[texto](url)`, bullets com hífen `- item`,
+  e cercas de código (` ``` `). Esses aparecem crus pro cliente.
 
-**Antes:**
+**Como corrigir:** só o markdown-padrão precisa sair. Troque `**bold**` por
+`*bold*` (WA), `[texto](url)` pela URL pura, bullets `-` por quebras de linha
+`\n`, e remova `#`/fences. **Não** remova `*negrito*`/`_itálico_`/`~tachado~` —
+eles são válidos.
+
+**Antes (asterisco-duplo vaza):**
 ```json
 {"messages":[{"message":{"text":"O prazo é **3 a 5 dias úteis**."}}]}
 ```
 
-**Depois:**
+**Depois (WA-markup com asterisco único, OU sem ênfase):**
 ```json
-{"messages":[{"message":{"text":"O prazo é de 3 a 5 dias úteis."}}]}
+{"messages":[{"message":{"text":"O prazo é *3 a 5 dias úteis*."}}]}
 ```
 
 ---
 
-## 6. Ações proibidas mencionadas em prosa
+## 6. `transfer_conversation_to`/`assign` como ROTA PRINCIPAL em prosa
 
-Mesmo fora de blocos JSON, instruções como "use a ação
-`transfer_conversation_to` quando…" são problema, porque podem induzir o
-modelo a usá-la em runtime.
+Como `send_flow` é o handoff padrão (ver §2), instruir o agente a usar
+`transfer_conversation_to` como **rota principal de transferência** quando HÁ um
+flow configurado é um **aviso de estilo** — convém migrar pra `send_flow`. Não é
+proibição: `transfer_conversation_to` continua válido como fallback e
+`assign_conversation` como caso especial raro.
 
-**Exceção:** se a menção está em uma seção explicitamente marcada como
-"❌ NÃO FAZER" / "PROIBIDO" / "Errado", está tudo bem — o autor está
-ensinando o que evitar. O analisador já tenta detectar isso (procura
-marcadores como `❌`, `🚫`, `proibido`, `nunca usar` nas linhas anteriores).
-
-**Como corrigir:** quando o analisador apontar uma menção em prosa, leia o
-contexto. Se for instrução real, substitua a referência por `send_flow` com
-o ID apropriado.
+**Como ajustar:** se o prompt usa `transfer_conversation_to` como rota principal e
+existe flow de transferência, troque a referência por `send_flow` com o `flow_id`
+apropriado. Se NÃO há flow configurado, deixe como está — é fallback legítimo.
 
 ---
 
@@ -220,24 +231,32 @@ problemática inalterada.
 
 ---
 
-## 10. `send_flow` sem `messages` (a regra que NÃO está documentada)
+## 10. `send_flow` sem `messages` (transição é OPCIONAL — não falha)
 
-**Regra:** todo JSON de saída que contém `send_flow` em `actions` **precisa** ter o campo `messages` com pelo menos 1 item. Sem `messages`, a plataforma NexTags falha silenciosamente:
+**Regra:** `send_flow` em `actions` **DISPARA NORMALMENTE mesmo sem `messages`** — o
+fluxo de bot assume a comunicação a partir dali. **Não é falha silenciosa.** O campo
+`messages` é uma **transição OPCIONAL** (curta, por UX), nunca obrigatória.
+
+Comportamento real, com OU sem `messages`:
 
 - `set_field_value` **roda** ✅
 - Tags **rodam** ✅
-- `send_flow` **NÃO dispara** ❌
+- `send_flow` **DISPARA** ✅
 
-Isso significa que o agente parece estar funcionando (campos preenchidos, tags aplicadas), mas a conversa NUNCA é encaminhada pro fluxo. É a violação mais traiçoeira porque o erro é mudo.
+> Correção de regra antiga: versões anteriores diziam que `send_flow` sem `messages`
+> "falha silenciosamente / não dispara". Isso está **errado** e foi removido. Disparos
+> silenciosos (NPS, mockup, classificadores) são um padrão válido com só `actions`.
 
-**Detecção:** o `analyze_prompt.py` reporta `send_flow_without_messages_count` quando encontra um bloco JSON com `send_flow` mas sem `messages` (ou com `messages: []`).
+**Detecção:** o `analyze_prompt.py` pode reportar `send_flow_without_messages_count`
+como **AVISO de estilo** (sugestão de UX: considerar uma transição curta), **nunca**
+como violação bloqueante.
 
-**Como corrigir:**
+**Boa prática de UX (não regra):**
 
-1. Para agentes conversacionais normais: o prompt provavelmente já manda `messages` — esse erro raramente acontece em prompts gerados pelo creator.
-2. Para agentes **silenciosos/triadores/classificadores** (que tentam ser puramente actions): adicionar uma **frase de transição curta predefinida por categoria**. Exemplo:
+1. Para agentes conversacionais normais: costuma fazer sentido acompanhar o `send_flow`
+   de uma transição curta no `messages` ("Já vou te conectar com nosso time!"). É UX, não obrigação.
+2. Para agentes **silenciosos/triadores/classificadores**: podem disparar com só `actions` — o fluxo fala. Exemplo perfeitamente válido:
 
-   **Antes (quebra a plataforma — send_flow não dispara):**
    ```json
    {
      "actions": [
@@ -247,7 +266,8 @@ Isso significa que o agente parece estar funcionando (campos preenchidos, tags a
    }
    ```
 
-   **Depois (funciona):**
+   Se quiser a transição por UX, basta acrescentar `messages` (opcional):
+
    ```json
    {
      "messages": [
@@ -260,7 +280,8 @@ Isso significa que o agente parece estar funcionando (campos preenchidos, tags a
    }
    ```
 
-⚠️ **Se estiver corrigindo um prompt de agente silencioso e o cliente afirma que o agente não pode falar nada com o usuário:** explique ao cliente que essa frase de transição é exigência da plataforma para o `send_flow` funcionar. Ela é curta, "meta" (só anuncia a transferência, não conversa sobre o problema), e pode ser predefinida — o agente não improvisa. É o menor compromisso possível para destravar o roteamento.
+⚠️ Se o cliente diz que o agente não pode falar nada com o usuário antes do handoff,
+**respeite** — o `send_flow` dispara sozinho e o fluxo conduz. Não force a transição.
 
 ---
 

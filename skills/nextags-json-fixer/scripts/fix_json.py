@@ -75,14 +75,16 @@ ACTION_ALIASES: dict[str, str] = {
     "unassign_admin":     "unassign_conversation",
 }
 
-# Markdown a remover de campos text/title/subtitle.
+# Markdown-PADRÃO a remover de campos text/title/subtitle (vaza literal).
+# A marcação estilo WhatsApp (*negrito*, _itálico_, ~tachado~) RENDERIZA na
+# plataforma (decisão do cliente) → NÃO é removida; é preservada.
 MARKDOWN_PATTERNS = [
-    (re.compile(r"\*\*(.+?)\*\*"), r"\1"),         # **bold**
-    (re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"), r"\1"),  # *italic*
-    (re.compile(r"__(.+?)__"), r"\1"),             # __bold__
-    (re.compile(r"`([^`]+)`"), r"\1"),             # `code`
+    (re.compile(r"\*\*(.+?)\*\*"), r"\1"),         # **bold** (asterisco DUPLO)
+    (re.compile(r"__(.+?)__"), r"\1"),             # __bold__ (underscore DUPLO)
+    (re.compile(r"~~(.+?)~~"), r"\1"),             # ~~strike~~ (til DUPLO)
+    (re.compile(r"\[([^\]]+)\]\(([^)]+)\)"), r"\1: \2"),  # [texto](url) → texto: url
+    (re.compile(r"`([^`]+)`"), r"\1"),             # `code` inline
     (re.compile(r"^#{1,6}\s+", re.MULTILINE), ""), # # headings
-    (re.compile(r"~~(.+?)~~"), r"\1"),             # ~~strike~~
 ]
 
 
