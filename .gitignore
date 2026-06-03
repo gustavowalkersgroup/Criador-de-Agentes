@@ -28,3 +28,7 @@ findings*.json
 *_findings.json
 maya_output*.json
 relatorio-*.md
+
+# Dados de cliente — NUNCA versionar no repo público (prompts reais + análise verbatim)
+EXEMPLOS DE PROMPTS/
+analise-prompts-reais/

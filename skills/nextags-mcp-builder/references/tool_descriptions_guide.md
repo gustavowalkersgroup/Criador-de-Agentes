@@ -6,7 +6,7 @@ A descrição de cada tool no MCP é o **único sinal** que o LLM tem pra decidi
 
 ## Anatomia de uma descrição perfeita
 
-Toda tool deve responder, na descrição, a 6 perguntas:
+Toda tool deve responder, na descrição, a 9 elementos:
 
 | Pergunta | Por quê |
 |---|---|
@@ -16,6 +16,9 @@ Toda tool deve responder, na descrição, a 6 perguntas:
 | **Quais parâmetros aceita?** | Formato esperado (string? UUID? slug?) com exemplo |
 | **O que retorna?** | Campos principais e formato (preço em reais? centavos?) |
 | **Quirks/restrições que o LLM precisa saber** | Comportamentos não-óbvios (auto-wildcard, paginação, etc.) |
+| **Comportamento em VAZIO** | Retorno vazio = não existe → não inventar, pedir dado correto / ampliar (NÃO é erro) |
+| **Comportamento em ERRO** | Falha técnica (`transient:true`) → handoff humano via send_flow, sem expor detalhe técnico |
+| **Campos PROIBIDOS / USO INTERNO** | Quais campos a IA NÃO pode exibir (CPF, email, IDs, enum cru) e quais são só classificação interna |
 
 ---
 
@@ -84,6 +87,34 @@ Não precisa seguir literalmente — adapte ao caso. Mas todos os 6 elementos de
 
 ---
 
+## Bloco obrigatório de "comportamento" no fim de cada descrição
+
+Após os 5 parágrafos, anexe um bloco curto de governança que o prompt herda:
+
+```
+COMPORTAMENTO:
+- Vazio: <o que significa "vazio" aqui> → não inventar; <ação: pedir X / ampliar busca>.
+- Erro: instabilidade → não resolver sozinho; encaminhar humano (send_flow), sem detalhe técnico.
+- Proibido exibir: <CPF, email, telefone, IDs internos, enum cru de status>.
+- Uso interno: <financial_status/fulfillment_status — classificam, nunca aparecem>.
+- Encadeia com: <tool seguinte>; copie <cart_id/phash/variant_id> EXATAMENTE como retornado.
+- Classe: <leitura | catálogo | transacional | logística-FONTE-DE-VERDADE | cadastro>.
+```
+
+Exemplo real (rastreio, fonte-de-verdade de envio):
+
+```
+COMPORTAMENTO:
+- Vazio: CPF não tem pedido na transportadora → confirmar CPF com o cliente, não dizer "não existe pedido".
+- Erro: instabilidade → handoff via send_flow.
+- Proibido exibir: tracking interno cru, IDs, financial_status, email/telefone.
+- Uso interno: shipment_status cru (já vem traduzido em status_label).
+- Encadeia com: nada (folha do pipeline). Recebe phash de listar_pedidos_expedido — use o phash LITERAL.
+- Classe: logística-FONTE-DE-VERDADE → para status de ENVIO use SÓ esta tool, NUNCA o fulfillment_status do pedido.
+```
+
+---
+
 ## Erros comuns a evitar
 
 ### 1. Não disambiguar entre tools parecidas
@@ -111,6 +142,20 @@ Tool B "listar_pedidos_cliente": "Use quando JÁ TEM o customer_id (UUID, vindo 
 ```
 "customer_id: UUID do cliente Martz (formato 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'). DEVE vir do retorno de buscar_cliente. NÃO usar email/telefone/CPF aqui — causa erro 22P02."
 ```
+
+### Normalização e defaults obrigatórios (pré-chamada)
+
+A descrição deve dizer como o input chega formatado, porque produção trata
+omissão/formato errado como erro de chamada:
+
+- Datas: `YYYY-MM-DD` (converter antes de chamar)
+- Telefone: com `+` no formato E.164 ao chamar a API (salvar sem `+` se a action exige)
+- Número de pedido: remover `#` antes de buscar
+- Fuso: SP → UTC = +3h (ISO 8601 com `Z`)
+- Email: validar formato ANTES; se mal formatado, pedir pra repetir (não chamar)
+- **Defaults obrigatórios:** params como `guests=[]` ou `interesse_produto=''`
+  NÃO podem ser omitidos — omissão = erro. Documente o default no schema do
+  backend e na descrição: "envie `guests: []` mesmo sem convidados".
 
 ### 3. Omitir quirks que afetam decisão da IA
 
@@ -185,6 +230,36 @@ Nunca tenha `tool1` e `tool2` com nomes parecidos sem diferença óbvia.
 
 ---
 
+## Classe semântica da tool (metadado herdado pelo prompt)
+
+Toda tool recebe uma `classe`, emitida no relatório de entrega. O prompt-creator
+herda regras automáticas a partir dela:
+
+| Classe | Regra que o prompt herda |
+|---|---|
+| `leitura` | consultar ANTES de afirmar qualquer fato; não exibir campos crus |
+| `catalogo` | consultar antes de citar produto/preço/estoque; retry com termos amplos antes do handoff; entrega pesada (catálogo grande, vários carrosséis, PDF) → delegar a um fluxo via `send_flow`, a IA NÃO monta payload gigante |
+| `transacional` (cart/pedido/agendamento) | não inventar link/PIX; em falha → retry 1x + aguardar + degradação (links individuais) |
+| `logistica-FONTE-DE-VERDADE` | é a ÚNICA fonte de status de envio/entrega; o prompt NUNCA conclui envio pelo fulfillment_status da plataforma |
+| `cadastro/upsert` | params obrigatórios com default (ex: `interesse_produto=''`); omissão = erro |
+| `auxiliar/demo` (web/url) | só contexto comercial; sintetizar em 1-2 frases; ZERO URLs cruas |
+
+## Declaração de AUSÊNCIA de capacidade
+
+Se a API NÃO cobre algo que o cliente costuma pedir (cotar frete, calcular
+motoboy, segunda via de boleto), o relatório de entrega DEVE listar a frase
+pronta pro prompt: *"Não há tool para X — não prometa nem calcule; informe que
+o valor/serviço só aparece no checkout / é feito pela equipe."* Trava promessa
+que o sistema não cumpre.
+
+## Boilerplate de naming herdado pelo prompt
+
+Os nomes técnicos das tools são INTERNOS. O relatório de entrega inclui:
+*"Nunca exponha o nome técnico da tool ao cliente. Fale como humano: 'já tô
+buscando isso', 'deixa eu ver aqui'."*
+
+---
+
 ## Notas de funcionamento da API (no prompt do agente)
 
 A descrição da tool é o que a IA vê inline ao decidir chamar. Mas o prompt do agente (system message) também deve ter uma seção com **notas de funcionamento das APIs envolvidas**, cobrindo:
@@ -230,3 +305,11 @@ Antes de salvar o MCP, valide:
 - [ ] Formato de preço documentado (centavos vs reais)
 - [ ] Wildcards/auto-formatação do backend mencionados
 - [ ] Lista de tools no MCP NÃO tem 2 com função quase igual sem diferenciação clara
+- [ ] Comportamento em VAZIO definido (vazio ≠ erro)
+- [ ] Comportamento em ERRO definido (transient → handoff, sem detalhe técnico)
+- [ ] Campos PROIBIDOS de exibir listados (CPF, email, telefone, IDs, enum cru)
+- [ ] Campos de USO INTERNO marcados (financial_status/fulfillment_status)
+- [ ] Classe semântica atribuída (leitura/catalogo/transacional/logistica-FdV/cadastro/auxiliar)
+- [ ] Identificadores opacos marcados "copiar exatamente como retornado"
+- [ ] Nome técnico aqui == nome citado em qualquer regra/recipe (lint de consistência)
+- [ ] Se a API não cobre X comum, frase de ausência gerada pro prompt

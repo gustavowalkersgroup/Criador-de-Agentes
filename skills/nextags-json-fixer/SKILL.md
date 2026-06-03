@@ -100,13 +100,18 @@ documenta o schema oficial completo com exemplos validados.
 | Tipo de attachment não suportado | Converter pra texto simples ou marcar como pendência (depende do contexto). |
 | Botão `web_url` sem `url` | Converter botão pra texto inline na mensagem; OU pendência se intenção for ambígua. |
 | Botão `postback` sem `payload` | Pendência (precisa do flow_id). |
+| Button template sem `text` no payload | Pendência (`text` é obrigatório). |
+| Button template com >1 botão | Aviso (estoura UI Messenger); manter o 1º, listar os demais no relatório. |
+| Botão com CTA (`title`) > 20 chars | Aviso (não trunca automaticamente; sinaliza). |
 | Carrossel com 1 elemento | Converter pra `message` com `attachment` `image` + texto; OU pendência. |
 | Carrossel com 0 elementos | Remover bloco; pendência. |
 | Nome de ação errado | Mapear pra nome canônico (ver `references/schema.md`). |
 | Ação com campo faltando (ex.: `set_field_value` sem `value`) | Pendência. |
+| Ação de transferência (`transfer_conversation_to` / `assign_conversation` / `unassign_conversation`) | **Válidas** em runtime (`transfer` como fallback sem flow; `assign` como caso especial). NÃO converter; no máximo um aviso lembrando que o padrão é `send_flow`. O fixer só avisa, não converte. Ver `references/schema.md`. |
+| Só-`actions` / `send_flow` sem `messages` (`messages` ausente ou `[]`) com `actions` não-vazio | **VÁLIDO — dispara normal**; o fluxo assume a comunicação. `messages` é transição opcional, nunca obrigatória. NÃO inventar mensagem, NÃO marcar erro. |
 | Typing indicator string | Converter pra inteiro se for numérico (`"4"` → `4`); senão remover. |
 | Typing indicator fora do range | Clampar em [1, 30]. |
-| Markdown em campos `text`/`title`/`subtitle` (`**bold**`, `# H1`) | Remover marcação, preservar conteúdo. |
+| Markdown-PADRÃO em campos `text`/`title`/`subtitle` (`**bold**` duplo, `# H1`, `[txt](url)`, bullets `-`, cercas ` ``` `) | Remover marcação, preservar conteúdo. **WA-markup (`*negrito*` asterisco único, `_itálico_`, `~tachado~`) RENDERIZA → preservar, não remover.** |
 
 ## Idempotência
 

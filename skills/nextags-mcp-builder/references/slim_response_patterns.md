@@ -4,6 +4,28 @@ Heurísticas pra escrever o Code node de slim em backend de qualquer API. Reduz 
 
 ---
 
+## Fronteira IA ↔ fluxo (por que o slim importa)
+
+A tool/MCP devolve dados **SLIM**: o mínimo que a IA precisa pra conversar e
+decidir. A **apresentação pesada** (catálogo grande, vários carrosséis,
+PDF/documento) e a **coleta estruturada complexa** (medidas, formulário com
+muitos campos) são responsabilidade de **FLUXOS de bot** — a IA dispara
+`send_flow` pro fluxo pré-montado, ela **NÃO** monta payload gigante nem a tool
+devolve tudo cru.
+
+- A IA **conversa e decide**; o **fluxo renderiza e coleta**.
+- Catálogo inteiro / vários carrosséis / PDF → `send_flow`, não slim grande.
+- Coleta de 1-2 campos → IA grava com `set_field_value`; coleta complexa
+  (medidas, formulário) → fluxo de bot.
+- Por isso o slim é enxuto: ele alimenta a decisão da IA, não a renderização.
+  Isso economiza token, enxuga o prompt e é mais confiável.
+
+> Reflexo no slim: a meta de "catálogo completo" abaixo é exceção — quando a
+> entrega é pesada de verdade, prefira delegar a um fluxo a tentar empurrar tudo
+> pela tool.
+
+---
+
 ## Princípio
 
 Toda response da API tem 3 camadas de informação:
@@ -13,6 +35,12 @@ Toda response da API tem 3 camadas de informação:
 3. **Descritivo** (description, specs, extras) — limpar HTML e manter SE LLM precisar
 
 O Code node faz essa triagem ANTES de devolver ao MCP.
+
+> **Identificadores opacos (`cart_id`, `phash`, `customer_id`, `variant_id`)
+> são preservados BYTE A BYTE.** Nunca trunque, reformate, normalize caixa nem
+> "limpe" esses campos no slim — eles encadeiam uma tool na próxima (saída de
+> uma = entrada da outra). Marque-os na descrição da tool como "copiar
+> exatamente como retornado".
 
 ---
 
@@ -229,6 +257,100 @@ Padrão do que slim mantém vs descarta, por tipo de objeto.
 - `dimension` (peso/medida só se atendimento precisa)
 - `properties` (a menos que cliente tenha attribute system)
 
+### Carrinho (cart / checkout)
+
+**Manter:**
+- `cart_id` — **copiar EXATAMENTE como retornado** (identificador opaco; nunca reformatar)
+- `checkout_url` — link de finalização (vira botão "Finalizar compra")
+- `items` (slim: nome, variant_id, quantidade, preço)
+- `total`
+
+**Regra de pipeline (documentar na descrição da tool):**
+- `update_cart` SEM `cart_id` = cria carrinho novo; agregue TODOS os itens em
+  UMA única chamada (`add_items: [{variant_id, quantity}, ...]`).
+- Depois `get_cart(cart_id)` só pra obter `checkout_url`.
+- Não chame `update_cart` 1x por item nem reenvie `cart_id` na criação.
+
+**Descartar:** tokens de sessão, shipping_rates parciais, metadata de checkout.
+
+---
+
+## Campos PROIBIDOS e campos de USO INTERNO (PII + classificação)
+
+Slim NÃO é só encolher — é **classificar**. Todo campo cai em 3 baldes que o
+backend deve marcar explicitamente, porque o prompt do agente herda essa regra:
+
+| Balde | O que é | O que o slim faz |
+|---|---|---|
+| **exibível** | nome, preço, label de status em PT, itens, checkout_url | retorna normal |
+| **uso interno** | `financial_status`, `fulfillment_status`, `status_id` cru, flags de classificação | retorna sob `_internal: {...}` |
+| **PROIBIDO** | CPF/CNPJ, email, telefone, endereço, IDs internos, tokens, NF, dados fiscais | NÃO retornar ao cliente; só se a operação EXIGE (ex: confirmar identidade) e sempre mascarado |
+
+### Regra de PII por default
+Ao montar o slim de Pedido/Cliente, marque PII como NÃO-exibível por default:
+
+```js
+// Pedido / Cliente — separar exibível de interno/PII
+return [{ json: {
+  // exibível
+  numero: o.name,                    // "#1234" sem ID interno
+  status_label: traduzStatus(o),     // PT humano (ver seção de tradução)
+  total: brl(o.total),
+  itens: slimItens(o.items),
+  // uso interno (classificação — o prompt usa pra decidir, NUNCA exibe)
+  _internal: {
+    financial_status: o.financial_status,
+    fulfillment_status: o.fulfillment_status
+  },
+  // PII mascarada (só se a operação precisa confirmar identidade)
+  _pii_masked: {
+    email: mask(o.email),            // "ga***@gmail.com"
+    cpf: maskCpf(o.document)          // "***.***.789-**"
+  }
+}}];
+```
+
+**A descrição da tool DEVE listar quais campos são proibidos/internos** — ver
+`tool_descriptions_guide.md`, bloco "comportamento de campos". Assim o
+prompt-creator não precisa adivinhar e o agente nunca vaza CPF/email/enum cru.
+
+---
+
+## Tradução de enums técnicos → PT humano (OBRIGATÓRIO)
+
+Tão crítico quanto converter preço. O agente NUNCA deve exibir enum cru
+(`in_transit`, `paid`, `pending`). O slim devolve o **label PT** como campo
+exibível E mantém o enum cru sob `_internal` pra classificação.
+
+```js
+const STATUS_ENVIO = {
+  in_transit: "Em trânsito",
+  out_for_delivery: "Saiu para entrega",
+  delivered: "Entregue",
+  attempted_delivery: "Tentativa de entrega sem sucesso",
+  posted: "Postado",
+  null: "Sem atualização adicional da transportadora"
+};
+const STATUS_PAGTO = {  // classificação interna; label genérico ao cliente
+  paid: "PAGO", partially_refunded: "PAGO",
+  pending: "Aguardando pagamento", unpaid: "Aguardando pagamento",
+  authorized: "Aguardando pagamento", refunded: "Estornado", null: "Em processamento"
+};
+function label(map, v){ return map[v] ?? map[String(v)] ?? "Em processamento"; }
+```
+
+Saída: `status_label: "Em trânsito"` (exibível) + `_internal.shipment_status: "in_transit"`.
+Se a API/cliente não tem dicionário fixo, gere o mapa a partir dos enums
+observados na discovery e documente-o na recipe da plataforma.
+
+> Regra de ouro: **se o campo é um código de máquina, ele NÃO sai cru.** Ou
+> vira label PT (exibível) ou vai pra `_internal` (classificação).
+
+> Padrão observado (Clara/LEGBOX): a transportadora pode ser inferida do CÓDIGO de
+> rastreio (ex.: começa com `888` → J&T; padrão `2 letras + 9 dígitos + 2 letras` →
+> Correios). Se a recipe da plataforma tiver esse mapa, documente-o como tradução
+> determinística; senão, deixe a transportadora vir explícita da tool de logística.
+
 ---
 
 ## Conversão de preço (CRÍTICO)
@@ -314,9 +436,30 @@ return [{ json: {
 
 ```js
 return [{ json: { data: items, total: body.meta?.total }}];
-// OU se a tool é single-item:
-return [{ json: items[0] || { error: "Not found", code: 404 }}];
 ```
+
+### Distinguir VAZIO (não existe) de ERRO (instabilidade) — crítico
+
+Vazio legítimo (a busca rodou, nada bateu) e falha técnica (timeout/5xx) NÃO
+podem virar a mesma coisa. O prompt trata cada um diferente: vazio = "não
+existe, peça o dado certo / amplie a busca"; erro = handoff humano via send_flow.
+
+```js
+// single-item: 404 da BUSCA = vazio legítimo, NÃO é erro
+if (!items || items.length === 0) {
+  return [{ json: { found: false, empty: true } }];   // "não existe", não inventar
+}
+// erro técnico real (vem do bloco 1/2 do template base): { error, code, transient:true }
+return [{ json: { found: true, ...items[0] } }];
+```
+
+No template base (topo do arquivo), marque erro técnico como `transient`:
+```js
+if (body && body.code && body.code >= 500) {
+  return [{ json: { error: "instabilidade", code: body.code, transient: true } }];
+}
+```
+Assim a IA sabe: `empty:true` → pedir dado correto / ampliar; `transient:true` → handoff.
 
 ### VTEX — duas camadas (publicas vs privadas)
 

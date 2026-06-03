@@ -9,6 +9,12 @@
 
 ## Como conduzir as perguntas
 
+**Princípio: perguntar BASTANTE.** Questionário completo antes de gerar, mesmo que
+dê mais rodadas — menos suposição. O **TIPO** do agente é inferido do briefing/site
+e confirmado rápido (1 pergunta); o **resto** é perguntado a fundo. O custo de chutar
+(refazer o prompt) é maior que o de uma rodada a mais. Só não pergunte o que o
+site/briefing já cobrem (ver "O que NÃO perguntar").
+
 Use `ask_user_input_v0` para perguntas de múltipla escolha (mais ergonômico
 para mobile). Use prosa para as abertas (IDs, URLs, listas). **Agrupe em até
 3 perguntas por chamada do tool** — esse é o limite. Se precisar de mais,
@@ -52,6 +58,30 @@ options: ["WhatsApp", "Instagram Direct", "Facebook Messenger",
 
 ---
 
+## 1.0 Tipo de agente (PERGUNTA-CHAVE — define quais seções gerar)
+```
+options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
+          "Comercial/SDR (B2B)", "Misto (vendas + SAC)"]
+```
+
+## 1.5 Perguntas condicionais por tipo
+
+**Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom —
+e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
+há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
+
+**Se SAC:** quais MOTIVOS de contato atende (rastreio/troca/devolução/avaria/...)?
+há flow_id por motivo ou um geral? qual a tool/sistema que é fonte de verdade de
+ENVIO (≠ e-commerce)? há fluxo de NPS pós-atendimento (flow_id)?
+
+**Se COMERCIAL/SDR:** quais campos do CRM capturar via set_field_value (pipeline,
+resumo, faturamento)? horário de expediente?
+
+**Todos:** há horário de atendimento humano (expediente)? respostas fixas para
+casos sensíveis (atacado, parceria, vagas)?
+
+---
+
 ## 2. Tools e fluxos
 
 ### 2.1 O agente vai usar tools (MCP)?
@@ -76,6 +106,16 @@ em situações pontuais? (ex.: fluxo de carrinho abandonado com ID `flow_xxx`,
 fluxo de avaliação pós-atendimento, etc.) Liste cada um."
 
 ⚠️ Mesma regra: sem ID confirmado → placeholder + pendência.
+
+### 2.4 Quais fluxos NexTags o cliente JÁ TEM (pra a IA delegar)?
+Pergunta aberta: "Quais fluxos de bot vocês já têm montados na NexTags que a IA
+pode acionar? Especialmente os que renderizam coisa pesada ou estruturada —
+catálogo grande / vários carrosséis, PDF/documento, ou coleta complexa (medidas,
+formulário). Liste cada um (propósito + `flow_id`)."
+
+⚠️ A IA **delega ao fluxo** o que é pesado/estruturado em vez de montar payload
+gigante (ver "DELEGUE AO FLUXO" no skeleton). A fronteira IA↔fluxo é dirigida
+pelos fluxos que o cliente já tem. Sem `flow_id` confirmado → placeholder + pendência.
 
 ---
 

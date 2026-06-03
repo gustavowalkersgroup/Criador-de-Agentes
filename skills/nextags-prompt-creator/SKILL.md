@@ -92,8 +92,15 @@ roteiro recomendado de chunking (até 3 perguntas por chamada de
 - Persona: nome do agente, tom de voz, canais.
 - Tools/MCP: quais existem? inputs?
 - IDs de fluxos: especialmente o **fluxo de transferência humana**.
+- **Quais fluxos NexTags o cliente JÁ TEM** (catálogo, coleta, PDF) — pra a IA delegar (ver "DELEGUE AO FLUXO" no skeleton).
 - Mídia: imagens/áudios/vídeos disponíveis.
 - Restrições comerciais e tratamento de reclamações.
+
+⚠️ **Perguntar BASTANTE — questionário completo antes de gerar.** Menos suposição é
+melhor que mais rodadas. O **TIPO** do agente é inferido do briefing/site e
+**confirmado rápido** (1 pergunta); o **resto** (persona fina, fluxos existentes,
+restrições, mídias) é **perguntado a fundo**. Não economize perguntas pra "ir mais
+rápido" — o custo de chutar é refazer o prompt.
 
 ⚠️ **Não pergunte coisas que o site/briefing já cobrem** — desperdiça
 rodada e irrita o humano.
@@ -103,6 +110,27 @@ rodada e irrita o humano.
 relatório. **Nunca chute.**
 
 ### 5. Gera o prompt
+
+**5.0 — Classifique o TIPO de agente ANTES de montar o esqueleto.**
+
+Decida (pelo briefing + perguntas) entre:
+- **Vendas/consultora** → inclua seção 6B (Vendas). Não inclua SAC pesado.
+- **SAC/pós-venda** → inclua seção 8B (SAC). Não inclua framework de vendas.
+- **Triagem/roteador** → use seção 8C (Triagem). REMOVA KB detalhada, vendas, SAC, MCP.
+- **Comercial/SDR (B2B, qualifica lead)** → inclua 6B simplificado + pipeline via
+  set_field_value (stage monotônico + resumo acumulativo) + checklist final.
+- **Misto (vendas + SAC)** → inclua 6B e 8B com uma regra de troca de modo.
+
+**Eixo ortogonal — o agente tem MCP/tools de catálogo?** Decida junto com o tipo:
+- **Com MCP:** preço/estoque/disponibilidade vêm da tool (fonte de verdade); placeholder `R$ 0,00` nos exemplos.
+- **Sem MCP ("Estática Pura", ~38% dos casos reais):** NÃO prometa consulta dinâmica. Para preço/estoque/frete sem fonte: remeta ao site ou transfira — NUNCA fabrique. Gere link de busca por regra (ex.: `/search/?q=<termo>`) em vez de hardcodar URL por SKU. NUNCA hardcode preço/cupom com validade fixa ("até 28/02", "válido só hoje") — apodrece.
+
+Seções universais (TODOS os tipos, bloqueantes): Identidade, Tom de Voz,
+Escopo (com fora-de-escopo→flow_id), Transferência via send_flow, Anti-alucinação,
+Formato JSON. Sem qualquer uma dessas, reprovar.
+
+Ordem recomendada: Contexto Temporal ({{current_user_time}}) primeiro quando houver
+lógica de prazo/saudação; Exemplos JSON verbatim por último (galeria de 5-12 casos).
 
 Use `references/prompt_skeleton.md` como esqueleto e preencha cada seção com:
 
@@ -171,7 +199,22 @@ A plataforma NexTags tem um conjunto rico de **Custom User Fields (CUFs)** nativ
 | Status do pedido | `{{order_status}}` |
 | Total do pedido | `{{order_total}}` |
 | Link de checkout | `{{cart_checkout_link}}` |
+| Hora local do cliente (âncora de prazo/saudação) | `{{current_user_time}}` |
 | Última mensagem | `{{last_text_input}}` |
+
+**CUFs de ESCRITA via `set_field_value` (agentes que capturam lead/pipeline):**
+Grave dados SANITIZADOS: telefone sem `+` (`5511XXXXXXXXX`), e-mail em minúsculas,
+valores como `'379.00'` (ponto decimal, sem `R$`). Campos de classificação usam
+enums fechados (ex.: `stage_pipeline: '1'/'2'/'3'`, só avança nunca regride;
+`resumo_comercial` acumulativo: anterior + novo). `set_field_value` SEMPRE antes
+de `send_flow` no array de actions (o flow lê os campos no momento que dispara).
+
+**Regra de Contexto Temporal:** quando houver qualquer lógica de prazo ou saudação
+por horário, use `{{current_user_time}}` e proíba o agente de inventar data/hora.
+
+**Validação de `{{first_name}}`:** antes de saudar, valide o valor — se for frase, empresa,
+número ou expressão (não um primeiro nome real), use saudação neutra ou pergunte o nome,
+para evitar "Olá, Deus é bom!".
 
 **Use somente se for necessário.** Não force `{{first_name}}` em toda mensagem — saudação inicial e momentos-chave bastam.
 
@@ -190,10 +233,12 @@ Consulte `references/cufs_nextags.md` para a lista completa (~80 campos) cobrind
 
 Prompts NexTags rodam em janela de contexto compartilhada com histórico da conversa, retornos de tools, e múltiplos turnos. **Prompts inchados desperdiçam contexto, aumentam custo por turno e pioram aderência do LLM às regras** (modelo dilui atenção entre muita coisa repetida).
 
-**Meta de tamanho:**
-- **15-20 KB por prompt** (~5.000-7.000 palavras) é o ideal.
-- Acima de **30 KB** → revisar agressivamente. Provavelmente tem redundância.
-- Acima de **45 KB** → sinal vermelho. Quase certo que tem 3+ versões da mesma regra.
+**Meta de tamanho POR TIPO** (não há meta universal — o tamanho saudável depende do tipo):
+- **Vendas consultivo** (matriz dor→produto, objeções, fluxos): **30-45 KB é OK** — é denso por natureza.
+- **SAC / Triagem / roteador** (enxuto por design): **10-20 KB**. Acima disso, quase certo que tem redundância.
+- Em qualquer tipo, se o prompt passou MUITO da faixa do seu tipo → revisar agressivamente: provavelmente tem 3+ versões da mesma regra.
+
+O número não é o alvo — o alvo é **zero redundância**. Um consultivo de 42 KB sem repetição é saudável; um SAC de 35 KB quase certo está inchado.
 
 **Como manter enxuto:**
 
@@ -263,22 +308,25 @@ Re-rode o analyzer no prompt corrigido. Repita até **0 violações reais**
 
 ### 7. Gera o relatório de auditoria
 
-Use `assets/relatorio_template.md` como base. **O relatório aqui é
-ligeiramente diferente do relatório do fixer:** em vez de "antes/depois"
-(que não faz sentido — o prompt nasceu já corrigido), o relatório do
-criador deve ter:
+Use `assets/relatorio_template.md` como base. **Relatório ENXUTO** — só o que o
+humano precisa pra subir produção, sem estatística/enchimento. Em vez de
+"antes/depois" (que não faz sentido — o prompt nasceu já corrigido), o relatório
+do criador deve ter:
 
-- **Resumo da geração:** quantas seções, quantos blocos JSON, quantas
-  pendências humanas.
-- **Inconsistências briefing × site** que foram resolvidas a favor do
-  briefing (com referências às fontes).
-- **Correções aplicadas durante geração:** quais ajustes a auditoria
-  pediu (mesmo que a primeira passada já tenha saído limpa, vale registrar
-  "0 violações detectadas — geração já saiu rules-compliant").
-- **Pendências humanas:** lista clara de cada placeholder
-  `<ID_DO_FLUXO_*>`, `<URL_*>` ou seção marcada para revisão. Sempre com
-  sugestão concreta do que preencher.
-- **Estatísticas finais:** mesma tabela do relatório do fixer.
+- **Pendências críticas:** lista clara de cada placeholder `<ID_DO_FLUXO_*>`,
+  `<URL_*>` ou seção marcada para revisão. Sempre com sugestão concreta do que preencher.
+- **O que mudou / decisões:** inconsistências briefing × site resolvidas a favor
+  do briefing (com a fonte) e quaisquer ajustes que a auditoria pediu.
+- **LISTA DE FLUXOS A CRIAR:** os fluxos NexTags que o agente vai disparar (catálogo,
+  coleta complexa, PDF, transferência, NPS...), cada um com o propósito e o placeholder
+  `flow_id` correspondente no prompt. É o entregável mais importante pro cliente montar a operação.
+
+**Bateria de testes (entregar, NÃO travar):** inclua **4-6 casos-chave** (abertura,
+objeção, fora de escopo, transferência, dado faltando) com a entrada do cliente e a
+saída JSON esperada. É um entregável de valor — mas se não der pra montar todos, **não
+trave o processo**: entregue os que conseguir e siga.
+
+Evite enchimento: nada de "redução de X%", "passou no analyzer", tabelas de estatística.
 
 ### 8. Apresenta os arquivos
 

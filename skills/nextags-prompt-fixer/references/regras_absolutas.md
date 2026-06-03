@@ -42,17 +42,56 @@ de inventar valor.
 
 ---
 
-## 2. Ações proibidas
+## 2. Ações de transferência: send_flow é o padrão recomendado (as outras não são proibidas)
 
-A plataforma usa fluxos para qualquer transferência ou roteamento. As ações
-abaixo **nunca** devem aparecer em JSON gerado pelo agente:
+> **Camadas em relação à skill `nextags-json-fixer`.**
+> A `nextags-json-fixer` (`references/schema.md`, linhas 123-126) afirma que
+> as 8 ações — incluindo `transfer_conversation_to`, `assign_conversation`,
+> `unassign_conversation` — são "válidas conforme a documentação oficial".
+> Isso está correto: o validador de RUNTIME não quebra o JSON se essas ações
+> aparecerem. Esta skill atua no PROMPT (o que o agente deve *escrever*), mas
+> também NÃO bloqueia essas ações — apenas recomenda `send_flow` por padrão:
+>
+> | Camada | Skill | Veredito sobre transfer_conversation_to/assign/unassign |
+> |---|---|---|
+> | JSON aceito pela plataforma (runtime) | json-fixer | Sintaticamente VÁLIDAS — não remover de output já em produção |
+> | Prompt que se escreve (boa prática) | **prompt-fixer (esta)** | `send_flow` é o padrão recomendado; as outras são fallback/caso especial — não proibidas |
+>
+> **Evidência (25 prompts em produção):** 100% das transferências de
+> QUALIDADE são via `send_flow` com `flow_id` real, e é por isso que
+> `send_flow` é o **padrão recomendado**. Mas `transfer_conversation_to` e
+> `assign_conversation` continuam **válidas** e têm usos legítimos (abaixo).
+> Não as remover nem tratar como erro bloqueante.
 
-- `transfer_conversation_to`
-- `assign_conversation`
-- `unassign_conversation`
+Padrão recomendado: **`send_flow`** apontando ao fluxo de transferência do
+projeto. As demais ações de transferência **não são proibidas**:
 
-**Como corrigir:** substitua por `send_flow` apontando para o fluxo de
-transferência configurado no projeto.
+- **`transfer_conversation_to`** — PERMITIDA como **fallback** quando NÃO há
+  fluxo de transferência configurado no projeto. É a rede de segurança: se
+  não existe `flow_id` de transferência, usar essa ação é correto. Quando
+  houver fluxo, prefira `send_flow`, mas não bloqueie.
+- **`assign_conversation`** — caso especial **raro e válido**: atribuir a
+  conversa a um atendente específico (admin). Uso definido pelo humano dono
+  do projeto. Não é o padrão e não se sugere por default, mas é legítima
+  quando aparece com `admin_id` válido.
+- **`unassign_conversation`** — válida; remove a atribuição. Não é o caminho
+  comum de transferência, mas não é erro.
+
+**Validação extra de `admin_id` (quando aparecer `assign_conversation`):**
+se o valor de `admin_id` não for um ID numérico/hash válido — ex.: um nome
+como `"Estela."` (caso real, Gabriela) — aí sim há problema: o `admin_id`
+está inválido. Trate o `admin_id` malformado como pendência (precisa do ID
+real do admin) ou converta pra `send_flow` se o intuito era roteamento
+genérico; nunca tentar adivinhar o ID do admin.
+
+**Como corrigir / quando agir:**
+- Se um prompt usa `transfer_conversation_to` e existe um `flow_id` de
+  transferência no projeto → **sugira** (não obrigue) migrar pra `send_flow`.
+- Se NÃO há fluxo de transferência → `transfer_conversation_to` é válida;
+  deixar como está.
+- `assign_conversation` com `admin_id` válido → preservar.
+- Só converta para `send_flow` quando for o padrão recomendado E houver
+  fluxo disponível:
 
 **Antes:**
 ```json
@@ -72,33 +111,92 @@ placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no relatório:
 
 ---
 
-## 3. Botões sem `web_url`
+## 2b. Funções de transferência inventadas ou legadas (fora do schema)
 
-**Regra:** botões só existem para abrir links externos. Tudo mais (sim/não,
-menus, confirmações) deve ser texto simples.
+**Regra:** qualquer "ação" cujo nome não esteja no conjunto oficial de 8
+(`add_tag`, `remove_tag`, `set_field_value`, `unset_field_value`,
+`send_flow`, `transfer_conversation_to`, `assign_conversation`,
+`unassign_conversation`) é inválida. A plataforma não a reconhece — a
+transferência simplesmente NÃO acontece, porque o nome da ação não existe
+no schema (diferente de `send_flow`, que dispara normalmente).
 
-**Detecção do script:** bloco com `template_type: "button"` que tem botão
-sem `type: "web_url"` ou sem `url`.
+**Evidência (6/25 prompts):** `connect_user_to_human` (Luna),
+`transferir_atendimento` (Dani), `transferir_suporte` (Ayla),
+`buscar_pedido` (Dani), e funções de plataforma legada com sintaxe `()` /
+`{{}}` como `Rotativo()`, `Rastreio_Shp()`, `{{NumeroPedidoShopify}}`
+(Clara-SAC). São MAIS comuns que as ações proibidas oficiais.
+
+**Detecção:** em `actions`, qualquer `"action"` fora das 8 oficiais. Em
+prosa, verbos de função tipo `transferir_*`, `connect_*`, `*_atendimento`,
+ou chamadas com parênteses `Nome()`.
 
 **Como corrigir:**
-- Se o botão era para abrir um link externo mas faltou a URL → marque como
-  pendente (precisa que alguém forneça a URL).
-- Se o botão era pra qualquer outra coisa → **converta o JSON inteiro em
-  texto simples**, fazendo a pergunta na própria mensagem e aguardando
-  resposta livre do cliente.
+- Transferência (`connect_user_to_human`, `transferir_suporte/atendimento`)
+  → `send_flow` + `<ID_DO_FLUXO_DE_TRANSFERENCIA>` (placeholder se o ID não
+  está no prompt). Uma `messages` de transição é opcional por UX (ver
+  Regra 10) — o `send_flow` dispara com ou sem ela.
+- Função de dado legada (`buscar_pedido`, `Rotativo()`) → marcar PENDÊNCIA:
+  precisa virar tool/MCP real; não é ação de JSON. Não inventar substituto.
 
-**Antes (botão sendo usado como menu — ERRADO):**
+**Princípio:** a técnica de "transferência disfarçada" (não dizer ao cliente
+que vai transferir — ver Karol/Nalu/Ju) é BOA e deve ser preservada no texto;
+só o MECANISMO (a ação) é que está errado.
+
+---
+
+## 3. Botão `web_url` sem `url` (link sem destino)
+
+**Regra:** um botão de LINK (`type: "web_url"`) precisa de uma `url` válida.
+Botão `web_url` sem `url` é inválido. (Botões `postback`, que disparam um
+fluxo ao clicar, são PERMITIDOS — ver Regra 17 — e não exigem `url`.)
+
+**Detecção do script:** bloco com `template_type: "button"` que tem botão
+`type: "web_url"` sem `url`.
+
+**Como corrigir:**
+- Botão `web_url` sem `url` → marque como pendente (precisa que alguém
+  forneça a URL do link).
+- Botão `postback` → **válido, preservar** (dispara fluxo ao clicar).
+- Para confirmações simples (sim/não), texto livre costuma ser melhor que
+  botão — mas é **recomendação de UX**, não obrigação. Se preferir converter
+  um menu de confirmação em texto, faça a pergunta na própria mensagem e
+  aguarde resposta livre do cliente.
+
+**Antes (botão `web_url` sem `url` — ERRADO):**
 ```json
 {"messages":[{"message":{"attachment":{"payload":{"buttons":[
-  {"title":"Sim","type":"postback","payload":"YES"},
-  {"title":"Não","type":"postback","payload":"NO"}
-],"template_type":"button","text":"Quer prosseguir?"},"type":"template"}}}]}
+  {"title":"Ver produto","type":"web_url"}
+],"template_type":"button","text":"Confira:"},"type":"template"}}}]}
 ```
 
-**Depois (texto simples, deixando o cliente responder livre):**
+**Depois (com a `url`, ou texto simples se não houver link):**
 ```json
 {"messages":[{"message":{"text":"Quer prosseguir? É só me responder com sim ou não."}}]}
 ```
+
+---
+
+## 17. Limites de UI do template button
+
+`postback` é **PERMITIDO**. A regra real de limite é por TIPO de botão:
+
+- **Botão de LINK (`web_url`): no máximo 1 por mensagem** (restrição do
+  WhatsApp para link — Uni, Hidratei, Bela).
+- **Botões `postback`** (disparam um fluxo ao clicar): **permitidos, até 3
+  por mensagem**, mas a IA **raramente** usa (o padrão é texto + `send_flow`,
+  ou 1 botão `web_url`). Não bloquear quando aparecer.
+- **CTA ≤ 20 caracteres** ("Comprar Agora", "Finalizar Pedido", "Quero o meu").
+- **Campo `text` no payload é OBRIGATÓRIO** (descrição/preço). Sem `text` =
+  card inválido.
+- **Botão de carrinho aponta pro CHECKOUT, nunca pra URL de produto**
+  (Duda-vendas: "no carrinho, botão sempre pro checkout").
+- **Fechamento com 3 chaves `}}}`** no bloco de botão é o erro de sintaxe
+  mais comum (Duda-vendas: "dois `}}` = JSON inválido").
+
+**Como corrigir:** se houver >1 botão `web_url` → manter o primeiro, virar
+texto o resto. Se houver >3 botões `postback` → manter 3, virar texto o resto.
+Se faltar `text` → pendência (precisa da descrição). Se CTA >20 chars →
+encurtar mantendo sentido. `postback` **não é violação** — preservar.
 
 ---
 
@@ -129,39 +227,49 @@ imagem como attachment.
 
 ## 5. Markdown dentro do JSON
 
-**Regra:** mensagens são texto puro, como WhatsApp. Nada de `**negrito**`,
-`# títulos`, `` `código` `` ou bullets `- item` dentro dos campos `text`,
-`subtitle` ou `title`.
+**Regra:** WA-markup OK; markdown-padrão vaza. A marcação estilo WhatsApp
+— `*negrito*` (asterisco único), `_itálico_`, `~tachado~` — **RENDERIZA**
+na plataforma (o cliente TESTOU) e é **PERMITIDA** nos campos `text`,
+`subtitle` ou `title`. Só o **markdown-padrão VAZA literal e é proibido**:
+`**negrito duplo**`, `# título`, link `[texto](url)`, bullets `- item`, e
+cercas de código `` ``` ``. Esse markdown-padrão aparece cru pro cliente.
 
-**Como corrigir:** retire o markdown e deixe o texto cru. Para ênfase,
-prefira reescrever a frase ou usar pausas com mensagens separadas.
+**Como corrigir:** retire SOMENTE o markdown-padrão (asterisco-duplo,
+hashtag-título, `[texto](url)`, bullets com hífen, cercas de código).
+**NÃO mexa** em `*negrito*`, `_itálico_` ou `~tachado~` — eles são válidos.
+Ao reescrever um trecho com markdown-padrão, prefira a frase crua ou
+converta para a marcação WhatsApp equivalente (ex.: `**x**` → `*x*`).
 
-**Antes:**
+**Antes (markdown-padrão — VAZA):**
 ```json
 {"messages":[{"message":{"text":"O prazo é **3 a 5 dias úteis**."}}]}
 ```
 
-**Depois:**
+**Depois (WA-markup OK ou texto cru):**
 ```json
-{"messages":[{"message":{"text":"O prazo é de 3 a 5 dias úteis."}}]}
+{"messages":[{"message":{"text":"O prazo é *3 a 5 dias úteis*."}}]}
 ```
 
 ---
 
-## 6. Ações proibidas mencionadas em prosa
+## 6. Menções a ações de transferência em prosa
 
-Mesmo fora de blocos JSON, instruções como "use a ação
-`transfer_conversation_to` quando…" são problema, porque podem induzir o
-modelo a usá-la em runtime.
+`transfer_conversation_to` e `assign_conversation` **não são proibidas**
+(ver Regra 2 — são fallback / caso especial válido). Uma menção em prosa
+como "use a ação `transfer_conversation_to` quando…" **não é violação por si
+só**. Só vale a pena olhar quando o projeto JÁ tem um fluxo de transferência
+configurado e o padrão recomendado (`send_flow`) seria melhor.
 
 **Exceção:** se a menção está em uma seção explicitamente marcada como
-"❌ NÃO FAZER" / "PROIBIDO" / "Errado", está tudo bem — o autor está
-ensinando o que evitar. O analisador já tenta detectar isso (procura
-marcadores como `❌`, `🚫`, `proibido`, `nunca usar` nas linhas anteriores).
+"❌ NÃO FAZER" / "PROIBIDO" / "Errado", o autor está ensinando o que evitar.
+O analisador já tenta detectar isso (procura marcadores como `❌`, `🚫`,
+`proibido`, `nunca usar` nas linhas anteriores).
 
 **Como corrigir:** quando o analisador apontar uma menção em prosa, leia o
-contexto. Se for instrução real, substitua a referência por `send_flow` com
-o ID apropriado.
+contexto. Se houver fluxo de transferência disponível, **sugira** (não
+obrigue) trocar a referência por `send_flow` com o ID apropriado. Se não
+houver fluxo, a menção a `transfer_conversation_to` como fallback é
+legítima — não mexer.
 
 ---
 
@@ -220,24 +328,38 @@ problemática inalterada.
 
 ---
 
-## 10. `send_flow` sem `messages` (a regra que NÃO está documentada)
+## 10. `send_flow` sem `messages` (DISPARA NORMALMENTE — `messages` é opcional)
 
-**Regra:** todo JSON de saída que contém `send_flow` em `actions` **precisa** ter o campo `messages` com pelo menos 1 item. Sem `messages`, a plataforma NexTags falha silenciosamente:
+**Regra:** `send_flow` sem `messages` **DISPARA NORMALMENTE**. O fluxo assume
+a comunicação com o cliente — é ele quem fala a partir do handoff. NÃO é
+falha silenciosa, NÃO é violação: é comportamento **padrão e válido**.
 
 - `set_field_value` **roda** ✅
 - Tags **rodam** ✅
-- `send_flow` **NÃO dispara** ❌
+- `send_flow` **dispara** ✅ (mesmo sem `messages`)
 
-Isso significa que o agente parece estar funcionando (campos preenchidos, tags aplicadas), mas a conversa NUNCA é encaminhada pro fluxo. É a violação mais traiçoeira porque o erro é mudo.
+O campo `messages` junto de `send_flow` é uma **transição OPCIONAL** — uma
+frase curta por UX ("Já vou te conectar com nosso time!"), nunca uma
+exigência técnica. Adicionar `messages` é uma escolha de experiência, não
+uma correção obrigatória. O que antes era tratado como "exceção
+whitelistada" (NPS, descadastro, mockup) é, na verdade, o comportamento
+normal de qualquer disparo de fluxo.
 
-**Detecção:** o `analyze_prompt.py` reporta `send_flow_without_messages_count` quando encontra um bloco JSON com `send_flow` mas sem `messages` (ou com `messages: []`).
+**Detecção:** o `analyze_prompt.py` pode reportar
+`send_flow_without_messages_count`. Trate isso como **informativo**, não
+como erro: o disparo funciona com ou sem `messages`.
 
-**Como corrigir:**
+**Como corrigir:** em geral, **NÃO há o que corrigir** — `send_flow` sem
+`messages` é válido. Só **sugira** (nunca force) uma transição curta quando
+houver ganho de UX: o cliente está esperando uma resposta e uma linha breve
+antes do handoff melhora a experiência. Mesmo assim:
 
-1. Para agentes conversacionais normais: o prompt provavelmente já manda `messages` — esse erro raramente acontece em prompts gerados pelo creator.
-2. Para agentes **silenciosos/triadores/classificadores** (que tentam ser puramente actions): adicionar uma **frase de transição curta predefinida por categoria**. Exemplo:
+1. A transição é **opcional**. Se o autor deixou `send_flow` sozinho de
+   propósito (o fluxo fala), **preserve** como está.
+2. Se for sugerir uma transição por UX, mantenha-a curta e "meta" (só anuncia
+   a passagem, não conversa sobre o problema):
 
-   **Antes (quebra a plataforma — send_flow não dispara):**
+   **Sem transição (válido — o fluxo fala):**
    ```json
    {
      "actions": [
@@ -247,7 +369,7 @@ Isso significa que o agente parece estar funcionando (campos preenchidos, tags a
    }
    ```
 
-   **Depois (funciona):**
+   **Com transição opcional por UX (também válido):**
    ```json
    {
      "messages": [
@@ -260,7 +382,53 @@ Isso significa que o agente parece estar funcionando (campos preenchidos, tags a
    }
    ```
 
-⚠️ **Se estiver corrigindo um prompt de agente silencioso e o cliente afirma que o agente não pode falar nada com o usuário:** explique ao cliente que essa frase de transição é exigência da plataforma para o `send_flow` funcionar. Ela é curta, "meta" (só anuncia a transferência, não conversa sobre o problema), e pode ser predefinida — o agente não improvisa. É o menor compromisso possível para destravar o roteamento.
+### Casos em que a ausência de `messages` é claramente intencional
+
+Disparos só-`actions` (com `messages:[]` ou omitido) são comuns e corretos.
+Exemplos reais onde adicionar mensagem PIORARIA a experiência (não tocar):
+
+| Caso | Evidência | Por quê não tem messages |
+|---|---|---|
+| NPS pós-encerramento | Duda-SAC, Let (flow `1775096402729`) | O fluxo NPS já comunica; mensagem do agente causaria despedida duplicada |
+| Descadastro confirmado | Bia (passo 2) | Já confirmou no passo 1; passo 2 só executa |
+| Mockup/coleta de mídia | Uni (`"messages":[]`, flow `1780170720912`) | O fluxo coleta o upload; o LLM não gerencia imagem |
+
+Verbatim (Let): *"NPS — disparo silencioso pós-encerramento, somente actions
+sem messages."* Verbatim (Duda-SAC): *"Nunca envie uma mensagem de despedida
+antes do NPS."*
+
+**Princípio:** `send_flow` sempre dispara. `messages` só entra quando uma
+linha de transição agrega à experiência do cliente — e mesmo aí é sugestão,
+não obrigação. Na dúvida, preserve o disparo silencioso.
+
+---
+
+## 16. Ordem das actions e qualidade do handoff (preservar, não achatar)
+
+**Regra de ORDEM (load-bearing — não reordenar ao "limpar" o JSON):**
+quando há `set_field_value` + `send_flow` no mesmo array, o(s)
+`set_field_value` vêm SEMPRE ANTES do `send_flow`. O fluxo lê os campos no
+momento em que executa; se `send_flow` vier antes, os campos chegam vazios.
+
+Verbatim (Uni): *"O fluxo lê os campos no momento em que executa — se
+send_flow vier antes, os campos chegam vazios."*
+Verbatim (Flora): ordem fixa exigida — (a) mensagem ao cliente, (b)
+`set_field_value` com `assunto_ticket`, (c) `send_flow`.
+
+**Handoff com contexto (preservar se já existir; não inventar se não):**
+prompts-ouro gravam um briefing pro humano via `set_field_value` ANTES de
+transferir (Flora: `assunto_ticket`; Nex: `nex_resumo`). Se o prompt já faz
+isso, NUNCA remover — é padrão-ouro. Se não faz, NÃO inventar conteúdo de
+campo (vira pendência opcional, não correção).
+
+**Silêncio total pós-handoff (preservar):** ~13/25 instruem o agente a não
+responder nada após o `send_flow` de transferência ("mesmo que a cliente
+responda 'ok' ou 'obrigada'"). Isso NÃO é violação — é intencional. Não
+"completar" essas respostas.
+
+**Pipeline monotônico (preservar):** campos de estágio (`stage_pipeline`,
+`nex_pipeline`) só avançam, nunca regridem; resumo é acumulativo. Não
+normalizar/resetar.
 
 ---
 
@@ -346,6 +514,24 @@ Vira:
 1. Identificar o equivalente em `references/cufs_nextags.md` (cobertura completa: contatos, Instagram, Messenger, e-commerce, pedidos).
 2. Substituir `[nome]` → `{{first_name}}`, `[email]` → `{{email}}`, `[order_id]` → `{{order_id}}`, etc.
 3. Se NÃO existir CUF equivalente (ex: o prompt usa `[código de produto interno]` que não bate com nenhum CUF), **reformule** a frase pra não precisar de interpolação OU marque como pendência humana (talvez precise criar um Custom Field na conta).
+
+**Quando `[nome]`/nome-literal NÃO é violação (não corrigir):**
+~17/25 prompts não usam `{{first_name}}` — e muitos estão CERTOS. Distinguir:
+
+- **É violação** (corrigir → CUF): colchete `[nome]`/`[email]` ou chave
+  simples `{nome}`/`{first_name}` DENTRO de um campo `text` num ponto em que
+  o agente *quer* interpolar o dado real do cliente. Ex.: Nex `[Nome]`,
+  Flora `{first_name}` → `{{first_name}}`.
+- **NÃO é violação** (preservar): a marca trata o cliente por apelido fixo
+  ("hidratada" — Hidratei; "goxxxtosa" — Bia; "Beleza" — Bela) ou por "você",
+  por identidade de marca. Aqui a ausência de CUF é coerente; forçar
+  `{{first_name}}` descaracteriza a persona.
+- **Cuidado com `{{first\_name}}`** (underscore escapado, caso Ayla): o
+  escape `\_` QUEBRA a interpolação. Corrigir para `{{first_name}}`.
+- **NÃO normalizar cegamente** quando 3 convenções coexistem por design
+  (`{{}}` runtime, `<placeholder>` "preencher manualmente", `[x]` exemplo
+  didático). Olhar o contexto antes de trocar.
+
 4. **Considere fallback:** se substituiu por `{{first_name}}` numa saudação, ofereça variante neutra "sem nome" no caso de cliente sem cadastro:
 
 ```
@@ -522,6 +708,50 @@ da imagem é preferível a quebrar o envio inteiro no canal.
 - Regras de negócio específicas (ex.: "só ofereça desconto se cliente VIP").
 - URLs e mídias já configuradas.
 - Idioma, regionalismos, gírias da marca.
+- O separador/typing indicator inteiro `4` solto dentro do array `messages`
+  (inclusive quando aparece NO INÍCIO do array — pausa de abertura, padrão
+  Uni). NÃO é lixo de JSON; é convenção da plataforma. Nunca remover.
+- `flow_id`s reais de 13 dígitos (`17xxxxxxxxxxx`). 0/25 prompts de produção
+  usam placeholder — todos têm ID real. Placeholder `<ID_DO_FLUXO>` é só
+  estado INTERMEDIÁRIO do fixer; nunca substituir um ID real por placeholder.
+- `"messages":[]` EXPLÍCITO (vazio intencional para disparo silencioso —
+  padrão Uni). Não "preencher" nem remover a chave.
+- A convenção de placeholder/tratamento do cliente escolhida pela marca
+  ("hidratada", "você", "goxxxtosa", nome literal). Quando a marca não usa
+  nome dinâmico de propósito, NÃO forçar `{{first_name}}`.
+- Confirmação em 2 passos antes de ação destrutiva (descadastro, remoção —
+  padrão Bia). Não colapsar em 1 passo.
+- Regra anti-loop do prompt (não repetir mensagem >70% igual; não perguntar
+  "posso ajudar em algo mais" em loop) — se já existir, PRESERVAR; é padrão-ouro.
 
 Se uma correção exigiria tocar em qualquer uma dessas coisas, ela vira
 **pendência humana** automaticamente.
+
+---
+
+## 18. Data/validade fixa hardcoded (conteúdo que apodrece)
+
+**Regra:** nunca deixar data absoluta fixa em promoção/cupom/programa dentro do
+texto do agente. Ela "apodrece" — vira mentira no dia seguinte.
+
+**Evidência:** Luna-vendas "o programa de pontos encerra em 28/02" (já passou);
+Gabi "válido só até hoje às 00:00" (sempre dirá "hoje").
+
+**Detecção:** datas fixas (`\d{2}/\d{2}`, "até hoje", "válido até <data>") em
+campos `text`, quando não vêm de tool.
+
+**Como corrigir:** preço de SKU sempre via tool. Campanha/cupom pode ser hardcoded
+SE a validade for relativa/dinâmica ou removida — nunca "28/02" nem "válido só até
+hoje". Na dúvida → pendência (regra de negócio).
+
+**Preço literal em exemplo JSON com tool de catálogo:** se o prompt tem tool de preço
+mas os exemplos mostram um preço real (ex.: "R$ 129,90"), troque por placeholder
+`R$ 0,00` — o LLM copia o exemplo como valor real. Preço sempre da tool.
+
+---
+
+## 19. Lints opcionais (avisar, não bloquear)
+
+- Travessão / em-dash (`—`) em campos `text` — sinal de "cara de IA"; sugerir trocar
+  por vírgula, ponto ou "e". Idem diminutivos forçados ("rapidinho", "horinha").
+- Emoji 🤖 em mensagem — assume "sou bot"; sugerir remover.
