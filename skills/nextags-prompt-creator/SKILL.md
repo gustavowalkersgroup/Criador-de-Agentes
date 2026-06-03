@@ -92,8 +92,15 @@ roteiro recomendado de chunking (até 3 perguntas por chamada de
 - Persona: nome do agente, tom de voz, canais.
 - Tools/MCP: quais existem? inputs?
 - IDs de fluxos: especialmente o **fluxo de transferência humana**.
+- **Quais fluxos NexTags o cliente JÁ TEM** (catálogo, coleta, PDF) — pra a IA delegar (ver "DELEGUE AO FLUXO" no skeleton).
 - Mídia: imagens/áudios/vídeos disponíveis.
 - Restrições comerciais e tratamento de reclamações.
+
+⚠️ **Perguntar BASTANTE — questionário completo antes de gerar.** Menos suposição é
+melhor que mais rodadas. O **TIPO** do agente é inferido do briefing/site e
+**confirmado rápido** (1 pergunta); o **resto** (persona fina, fluxos existentes,
+restrições, mídias) é **perguntado a fundo**. Não economize perguntas pra "ir mais
+rápido" — o custo de chutar é refazer o prompt.
 
 ⚠️ **Não pergunte coisas que o site/briefing já cobrem** — desperdiça
 rodada e irrita o humano.
@@ -226,10 +233,12 @@ Consulte `references/cufs_nextags.md` para a lista completa (~80 campos) cobrind
 
 Prompts NexTags rodam em janela de contexto compartilhada com histórico da conversa, retornos de tools, e múltiplos turnos. **Prompts inchados desperdiçam contexto, aumentam custo por turno e pioram aderência do LLM às regras** (modelo dilui atenção entre muita coisa repetida).
 
-**Meta de tamanho:**
-- **15-20 KB por prompt** (~5.000-7.000 palavras) é o ideal.
-- Acima de **30 KB** → revisar agressivamente. Provavelmente tem redundância.
-- Acima de **45 KB** → sinal vermelho. Quase certo que tem 3+ versões da mesma regra.
+**Meta de tamanho POR TIPO** (não há meta universal — o tamanho saudável depende do tipo):
+- **Vendas consultivo** (matriz dor→produto, objeções, fluxos): **30-45 KB é OK** — é denso por natureza.
+- **SAC / Triagem / roteador** (enxuto por design): **10-20 KB**. Acima disso, quase certo que tem redundância.
+- Em qualquer tipo, se o prompt passou MUITO da faixa do seu tipo → revisar agressivamente: provavelmente tem 3+ versões da mesma regra.
+
+O número não é o alvo — o alvo é **zero redundância**. Um consultivo de 42 KB sem repetição é saudável; um SAC de 35 KB quase certo está inchado.
 
 **Como manter enxuto:**
 
@@ -299,22 +308,25 @@ Re-rode o analyzer no prompt corrigido. Repita até **0 violações reais**
 
 ### 7. Gera o relatório de auditoria
 
-Use `assets/relatorio_template.md` como base. **O relatório aqui é
-ligeiramente diferente do relatório do fixer:** em vez de "antes/depois"
-(que não faz sentido — o prompt nasceu já corrigido), o relatório do
-criador deve ter:
+Use `assets/relatorio_template.md` como base. **Relatório ENXUTO** — só o que o
+humano precisa pra subir produção, sem estatística/enchimento. Em vez de
+"antes/depois" (que não faz sentido — o prompt nasceu já corrigido), o relatório
+do criador deve ter:
 
-- **Resumo da geração:** quantas seções, quantos blocos JSON, quantas
-  pendências humanas.
-- **Inconsistências briefing × site** que foram resolvidas a favor do
-  briefing (com referências às fontes).
-- **Correções aplicadas durante geração:** quais ajustes a auditoria
-  pediu (mesmo que a primeira passada já tenha saído limpa, vale registrar
-  "0 violações detectadas — geração já saiu rules-compliant").
-- **Pendências humanas:** lista clara de cada placeholder
-  `<ID_DO_FLUXO_*>`, `<URL_*>` ou seção marcada para revisão. Sempre com
-  sugestão concreta do que preencher.
-- **Estatísticas finais:** mesma tabela do relatório do fixer.
+- **Pendências críticas:** lista clara de cada placeholder `<ID_DO_FLUXO_*>`,
+  `<URL_*>` ou seção marcada para revisão. Sempre com sugestão concreta do que preencher.
+- **O que mudou / decisões:** inconsistências briefing × site resolvidas a favor
+  do briefing (com a fonte) e quaisquer ajustes que a auditoria pediu.
+- **LISTA DE FLUXOS A CRIAR:** os fluxos NexTags que o agente vai disparar (catálogo,
+  coleta complexa, PDF, transferência, NPS...), cada um com o propósito e o placeholder
+  `flow_id` correspondente no prompt. É o entregável mais importante pro cliente montar a operação.
+
+**Bateria de testes (entregar, NÃO travar):** inclua **4-6 casos-chave** (abertura,
+objeção, fora de escopo, transferência, dado faltando) com a entrada do cliente e a
+saída JSON esperada. É um entregável de valor — mas se não der pra montar todos, **não
+trave o processo**: entregue os que conseguir e siga.
+
+Evite enchimento: nada de "redução de X%", "passou no analyzer", tabelas de estatística.
 
 ### 8. Apresenta os arquivos
 

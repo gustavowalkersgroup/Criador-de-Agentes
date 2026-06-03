@@ -169,6 +169,16 @@ Salva relatório em `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`
 
 Operador compartilha keys/tokens inline no chat porque precisa velocidade. **Não dê caveats de segurança redundantes**. Use direto, registre na credencial n8n apropriada ou na data table, siga em frente.
 
+### Fronteira IA ↔ fluxo — tool devolve SLIM, fluxo faz o pesado
+
+A tool/MCP entrega dados **SLIM** (o mínimo pra IA conversar e decidir). A
+**apresentação pesada** (catálogo grande, vários carrosséis, PDF/documento) e a
+**coleta estruturada complexa** (medidas, formulário) são de **FLUXOS de bot**:
+a IA dispara `send_flow` pro fluxo pré-montado — ela **não** monta payload
+gigante e a tool **não** devolve tudo cru. É o que justifica o slim e a economia
+de token (ver `references/slim_response_patterns.md`). Coleta de 1-2 campos = IA
+grava com `set_field_value`; coleta complexa = fluxo.
+
 ### Descrições de tools são vida ou morte
 
 LLM escolhe tool só pela descrição. Toda tool gerada deve seguir `references/tool_descriptions_guide.md` — quando usar / quando NÃO usar / formato de IDs / quirks. Antes de finalizar, valida que descrições estão claras.

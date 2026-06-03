@@ -4,6 +4,28 @@ Heurísticas pra escrever o Code node de slim em backend de qualquer API. Reduz 
 
 ---
 
+## Fronteira IA ↔ fluxo (por que o slim importa)
+
+A tool/MCP devolve dados **SLIM**: o mínimo que a IA precisa pra conversar e
+decidir. A **apresentação pesada** (catálogo grande, vários carrosséis,
+PDF/documento) e a **coleta estruturada complexa** (medidas, formulário com
+muitos campos) são responsabilidade de **FLUXOS de bot** — a IA dispara
+`send_flow` pro fluxo pré-montado, ela **NÃO** monta payload gigante nem a tool
+devolve tudo cru.
+
+- A IA **conversa e decide**; o **fluxo renderiza e coleta**.
+- Catálogo inteiro / vários carrosséis / PDF → `send_flow`, não slim grande.
+- Coleta de 1-2 campos → IA grava com `set_field_value`; coleta complexa
+  (medidas, formulário) → fluxo de bot.
+- Por isso o slim é enxuto: ele alimenta a decisão da IA, não a renderização.
+  Isso economiza token, enxuga o prompt e é mais confiável.
+
+> Reflexo no slim: a meta de "catálogo completo" abaixo é exceção — quando a
+> entrega é pesada de verdade, prefira delegar a um fluxo a tentar empurrar tudo
+> pela tool.
+
+---
+
 ## Princípio
 
 Toda response da API tem 3 camadas de informação:

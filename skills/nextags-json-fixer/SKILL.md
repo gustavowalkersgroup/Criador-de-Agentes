@@ -107,11 +107,11 @@ documenta o schema oficial completo com exemplos validados.
 | Carrossel com 0 elementos | Remover bloco; pendência. |
 | Nome de ação errado | Mapear pra nome canônico (ver `references/schema.md`). |
 | Ação com campo faltando (ex.: `set_field_value` sem `value`) | Pendência. |
-| Ação de transferência (`transfer_conversation_to` / `assign_conversation` / `unassign_conversation`) | Válida em runtime — NÃO converter; emitir aviso (0% dos prompts-ouro usam; recomendado é `send_flow`). Ver `references/schema.md`. |
-| Só-`actions` (`messages` ausente ou `[]`) com `actions` não-vazio | VÁLIDO (disparo silencioso: NPS/descadastro/mockup). NÃO inventar mensagem. |
+| Ação de transferência (`transfer_conversation_to` / `assign_conversation` / `unassign_conversation`) | **Válidas** em runtime (`transfer` como fallback sem flow; `assign` como caso especial). NÃO converter; no máximo um aviso lembrando que o padrão é `send_flow`. O fixer só avisa, não converte. Ver `references/schema.md`. |
+| Só-`actions` / `send_flow` sem `messages` (`messages` ausente ou `[]`) com `actions` não-vazio | **VÁLIDO — dispara normal**; o fluxo assume a comunicação. `messages` é transição opcional, nunca obrigatória. NÃO inventar mensagem, NÃO marcar erro. |
 | Typing indicator string | Converter pra inteiro se for numérico (`"4"` → `4`); senão remover. |
 | Typing indicator fora do range | Clampar em [1, 30]. |
-| Markdown em campos `text`/`title`/`subtitle` (`**bold**`, `# H1`) | Remover marcação, preservar conteúdo. |
+| Markdown-PADRÃO em campos `text`/`title`/`subtitle` (`**bold**` duplo, `# H1`, `[txt](url)`, bullets `-`, cercas ` ``` `) | Remover marcação, preservar conteúdo. **WA-markup (`*negrito*` asterisco único, `_itálico_`, `~tachado~`) RENDERIZA → preservar, não remover.** |
 
 ## Idempotência
 

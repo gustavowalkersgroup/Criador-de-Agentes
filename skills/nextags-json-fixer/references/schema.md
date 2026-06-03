@@ -22,25 +22,32 @@ ambos):
 Pelo menos uma das duas chaves deve existir. Se ambas estiverem
 ausentes, o JSON é inválido.
 
-### Disparo silencioso (só-`actions`, sem texto ao cliente) — VÁLIDO
+### `send_flow` sem `messages` (só-`actions`) — DISPARA NORMAL, é VÁLIDO
 
-É legítimo emitir apenas `actions`, com `messages` ausente OU
-`"messages": []` explícito. Usos reais (4/25): NPS pós-encerramento,
-descadastro pós-confirmação, mockup por IA.
+É legítimo e padrão emitir apenas `actions`, com `messages` ausente OU
+`"messages": []` explícito. O `send_flow` **dispara normalmente** e **o
+fluxo assume a comunicação** com o cliente. NÃO é "falha silenciosa", NÃO é
+exceção restrita a NPS — é um padrão válido sempre que o fluxo de destino já
+fala com o cliente (handoff, catálogo, coleta, NPS, descadastro, mockup,
+etc.).
 
 ```json
 {"messages":[],"actions":[{"action":"send_flow","flow_id":"1775096402729"}]}
 ```
 
+`messages` junto de um `send_flow` é uma **transição OPCIONAL** — uma frase
+curta de UX ("já vou te conectar!"), por boa prática. Nunca é
+tecnicamente obrigatória: se o fluxo já comunica, o `send_flow` sozinho
+basta.
+
 Regra do fixer:
 - `"messages":[]` + `actions` não-vazio → **VÁLIDO**, não inventar mensagem.
 - `messages` ausente + `actions` presente → **VÁLIDO**.
-- Ambas ausentes/vazias → inválido (pendência).
-- ATENÇÃO: `send_flow` "mudo" só é correto para dispara-e-esquece pós-conversa
-  (NPS/mockup/descadastro confirmado). Como mecanismo de HANDOFF principal,
-  a transferência deve vir com `messages` (texto de confirmação). O fixer não
-  reescreve a intenção — apenas registra a observação no relatório quando o
-  único `send_flow` vem sem `messages`.
+- `send_flow` sem `messages` → **VÁLIDO, dispara normal**. NÃO marcar como
+  erro, NÃO exigir texto de confirmação. No máximo um lembrete opcional de
+  UX (uma transição curta costuma melhorar a experiência), nunca pendência.
+- Ambas (`messages` e `actions`) ausentes/vazias → inválido (pendência).
+- O fixer não reescreve a intenção nem inventa mensagem de transição.
 
 ---
 
@@ -132,19 +139,22 @@ Tipos de botão válidos:
 
 | `type`     | Campo obrigatório | Função |
 |------------|-------------------|--------|
-| `web_url`  | `url`             | Abre link externo (ÚNICO usado em produção: 7/7) |
-| `postback` | `payload`         | Dispara flow_id (sintaticamente válido, mas 0% de uso real; preferir `send_flow`) |
+| `web_url`  | `url`             | Abre link externo. É o tipo mais comum em produção (7/7); o WhatsApp limita a **1 botão `web_url` por mensagem**. |
+| `postback` | `payload`         | Dispara um `flow_id` ao clicar. **PERMITIDO e válido** (até 3 num button template). A IA raramente usa, mas não é proibido. |
 
 Botão sem o campo obrigatório → violação.
 
 **Limites de UI (button template) — observados em produção, validar:**
 - **`text` é OBRIGATÓRIO** no payload do button. Button sem `text` → pendência.
-- **Máximo 1 botão** no array `buttons` de um button template. >1 botão →
-  aviso (estoura UI do Messenger); manter o 1º, listar os demais no relatório.
+- **Máximo 1 botão `web_url` por mensagem** (restrição do WhatsApp para
+  link). >1 botão `web_url` → aviso; manter o 1º, listar os demais no
+  relatório. Botões `postback` (que disparam fluxo) podem chegar a 3 — não
+  são limitados a 1.
 - **CTA (`title`) ≤ 20 caracteres.** Acima → aviso (não trunca
   automaticamente; sinaliza).
-- `postback` em button → aviso: "produção usa só `web_url`; postback de
-  transferência deve ser `send_flow` em `actions`."
+- `postback` em button → **válido, não é violação**. Dispara um `flow_id` ao
+  clicar; a IA raramente usa, mas é permitido. (Para handoff de transferência
+  o padrão recomendado continua sendo `send_flow` em `actions`.)
 - Duas ordens de chave são ambas válidas (não corrigir):
   `type`→`payload` e `payload`→`type`.
 
@@ -173,22 +183,27 @@ objeto com a chave `action` + campos específicos.
 > fazem parte do fluxo normal.
 
 **Validade vs. boa prática (duas camadas).** As 8 ações acima são
-sintaticamente válidas no runtime — esta skill NÃO quebra um JSON só por
+sintaticamente válidas no runtime — esta skill NÃO quebra um JSON por
 usar `transfer_conversation_to` / `assign_conversation` /
-`unassign_conversation`. PORÉM, evidência de produção (25 prompts reais):
-**0% dos prompts-ouro usam essas 3 ações**; 100% das transferências de
-qualidade usam `send_flow` com `flow_id`. Os únicos casos com
-`assign_conversation` são exatamente os marcados como desvio.
+`unassign_conversation`. Todas são **válidas**:
+- **`send_flow`** com `flow_id` é o mecanismo oficial e o padrão de handoff
+  para humano.
+- **`transfer_conversation_to`** (`value:"human"`) é válida **como fallback**
+  quando o projeto NÃO tem um flow de transferência configurado. É rede de
+  segurança, não erro.
+- **`assign_conversation`** (`admin_id`) é válida como **caso especial**
+  (atribuir a um atendente específico que o humano define). Uso raro, não é
+  o padrão — mas legítima.
 
 Regra do fixer:
 - NÃO remover/converter automaticamente `transfer_conversation_to` /
   `assign_conversation` / `unassign_conversation` (são válidas em runtime).
-- SEMPRE emitir **aviso (não-erro)** no relatório: "Ação X é válida no
-  schema, mas 0% dos prompts-ouro a usam; transferência recomendada =
-  `send_flow`. Se for handoff para humano, considere converter."
+- Quando aparecerem, emitir no máximo um **aviso (não-erro)** lembrando que o
+  padrão de handoff é `send_flow` — sem tratar como violação. O fixer só
+  avisa; **não converte**.
 - `admin_id` deve ser um ID/valor limpo. Valor sujo (ex.: `"Estela."` com
   ponto/espaço/nome em vez de ID) → pendência.
-- A conversão real para `send_flow` é responsabilidade da
+- A conversão real para `send_flow` (quando desejada) é responsabilidade da
   `nextags-prompt-fixer` (corrige o prompt); aqui só sinalizamos.
 
 ### Aliases comuns que o agente costuma errar
@@ -236,10 +251,15 @@ não tentar "consertar" para uma ação inventada.
    sem prosa antes/depois.
 2. **Sempre JSON válido** — vírgulas, aspas, chaves balanceadas.
 3. **Aspas retas** `"` — não aspas curvas `"` `"`.
-4. **Sem campos `text`/`title`/`subtitle` com markdown** (`**bold**`,
-   `*bold*` (asterisco único, sintaxe Messenger), `_italic_`, `# H1`,
-   `> blockquote`, ` `code` `, links `[txt](url)`). O middleware envia o texto
-   cru, marcação aparece literal pro cliente. Emojis NÃO são markdown — preservar.
+4. **Sem MARKDOWN-PADRÃO em campos `text`/`title`/`subtitle`** — o que
+   VAZA literal pro cliente: `**bold**` (asterisco DUPLO), `# H1` (hashtag-
+   título), `> blockquote`, ` `code` ` / cercas ` ``` `, bullets com hífen
+   (`- item`), links `[txt](url)`. Essa marcação o middleware envia crua e
+   aparece literal pro cliente → remover, preservando o conteúdo.
+   **WA-markup é PERMITIDO e PRESERVADO:** marcação estilo WhatsApp
+   `*negrito*` (asterisco ÚNICO), `_itálico_`, `~tachado~` RENDERIZA na
+   plataforma (testado pelo cliente) — NÃO remover, NÃO tratar como
+   violação. Emojis também NÃO são markdown — preservar.
 5. **Carrossel ≥ 2 elementos.**
 6. **Botões `web_url` precisam de `url`.** Botões `postback` precisam de
    `payload`.

@@ -238,7 +238,7 @@ herda regras automáticas a partir dela:
 | Classe | Regra que o prompt herda |
 |---|---|
 | `leitura` | consultar ANTES de afirmar qualquer fato; não exibir campos crus |
-| `catalogo` | consultar antes de citar produto/preço/estoque; retry com termos amplos antes do handoff |
+| `catalogo` | consultar antes de citar produto/preço/estoque; retry com termos amplos antes do handoff; entrega pesada (catálogo grande, vários carrosséis, PDF) → delegar a um fluxo via `send_flow`, a IA NÃO monta payload gigante |
 | `transacional` (cart/pedido/agendamento) | não inventar link/PIX; em falha → retry 1x + aguardar + degradação (links individuais) |
 | `logistica-FONTE-DE-VERDADE` | é a ÚNICA fonte de status de envio/entrega; o prompt NUNCA conclui envio pelo fulfillment_status da plataforma |
 | `cadastro/upsert` | params obrigatórios com default (ex: `interesse_produto=''`); omissão = erro |

@@ -171,19 +171,25 @@ Regras:
 
 ```
 **Sempre** responda com JSON válido seguindo o schema da Messenger Messaging Platform.
-**Sem texto antes, depois ou fora do JSON. Sem markdown dentro de campos `text`,
-`subtitle` ou `title`. Sem envolver o output em fences de markdown.**
+Sem texto antes, depois ou fora do JSON. Sem envolver o output em fences de markdown.
+**Marcação estilo WhatsApp (`*negrito*`, `_itálico_`, `~tachado~`) RENDERIZA na
+plataforma e PODE ser usada nos campos `text`, `subtitle` e `title`.** Só o
+**markdown-padrão VAZA literal** e é proibido: asterisco-duplo (`**bold**`),
+título com hashtag (`# título`), link `[texto](url)`, bullets com hífen (`- item`)
+e cercas de código (` ``` `). Veja o guardrail de markdown na regra #5 de `regras_absolutas.md`.
 
 **Texto simples é o padrão.** Use mídia (imagem, vídeo, áudio) só quando agregar.
-Botões **apenas** para abrir links externos (`type: "web_url"`). Carrosséis apenas
-para 2+ produtos com imagem.
+Botões `web_url` para abrir links externos; botões `postback` (que disparam um
+fluxo ao clicar) são permitidos, mas a IA raramente os usa. Carrosséis apenas
+para 2+ produtos com imagem — e, para catálogo grande, prefira delegar ao fluxo
+(veja "DELEGUE AO FLUXO").
 
-**⚠️ REGRA CRÍTICA — `messages` é obrigatório quando há `send_flow`:**
-Todo JSON que contém `send_flow` em `actions` PRECISA ter o campo `messages` com
-pelo menos 1 item. Se faltar, a plataforma NexTags falha silenciosamente: o
-campo é preenchido, a tag é aplicada, mas o fluxo NÃO dispara. Mesmo em agentes
-silenciosos (triadores/classificadores), use uma frase curta de transição
-("Já vou te conectar com nosso time!") no `messages` antes do `send_flow`.
+**`messages` é OPCIONAL com `send_flow`:**
+`send_flow` DISPARA NORMALMENTE mesmo sem `messages` — o fluxo assume a
+comunicação a partir dali. Não é falha silenciosa. Por UX, quando fizer sentido,
+acompanhe o `send_flow` de uma transição curta no `messages` ("Já vou te conectar
+com nosso time!"), mas isso NÃO é obrigatório: disparos silenciosos (NPS, mockup,
+classificadores) podem ir com só `actions`.
 
 ### Exemplos (NOTE: emitir o JSON CRU, sem envolver em fences markdown)
 
@@ -217,29 +223,32 @@ silenciosos (triadores/classificadores), use uma frase curta de transição
 
 {"messages":[{"message":{"text":"Vou te encaminhar pra equipe agora!"}}],"actions":[{"action":"set_field_value","field_name":"assunto_ticket","value":"Cliente {{first_name}}, pedido X, atraso confirmado. Atendente: acionar transportadora."},{"action":"send_flow","flow_id":"<ID_DO_FLUXO_TRANSFERENCIA>"}]}
 
-— Disparo silencioso (NPS/mockup: só actions, sem messages — ÚNICA exceção à regra do messages obrigatório):
+— Disparo silencioso (NPS/mockup: só actions, sem messages — `send_flow` dispara normalmente, o fluxo fala):
 
 {"actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_NPS>"}]}
 ```
 
 **Notas:**
-- **NUNCA** gere `transfer_conversation_to`, `assign_conversation` ou
-  `unassign_conversation` — sempre `send_flow` com `flow_id`.
+- **Handoff padrão = `send_flow` com `flow_id`.** `transfer_conversation_to` é
+  FALLBACK quando NÃO há flow de transferência configurado no projeto (rede de
+  segurança, não proibida). `assign_conversation` (atribuir a atendente específico)
+  é caso especial raro, definido pelo humano — não sugerir por default, mas não bloquear.
 - Se algum `flow_id` não foi fornecido pelo humano, deixe placeholder explícito
   `<ID_DO_FLUXO_*>` e marque como pendência.
-- Botões só com `type: "web_url"`. Para sim/não ou menus, faça pergunta em texto.
+- Para sim/não ou menus, prefira a pergunta em texto. Botão `web_url` abre link;
+  `postback` dispara fluxo ao clicar (permitido, mas raramente necessário).
 - **NUNCA** envolva os exemplos JSON do prompt gerado em fences `` ```json ``. Os
   LLMs copiam o padrão dos exemplos e acabam emitindo o output envolto em fence,
   o que faz a plataforma tratar tudo como texto e vazar o JSON na conversa.
   Mostre o JSON dos exemplos como texto cru, separado por linhas em prosa
   (`— Exemplo X — situação:`). Veja regra #11 em `regras_absolutas.md`.
-- **NUNCA** emita JSON com `send_flow` sem `messages` populado — fluxo não
-  dispara. Veja regra #10 em `regras_absolutas.md`.
-- **Botões:** título ≤20 chars, máx 1 botão, NUNCA `postback` (sempre `web_url`),
-  botão nunca sozinho (sempre acompanha texto). Botão de carrinho → checkout, nunca URL de produto.
+- **`send_flow` sem `messages` DISPARA normalmente** — o fluxo assume a comunicação.
+  `messages` é uma transição opcional (curta, por UX), nunca obrigatória.
+  Veja regra #10 em `regras_absolutas.md`.
+- **Botões:** título ≤20 chars; **1 botão `web_url` por mensagem** (restrição do
+  WhatsApp para link); botões `postback` (pra fluxo) podem até 3, mas a IA raramente
+  usa. Botão nunca sozinho (sempre acompanha texto). Botão de carrinho → checkout, nunca URL de produto.
 - **`4` cria nova bolha; `\n` quebra linha DENTRO da mesma bolha.** Não confundir.
-- **Exceção ao "messages obrigatório":** disparos dispara-e-esquece pós-conversa
-  (NPS silencioso, mockup, descadastro confirmado) podem ir com SÓ `actions`. Nunca o handoff principal.
 
 ---
 
@@ -299,7 +308,7 @@ Ao apresentar um produto, use 3 blocos separados por typing 4:
   Bloco 1: imagem (attachment image)
   Bloco 2: texto + botão web_url (descrição + preço da tool + CTA ≤20 chars, com UTM)
   Bloco 3: pergunta de follow-up
-NUNCA misture texto com mídia/link no mesmo bloco. Máx 1 botão. NUNCA postback.
+NUNCA misture texto com mídia/link no mesmo bloco. Máx 1 botão `web_url` por mensagem (limite WhatsApp).
 CUPOM: só mencionar {CUPOM} APÓS o cliente demonstrar intenção de compra (pergunta preço/link). Nunca oferecer cupom proativamente a quem só está pesquisando.
 ```
 
@@ -315,6 +324,45 @@ encerre sem insistir (se houver fluxo de reengajamento/CRM, deixe ele cuidar do 
 **Notas:**
 - Preço/disponibilidade SEMPRE da tool (fonte de verdade). Nos exemplos do prompt use placeholder `R$ 0,00` para o LLM não copiar valor falso.
 - Catálogo de NOMES pode ser hardcoded (mapa de categorias); preço, NÃO.
+
+---
+
+## ⚓ DELEGUE AO FLUXO o que é pesado/estruturado (princípio central)
+
+> A IA **conversa e decide**; o **fluxo (`send_flow`) renderiza e coleta** o que é
+> pesado ou estruturado. Em vez de a IA montar um payload gigante (catálogo inteiro,
+> vários carrosséis, PDF/documento) ou conduzir uma coleta complexa, ela dispara um
+> fluxo de bot pré-montado. **Economiza token, enxuga o prompt e é mais confiável.**
+
+```
+A IA emite só o que é LEVE: texto, 1 imagem, 1 botão web_url, actions simples
+(set_field_value de 1-2 campos, tags).
+
+DELEGUE ao fluxo (send_flow) o que é PESADO ou ESTRUTURADO:
+- Catálogo grande / muitos produtos de uma vez (fluxo manda todos + PDF).
+- Vários carrosséis em sequência.
+- Documento / PDF / material rico.
+- Coleta de dados COMPLEXA (medidas, formulário com vários campos).
+
+Coleta SIMPLES (1-2 campos: nome, e-mail) = a IA grava com set_field_value.
+Coleta COMPLEXA (medidas, formulário) = fluxo de bot.
+```
+
+**A fronteira é dirigida pelos fluxos que o cliente JÁ TEM.** A skill pergunta quais
+fluxos o cliente já tem na NexTags e delega pra eles; se não houver fluxo pronto, a
+IA emite só o que for leve. Exemplos reais: fluxo manda TODOS os produtos + PDF;
+fluxo com vários carrosséis; fluxo que coleta medidas.
+
+**Sanitização antes de gravar:** quando a IA grava dados (`set_field_value`), ela
+**sanitiza primeiro** — telefone sem `+` (`5511XXXXXXXXX`), e-mail em minúsculas,
+valores como `'379.00'` (ponto decimal, sem `R$`).
+
+**Carrossel: desencorajado.** Botão único `web_url` é o padrão para 1 item;
+catálogo/vários carrosséis vão pro fluxo. Use carrossel da própria IA só para um
+punhado pequeno (2+ produtos) sem fluxo disponível.
+
+**Creator entrega no relatório a lista de fluxos sugeridos** (com propósito de cada um)
++ placeholder `flow_id` no prompt.
 
 ---
 
@@ -558,13 +606,13 @@ duas vezes seguidas; após um handoff de estágio, SILÊNCIO TOTAL nos turnos se
 
 ```
 UNIVERSAIS (todo agente):
-1. JSON válido — sem texto fora do JSON, sem markdown, sem fence/backticks.
+1. JSON válido — sem texto fora do JSON, sem markdown-padrão (`**`,`#`,`[](url)`,bullets), sem fence/backticks. WA-markup `*_~` é OK.
 2. Quebras de linha como \n, nunca literais.
 3. Bloco de botão fecha com }}} (três chaves).
 4. Sem em-dash (—) na fala — usar vírgula, ponto ou "e".
 5. Sem 🤖 nas mensagens.
-6. Links são URLs puras — sem [texto](url) nem negrito.
-7. Ação é canônica (só as 8); transferência via send_flow COM messages.
+6. Links são URLs puras — sem [texto](url) nem `**negrito-duplo**` (WA-markup `*_~` é OK).
+7. Ação é canônica (só as 8); handoff padrão via send_flow (messages é transição opcional).
 8. Não revelei nome de tool / MCP / ID interno / "FAQ".
 9. Não inventei preço, link, slot, código, feature — tudo veio de tool/base.
 10. Se disparei handoff numa resposta anterior, estou em SILÊNCIO.
