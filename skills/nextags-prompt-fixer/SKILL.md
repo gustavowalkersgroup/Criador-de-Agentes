@@ -123,6 +123,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `assign_conversation` com `admin_id` = nome ("Estela.") | Converter pra `send_flow`; nunca adivinhar o ID. Ver Regra 2. |
 | Ordem `send_flow` antes de `set_field_value` | Reordenar: campos PRIMEIRO, `send_flow` por último (senão campos chegam vazios). Ver Regra 16. |
 | `>1` botão / CTA >20 chars / `postback` / botão de carrinho pra produto | Ver Regra 17 (limites de UI do botão). |
+| Data fixa que apodrece ("28/02", "até hoje") / preço literal em exemplo com tool | Ver Regra 18 (datas e preço literal). |
 
 ### 4. Versionamento do arquivo corrigido
 

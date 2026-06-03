@@ -114,6 +114,10 @@ Decida (pelo briefing + perguntas) entre:
   set_field_value (stage monotônico + resumo acumulativo) + checklist final.
 - **Misto (vendas + SAC)** → inclua 6B e 8B com uma regra de troca de modo.
 
+**Eixo ortogonal — o agente tem MCP/tools de catálogo?** Decida junto com o tipo:
+- **Com MCP:** preço/estoque/disponibilidade vêm da tool (fonte de verdade); placeholder `R$ 0,00` nos exemplos.
+- **Sem MCP ("Estática Pura", ~38% dos casos reais):** NÃO prometa consulta dinâmica. Para preço/estoque/frete sem fonte: remeta ao site ou transfira — NUNCA fabrique. Gere link de busca por regra (ex.: `/search/?q=<termo>`) em vez de hardcodar URL por SKU. NUNCA hardcode preço/cupom com validade fixa ("até 28/02", "válido só hoje") — apodrece.
+
 Seções universais (TODOS os tipos, bloqueantes): Identidade, Tom de Voz,
 Escopo (com fora-de-escopo→flow_id), Transferência via send_flow, Anti-alucinação,
 Formato JSON. Sem qualquer uma dessas, reprovar.
@@ -200,6 +204,10 @@ de `send_flow` no array de actions (o flow lê os campos no momento que dispara)
 
 **Regra de Contexto Temporal:** quando houver qualquer lógica de prazo ou saudação
 por horário, use `{{current_user_time}}` e proíba o agente de inventar data/hora.
+
+**Validação de `{{first_name}}`:** antes de saudar, valide o valor — se for frase, empresa,
+número ou expressão (não um primeiro nome real), use saudação neutra ou pergunte o nome,
+para evitar "Olá, Deus é bom!".
 
 **Use somente se for necessário.** Não force `{{first_name}}` em toda mensagem — saudação inicial e momentos-chave bastam.
 

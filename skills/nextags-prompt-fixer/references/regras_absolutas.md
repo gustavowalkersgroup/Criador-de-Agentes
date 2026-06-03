@@ -621,6 +621,37 @@ Regras:
   nome dinâmico de propósito, NÃO forçar `{{first_name}}`.
 - Confirmação em 2 passos antes de ação destrutiva (descadastro, remoção —
   padrão Bia). Não colapsar em 1 passo.
+- Regra anti-loop do prompt (não repetir mensagem >70% igual; não perguntar
+  "posso ajudar em algo mais" em loop) — se já existir, PRESERVAR; é padrão-ouro.
 
 Se uma correção exigiria tocar em qualquer uma dessas coisas, ela vira
 **pendência humana** automaticamente.
+
+---
+
+## 18. Data/validade fixa hardcoded (conteúdo que apodrece)
+
+**Regra:** nunca deixar data absoluta fixa em promoção/cupom/programa dentro do
+texto do agente. Ela "apodrece" — vira mentira no dia seguinte.
+
+**Evidência:** Luna-vendas "o programa de pontos encerra em 28/02" (já passou);
+Gabi "válido só até hoje às 00:00" (sempre dirá "hoje").
+
+**Detecção:** datas fixas (`\d{2}/\d{2}`, "até hoje", "válido até <data>") em
+campos `text`, quando não vêm de tool.
+
+**Como corrigir:** preço de SKU sempre via tool. Campanha/cupom pode ser hardcoded
+SE a validade for relativa/dinâmica ou removida — nunca "28/02" nem "válido só até
+hoje". Na dúvida → pendência (regra de negócio).
+
+**Preço literal em exemplo JSON com tool de catálogo:** se o prompt tem tool de preço
+mas os exemplos mostram um preço real (ex.: "R$ 129,90"), troque por placeholder
+`R$ 0,00` — o LLM copia o exemplo como valor real. Preço sempre da tool.
+
+---
+
+## 19. Lints opcionais (avisar, não bloquear)
+
+- Travessão / em-dash (`—`) em campos `text` — sinal de "cara de IA"; sugerir trocar
+  por vírgula, ponto ou "e". Idem diminutivos forçados ("rapidinho", "horinha").
+- Emoji 🤖 em mensagem — assume "sou bot"; sugerir remover.

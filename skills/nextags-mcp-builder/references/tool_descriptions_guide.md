@@ -305,3 +305,11 @@ Antes de salvar o MCP, valide:
 - [ ] Formato de preço documentado (centavos vs reais)
 - [ ] Wildcards/auto-formatação do backend mencionados
 - [ ] Lista de tools no MCP NÃO tem 2 com função quase igual sem diferenciação clara
+- [ ] Comportamento em VAZIO definido (vazio ≠ erro)
+- [ ] Comportamento em ERRO definido (transient → handoff, sem detalhe técnico)
+- [ ] Campos PROIBIDOS de exibir listados (CPF, email, telefone, IDs, enum cru)
+- [ ] Campos de USO INTERNO marcados (financial_status/fulfillment_status)
+- [ ] Classe semântica atribuída (leitura/catalogo/transacional/logistica-FdV/cadastro/auxiliar)
+- [ ] Identificadores opacos marcados "copiar exatamente como retornado"
+- [ ] Nome técnico aqui == nome citado em qualquer regra/recipe (lint de consistência)
+- [ ] Se a API não cobre X comum, frase de ausência gerada pro prompt

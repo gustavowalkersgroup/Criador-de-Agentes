@@ -62,6 +62,7 @@ options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
 
 **Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom —
 e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
+há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
 
 **Se SAC:** quais MOTIVOS de contato atende (rastreio/troca/devolução/avaria/...)?
 há flow_id por motivo ou um geral? qual a tool/sistema que é fonte de verdade de

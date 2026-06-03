@@ -76,6 +76,9 @@ O inteiro (`4`) é o typing indicator: segundos de "digitando…". Posições v�
 `\n` dentro de `text` = multilinha na MESMA bolha (listas, blocos de rastreio).
 `4` = NOVA bolha. São coisas distintas: nunca converter `\n` em `4` nem vice-versa.
 
+> O typing indicator é SEMPRE o inteiro `4`. "3-5 segundos" é só a descrição
+> semântica, não um valor alternativo — nunca usar `3` nem `5`.
+
 ### 3. Attachments (imagem, vídeo, áudio, arquivo)
 
 ```json
@@ -85,6 +88,10 @@ O inteiro (`4`) é o typing indicator: segundos de "digitando…". Posições v�
 Valores válidos de `type`: `"image"`, `"video"`, `"audio"`, `"file"`.
 
 Qualquer outro valor (`sticker`, `gif`, `location`, etc.) é inválido.
+
+> Nota de produção: `video`/`audio`/`file` são suportados pelo schema mas SEM
+> precedente nos 25 prompts reais (0 exemplos) — não gere exemplos inventados
+> desses tipos; `image` é o único attachment com uso real.
 
 ### 4. Carrossel (generic template)
 
@@ -103,6 +110,10 @@ Regras:
 - **`elements` deve ter ≥ 2 itens.** Plataforma rejeita carrossel com 1 só.
 - `image_aspect_ratio` aceita `"horizontal"` ou `"square"`.
 - Cada elemento pode ter `buttons` vazio ou com até 3 botões.
+
+> Nota de produção: carrossel `generic` NÃO aparece em nenhum dos 25 prompts
+> reais — o padrão real é botão único `web_url`. Validar continua certo, mas
+> não é comum.
 
 ### 5. Texto com botões (button template)
 
@@ -156,6 +167,10 @@ objeto com a chave `action` + campos específicos.
 | Transferir para humano | `{"action":"transfer_conversation_to","value":"human"}` | `value` |
 | Atribuir a admin | `{"action":"assign_conversation","admin_id":"<id>"}` | `admin_id` |
 | Remover atribuição | `{"action":"unassign_conversation"}` | nenhum |
+
+> `unset_field_value` e `remove_tag` são oficiais mas raríssimas (0 uso no
+> corpus real). Usar só para LIMPAR um campo/tag ao reverter um estado; não
+> fazem parte do fluxo normal.
 
 **Validade vs. boa prática (duas camadas).** As 8 ações acima são
 sintaticamente válidas no runtime — esta skill NÃO quebra um JSON só por
@@ -222,8 +237,9 @@ não tentar "consertar" para uma ação inventada.
 2. **Sempre JSON válido** — vírgulas, aspas, chaves balanceadas.
 3. **Aspas retas** `"` — não aspas curvas `"` `"`.
 4. **Sem campos `text`/`title`/`subtitle` com markdown** (`**bold**`,
-   `# H1`, ` `code` `, etc.). O middleware envia o texto cru, marcação
-   aparece literal pro cliente.
+   `*bold*` (asterisco único, sintaxe Messenger), `_italic_`, `# H1`,
+   `> blockquote`, ` `code` `, links `[txt](url)`). O middleware envia o texto
+   cru, marcação aparece literal pro cliente. Emojis NÃO são markdown — preservar.
 5. **Carrossel ≥ 2 elementos.**
 6. **Botões `web_url` precisam de `url`.** Botões `postback` precisam de
    `payload`.

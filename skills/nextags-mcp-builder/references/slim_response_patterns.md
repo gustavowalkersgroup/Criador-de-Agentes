@@ -272,6 +272,11 @@ observados na discovery e documente-o na recipe da plataforma.
 > Regra de ouro: **se o campo é um código de máquina, ele NÃO sai cru.** Ou
 > vira label PT (exibível) ou vai pra `_internal` (classificação).
 
+> Padrão observado (Clara/LEGBOX): a transportadora pode ser inferida do CÓDIGO de
+> rastreio (ex.: começa com `888` → J&T; padrão `2 letras + 9 dígitos + 2 letras` →
+> Correios). Se a recipe da plataforma tiver esse mapa, documente-o como tradução
+> determinística; senão, deixe a transportadora vir explícita da tool de logística.
+
 ---
 
 ## Conversão de preço (CRÍTICO)
