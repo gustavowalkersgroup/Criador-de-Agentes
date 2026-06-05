@@ -606,11 +606,30 @@ Regras:
 
 **Detecção:** procurar literalmente pela frase `"deve sempre retornar respostas em JSON válido seguindo o padrão da Messenger Messaging Platform"` (sem acentos opcionais, case-insensitive). Se ausente, é violação.
 
-**Como corrigir:** inserir o bloco LITERAL (sem parafrasear) no início da seção "FORMATO DE RESPOSTA" / "FORMATO DE SAÍDA" / equivalente. Se o prompt não tem essa seção, criar uma seção "FORMATO DE SAÍDA — JSON OBRIGATÓRIO" e colocar o bloco como primeiro conteúdo.
+**Quando aplicar — verificar PRIMEIRO se o prompt usa JSON.** Este bloco só é
+exigido em prompts cujo agente PRODUZ JSON — que têm `messages`/`actions`, exemplos
+de saída JSON, `send_flow`, `set_field_value` ou tags (o `analyze_prompt.py` expõe
+isso em `prompt_uses_actions` e na detecção de blocos JSON). Agente puramente
+conversacional, sem nenhuma ação → dispensável (mas, se for agir, deveria ter).
 
-**Por quê:** padronização. Toda IA NexTags responde com o mesmo contrato JSON. Sem o bloco, o agente pode confundir o esquema, especialmente em primeiras chamadas (cache frio). Esse bloco é a especificação canônica que o time NexTags fornece como referência oficial.
+**Como corrigir:**
+1. **Nenhum bloco de formato de saída** → inserir o bloco LITERAL (sem parafrasear)
+   como primeiro conteúdo de uma seção "FORMATO DE SAÍDA — JSON OBRIGATÓRIO".
+2. **Já existe uma VARIANTE** (o prompt descreve o formato com texto próprio —
+   "FORMATO DE SAÍDA (Nextags Messenger)", "⚙️ FORMATO OBRIGATÓRIO", etc.) →
+   **NORMALIZAR para o bloco canônico, substituindo a variante**. "Renovar as
+   instruções sem repetir": o prompt fica com **UMA** única instrução de formato (a
+   canônica) — NUNCA o bloco canônico + a variante coexistindo (duplicação confunde o
+   LLM e incha o prompt). As regras ESPECÍFICAS do projeto (tools, fluxos, exemplos,
+   typing `4`, botões) ficam DEPOIS do bloco, não dentro dele nem no lugar dele.
 
-**Não substituir nem parafrasear:** o prompt pode ter mais regras adicionais DEPOIS desse bloco, mas o bloco em si vai literal.
+**Por quê:** padronização. Toda IA NexTags que age responde com o mesmo contrato JSON.
+Sem o bloco (ou com uma variante divergente), o agente pode confundir o esquema,
+especialmente em primeiras chamadas (cache frio). Esse bloco é a especificação
+canônica que o time NexTags fornece como referência oficial.
+
+**Não parafrasear o bloco em si:** o texto canônico vai literal; só o conteúdo
+ESPECÍFICO do projeto vem depois.
 
 ---
 
