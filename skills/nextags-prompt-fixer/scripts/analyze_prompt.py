@@ -637,7 +637,15 @@ def find_invalid_json_candidates(content: str, valid_blocks: list[dict]) -> list
     invalid = []
     lines = content.split("\n")
     n = len(lines)
-    valid_starts = {b["start_line"] for b in valid_blocks}
+    # Linhas já cobertas por QUALQUER bloco JSON válido (não só o start_line) —
+    # evita falso-positivo ao reexaminar uma linha INTERNA de um array válido
+    # (ex.: um `{"action":...},` solto dentro de um `actions` que parseia inteiro
+    # no bloco-pai). Sem isso, cada elemento de um array multi-linha era lido em
+    # isolado, falhava por "Extra data" (vírgula final) e virava invalid_json (block).
+    covered = set()
+    for b in valid_blocks:
+        for ln in range(b["start_line"], b["end_line"] + 1):
+            covered.add(ln)
 
     INVALID_TRIGGER_PATTERNS = [
         re.compile(r'^\s*\{\s*"messages"'),
@@ -646,7 +654,7 @@ def find_invalid_json_candidates(content: str, valid_blocks: list[dict]) -> list
     ]
 
     for start_idx in range(n):
-        if (start_idx + 1) in valid_starts:
+        if (start_idx + 1) in covered:
             continue
         line = lines[start_idx]
         if not any(p.match(line) for p in INVALID_TRIGGER_PATTERNS):

@@ -262,6 +262,25 @@ def test_analyzer_copies_in_sync():
     assert a == b, "as 2 cópias de analyze_prompt.py divergiram — re-sincronize (cp creator → fixer)"
 
 
+# ---- invalid_json: não flagar linha interna de array válido (achado no smoke e2e) ----
+
+def test_multiline_actions_no_false_invalid_json():
+    # actions multi-linha (um {"action":...}, por linha) num bloco que parseia
+    # inteiro NÃO pode gerar invalid_json (cada elemento isolado falharia por
+    # vírgula final — era falso-positivo block).
+    content = (
+        '{\n'
+        '  "messages":[{"message":{"text":"ok"}}],\n'
+        '  "actions":[\n'
+        '    {"action":"set_field_value","field_name":"first_name","value":"x"},\n'
+        '    {"action":"set_field_value","field_name":"Email","value":"y"},\n'
+        '    {"action":"send_flow","flow_id":"123"}\n'
+        '  ]\n'
+        '}\n'
+    )
+    assert ap.analyze(content)["summary"]["invalid_json_count"] == 0
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
