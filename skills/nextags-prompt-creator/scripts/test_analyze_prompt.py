@@ -251,6 +251,17 @@ def test_send_flow_missing_is_warn_in_fixer():
     assert _missing_sev(ap.analyze(c, mode="fixer")).get("send_flow_transferencia") == "warn"
 
 
+# ---- Sincronia das 2 cópias do analyzer (creator == fixer) ------------------
+
+def test_analyzer_copies_in_sync():
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    a = open(os.path.join(here, "analyze_prompt.py"), encoding="utf-8").read()
+    b_path = os.path.join(here, "..", "..", "nextags-prompt-fixer", "scripts", "analyze_prompt.py")
+    b = open(b_path, encoding="utf-8").read()
+    assert a == b, "as 2 cópias de analyze_prompt.py divergiram — re-sincronize (cp creator → fixer)"
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
