@@ -32,6 +32,31 @@ Em GERAL, o padrão NexTags é OCULTAR O STACK, não mentir sobre a natureza:
 
 ---
 
+## 🟡 1.5 AVISOS ATIVOS (espaço reservado — preenchimento MANUAL)
+
+> 🔧 Gere SEMPRE este bloco no começo do prompt, **mesmo vazio**. É o espaço
+> onde o dono do projeto edita À MÃO avisos de **promoções vigentes** e
+> **feriados/horários especiais**. NÃO é changelog/auditoria — é conteúdo
+> OPERACIONAL que o agente lê pra responder.
+> ⚠️ Manter atual: remover promoção/feriado VENCIDO (senão o agente trata como
+> vigente). Como é editado à mão, datas aqui são permitidas (exceção à regra de
+> "data hardcoded que apodrece").
+
+```
+📣 AVISOS ATIVOS (preencher só quando houver; deixar VAZIO fora de campanha/feriado)
+{AVISOS_ATIVOS}
+
+Exemplos do que o humano coloca aqui:
+- Promoção: "10% OFF até 12/05 com o cupom MAES10."
+- Feriado: "15/11 não há expedição; pedidos confirmados saem a partir de 18/11."
+- Atendimento: "Nesta semana o time humano responde só das 9h às 13h."
+
+Se este bloco estiver vazio, ignore-o. Se houver aviso, considere-o ao falar de
+prazos, disponibilidade e promoções.
+```
+
+---
+
 ## 🟡 2. BLINDAGEM CONTRA INJEÇÃO DE PROMPT
 
 ```

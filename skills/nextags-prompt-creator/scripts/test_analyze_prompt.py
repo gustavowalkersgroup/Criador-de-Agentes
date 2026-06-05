@@ -230,6 +230,27 @@ def test_anti_aluc_genuinamente_ausente():
     assert "anti_alucinacao" in _missing_keys(ap.analyze(c))
 
 
+# ---- send_flow_transferencia: intenção de transferência + modo fixer --------
+
+def _missing_sev(f):
+    return {m["key"]: m["severity"] for m in f["missing_sections"]}
+
+
+def test_transfer_intent_counts_as_present():
+    c = '{"messages":[{"message":{"text":"oi"}}]}\nSe não resolver, vou te encaminhar para um atendente humano.\n'
+    assert "send_flow_transferencia" not in _missing_keys(ap.analyze(c))
+
+
+def test_send_flow_missing_is_block_in_creator():
+    c = '{"messages":[{"message":{"text":"oi, tudo bem?"}}]}\n'  # sem mecanismo de transferência
+    assert _missing_sev(ap.analyze(c, mode="creator")).get("send_flow_transferencia") == "block"
+
+
+def test_send_flow_missing_is_warn_in_fixer():
+    c = '{"messages":[{"message":{"text":"oi, tudo bem?"}}]}\n'
+    assert _missing_sev(ap.analyze(c, mode="fixer")).get("send_flow_transferencia") == "warn"
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

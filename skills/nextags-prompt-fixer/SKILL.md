@@ -65,6 +65,7 @@ problemas de uma vez. Use-o sempre — não tente reinventar a auditoria
 # Substitua <SKILL_DIR> pelo diretório desta skill (onde este SKILL.md vive).
 python <SKILL_DIR>/scripts/analyze_prompt.py \
     <caminho_do_prompt.md> \
+    --mode fixer \
     --output /tmp/findings.json
 ```
 
