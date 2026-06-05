@@ -164,6 +164,8 @@ O prompt do agente é a instrução que o LLM lê a cada turno em runtime. Tudo 
 5. **Justificativas sobre decisões passadas** — "Removemos o carrossel porque quebrava", "Antes era X, agora Y porque...".
 6. **Métricas / análises** — "redução de 65%", "passou no analyzer", "0 violações".
 
+**✅ Exceção — o bloco "AVISOS ATIVOS" (§1.5 do skeleton) É permitido** e deve ser gerado SEMPRE (mesmo vazio). NÃO é meta-doc: é conteúdo OPERACIONAL (promoções/feriados/horários que o agente usa pra responder), reservado pra edição manual do dono do projeto.
+
 **Onde isso DEVE ir:** no **relatório de auditoria** (`relatorio-<nome>.md`), gerado separadamente.
 
 **Cabeçalho do prompt:** pode ter no MÁXIMO uma linha curta de identificação (`# PROMPT — AGENTE X`). Sem versão, sem data, sem responsável.

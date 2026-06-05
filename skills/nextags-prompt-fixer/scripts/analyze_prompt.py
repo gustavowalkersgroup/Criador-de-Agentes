@@ -123,13 +123,20 @@ REQUIRED_SECTIONS = {
         ],
     },
     "send_flow_transferencia": {
-        "label": "Transferência humana via send_flow",
+        "label": "Transferência para humano (preferência: send_flow)",
         "severity": "block",
         "patterns": [
             r"send_flow",
             r"fluxo\s+de\s+transfer[êe]ncia",
             r"disparar?\s+(o\s+)?fluxo",
             r"transfer\s+flow",
+            # intenção de transferência por QUALQUER mecanismo (mesmo "errado")
+            # conta como presente — o "use send_flow" é recomendação à parte.
+            r"transfer(ir|e|[êe]ncia)\b[^.\n]{0,40}(humano|atendente|equipe|time|setor|suporte)",
+            r"encaminh\w+[^.\n]{0,40}(humano|atendente|equipe|time|setor)",
+            r"(falar|conversar)\s+com\s+(um[ a]?\s+)?(atendente|humano|pessoa|consultor)",
+            r"atendimento\s+humano",
+            r"transfer_conversation_to|assign_conversation|connect_user_to_human",
         ],
     },
     "texto_padrao": {
@@ -591,7 +598,7 @@ def prompt_uses_actions(content: str, blocks: list[dict]) -> bool:
     return bool(re.search(r'"action"\s*:\s*"(send_flow|set_field_value|add_tag|remove_tag|unset_field_value)"', content))
 
 
-def check_required_sections(content: str, uses_actions: bool) -> list[dict]:
+def check_required_sections(content: str, uses_actions: bool, mode: str = "creator") -> list[dict]:
     missing = []
     for key, info in REQUIRED_SECTIONS.items():
         present = any(
@@ -603,6 +610,11 @@ def check_required_sections(content: str, uses_actions: bool) -> list[dict]:
             if severity == "dynamic_json":
                 # JSON só é obrigatório (block) se o agente AGE.
                 severity = "block" if uses_actions else "warn"
+            # No fixer (audita prompt EXISTENTE), ausência de transferência via
+            # send_flow é recomendação, não bloqueio — o prompt pode transferir
+            # por outro mecanismo legítimo. No creator (prompt novo) segue block.
+            if mode == "fixer" and key == "send_flow_transferencia":
+                severity = "warn"
             missing.append({"key": key, "label": info["label"], "severity": severity})
     return missing
 
@@ -666,7 +678,7 @@ def find_invalid_json_candidates(content: str, valid_blocks: list[dict]) -> list
     return invalid
 
 
-def analyze(content: str) -> dict:
+def analyze(content: str, mode: str = "creator") -> dict:
     findings: dict = {
         "summary": {
             "block_count": 0,
@@ -764,7 +776,7 @@ def analyze(content: str) -> dict:
     for p in prose:
         bump(p.get("severity", "warn"))
 
-    missing = check_required_sections(content, uses_actions)
+    missing = check_required_sections(content, uses_actions, mode)
     findings["missing_sections"] = missing
     findings["summary"]["missing_sections_count"] = len(missing)
     for m in missing:
@@ -813,6 +825,8 @@ def main() -> int:
     )
     parser.add_argument("prompt_file", help="Caminho do .md do prompt")
     parser.add_argument("--output", "-o", help="Salvar findings em JSON neste arquivo")
+    parser.add_argument("--mode", choices=["creator", "fixer"], default="creator",
+                        help="creator (default, estrito) ou fixer (afrouxa send_flow p/ warn)")
     args = parser.parse_args()
 
     path = Path(args.prompt_file)
@@ -821,7 +835,7 @@ def main() -> int:
         return 1
 
     content = path.read_text(encoding="utf-8")
-    findings = analyze(content)
+    findings = analyze(content, mode=args.mode)
     output = json.dumps(findings, ensure_ascii=False, indent=2)
 
     if args.output:

@@ -744,6 +744,12 @@ campos `text`, quando não vêm de tool.
 SE a validade for relativa/dinâmica ou removida — nunca "28/02" nem "válido só até
 hoje". Na dúvida → pendência (regra de negócio).
 
+**Exceção — bloco "AVISOS ATIVOS":** o espaço reservado de avisos manuais
+(promoções/feriados, ver `prompt_skeleton.md` §1.5) PODE conter datas — é conteúdo
+OPERACIONAL editado à mão pelo dono do projeto. NÃO remova esse bloco nem suas
+datas; só sinalize no relatório se houver aviso visivelmente VENCIDO (data já
+passada), para o humano atualizar.
+
 **Preço literal em exemplo JSON com tool de catálogo:** se o prompt tem tool de preço
 mas os exemplos mostram um preço real (ex.: "R$ 129,90"), troque por placeholder
 `R$ 0,00` — o LLM copia o exemplo como valor real. Preço sempre da tool.
