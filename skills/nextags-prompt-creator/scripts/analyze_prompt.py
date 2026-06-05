@@ -75,9 +75,15 @@ REQUIRED_SECTIONS = {
         "severity": "block",
         "patterns": [
             r"anti[\s-]?aluc",
-            r"(nunca|jamais|n[ãa]o)\s+invent",
-            r"(nunca|jamais|n[ãa]o)\s+assum",
-            r"(nunca|jamais|n[ãa]o)\s+confirmar?\s+(sem|aprovação)",
+            # "não/nunca/jamais (pode/deve)? inventar" — \binvent evita casar "reinventar".
+            r"(nunca|jamais|n[ãa]o)\s+(?:(?:pode|deve|podemos|devemos|posso)\s+)?\binvent",
+            r"(nunca|jamais|n[ãa]o)\s+(?:(?:pode|deve|podemos|devemos)\s+)?(assum|chut|adivinh|prometa|prometer|garant)",
+            # "É PROIBIDO inventar/prometer/garantir..."
+            r"proib\w+[^.\n]{0,40}(invent|prometer|garant|chut|adivinh|confirmar?\s+sem)",
+            r"(nunca|jamais|n[ãa]o)\s+confirmar?\s+(sem|aprova)",
+            # proxies fortes de disciplina anti-alucinação (consultar a fonte em vez de inventar)
+            r"sempre\s+consult\w+",
+            r"fonte\s+de\s+verdade",
             r"never\s+(invent|make\s+up|hallucinat)",
         ],
     },

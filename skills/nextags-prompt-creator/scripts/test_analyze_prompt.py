@@ -203,6 +203,33 @@ def test_ambiguous_image_warns():
     assert all(d.get("severity") == "warn" for d in it["details"])
 
 
+# ---- anti_alucinação: padrões ampliados (do teste de corpus) ---------
+
+def _missing_keys(f):
+    return {m["key"] for m in f["missing_sections"]}
+
+
+def test_anti_aluc_nao_pode_inventar_presente():
+    c = '{"messages":[{"message":{"text":"oi"}}]}\nÉ ESTRITAMENTE PROIBIDO prometer verificar; você não pode inventar um status.\n'
+    assert "anti_alucinacao" not in _missing_keys(ap.analyze(c))
+
+
+def test_anti_aluc_sempre_consulte_presente():
+    c = '{"messages":[{"message":{"text":"oi"}}]}\nSempre consulte a base antes de citar qualquer produto.\n'
+    assert "anti_alucinacao" not in _missing_keys(ap.analyze(c))
+
+
+def test_anti_aluc_reinventar_nao_conta():
+    # "não reinventar texto" não é anti-alucinação de dados → deve seguir faltando
+    c = '{"messages":[{"message":{"text":"oi"}}]}\nAo transferir, não reinventar texto ou lógica.\n'
+    assert "anti_alucinacao" in _missing_keys(ap.analyze(c))
+
+
+def test_anti_aluc_genuinamente_ausente():
+    c = '{"messages":[{"message":{"text":"oi, tudo bem?"}}]}\n'
+    assert "anti_alucinacao" in _missing_keys(ap.analyze(c))
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
