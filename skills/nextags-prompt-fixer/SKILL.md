@@ -119,6 +119,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | **Exemplos JSON em fence `` ```json ``** (regra #11) | Remover os fences dos exemplos. LLM em runtime copia o padrão e quebra a plataforma. |
 | Menção em prosa a `transfer_conversation_to`/`assign_conversation` | Não é violação por si só (ação válida). Se houver fluxo de transferência, SUGERIR `send_flow`; senão, deixar. Ver Regra 6. |
 | Seção obrigatória faltando | Inserir placeholder com bloco-padrão sugerido (não inventar regras de negócio) + listar como pendência. |
+| Bloco oficial ausente OU variante (prompt que usa JSON) | Verificar se o prompt produz JSON; se sim, inserir o bloco canônico LITERAL. Se já houver uma variante de formato, NORMALIZAR para o canônico SEM duplicar (uma instrução de formato só; regras do projeto vêm depois). Ver Regra 12. |
 | **Seção proibida no prompt** (Auditoria, Changelog, Pendências, TODO, Notas internas, metadata expandido `**Versão:**`, `**Data:**`) | **Remover INTEIRA do prompt**. Migrar o conteúdo pro relatório (seção "Histórico de mudanças", "Pendências para revisão humana" ou "Notas técnicas/TODO"). Ver Regra 15 em `regras_absolutas.md`. |
 | Função de transferência inventada/legada (`connect_user_to_human`, `transferir_suporte`, `Rotativo()`) | Converter pra `send_flow` + placeholder de `flow_id`; funções de DADO viram pendência (tool/MCP). Ver Regra 2b. |
 | `send_flow` SÓ-actions (NPS/descadastro/mockup/etc.) | **NÃO corrigir** — disparo silencioso é o comportamento normal de `send_flow` (Regra 10). O fluxo fala. |

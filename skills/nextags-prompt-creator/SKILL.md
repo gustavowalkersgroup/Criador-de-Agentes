@@ -285,6 +285,13 @@ regras complementares no prompt (cada agente tem suas tools, fluxos,
 persona específica), mas esse bloco vai LITERAL como ponto de partida.
 O analyzer `analyze_prompt.py` valida a presença via `bloco_oficial_nextags`.
 
+**Sempre, em TODO prompt que produz JSON** (tem `messages`/`actions`): inclua o
+bloco canônico LITERAL — **nunca uma variante no lugar dele**. As regras
+específicas do projeto (tools, fluxos, exemplos, typing `4`, botões) vêm DEPOIS do
+bloco, sem duplicar a instrução de formato. Se for EDITAR um prompt antigo que tem
+uma variante, o `nextags-prompt-fixer` normaliza para o canônico sem repetir
+(ver Regra 12 em `regras_absolutas.md`).
+
 ### 6. Roda auditoria com `analyze_prompt.py`
 
 Etapa **obrigatória**, mesmo se você está confiante. Salve o prompt
