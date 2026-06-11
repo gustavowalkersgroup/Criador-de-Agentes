@@ -1009,6 +1009,78 @@ A NexTags rejeita corpos com `tags: [...]` ou `custom_fields: {...}` diretos. Es
 
 ---
 
+## 24. Flow router NexTags que reseta `setor_agente` causa loop de transferência
+
+### O que acontece
+
+Cliente entra → flow de entrada/router NexTags força `setor_agente=<agente_default>` em toda mensagem. Quando o agente IA tenta transferir (`set_field_value setor_agente=humano` + `send_flow <router>`), o router **executa de novo** e RESETA `setor_agente` pro default ao invés de respeitar o valor "humano" que o agente acabou de setar.
+
+Resultado: o mesmo cliente recebe a mesma mensagem do agente IA várias vezes ("vou direcionar pro time", "vou confirmar com o time", "perfeito, vou te direcionar...") porque cada vez que o agente tenta transferir, o flow ressuscita ele.
+
+### Como detectar
+
+Sintoma na produção:
+- Cliente envia 1 mensagem
+- Agente envia 5-15 balões de mensagens parecidas no WhatsApp
+- Logs mostram alternância repetida: `setor_agente=humano` → `setor_agente=PEDRO` → `setor_agente=humano` → ...
+- Cada `resposta_ia` do agente contém `set_field_value setor_agente=humano + send_flow <router>` repetido
+
+Confirmado em produção Veuske 2026-06-04 — Pedro respondeu 7+ vezes pra mesma mensagem do cliente.
+
+### Causas comuns no flow
+
+1. **Flow de entrada sem condicional** — força default no início de toda mensagem, ignora estado prévio
+2. **Router com case mismatch** — `setor_agente="humano"` (lowercase) não bate com `if setor_agente == "Humano"` (capitalize), cai no default
+3. **Router com convenção mista** — agente seta `humano`, router escreve `PEDRO` ao rotear, comparações ficam inconsistentes
+
+### Fix no NexTags
+
+1. **Flow de entrada com guard**:
+   ```
+   IF setor_agente IS NULL OR EMPTY:
+     set setor_agente = "<default>"  // só na primeira vez
+   ELSE:
+     keep current value             // preserva transferências
+   ```
+
+2. **Router (`send_flow` destino) precisa de branch "humano"**:
+   ```
+   IF setor_agente == "humano":
+     atribuir fila humana, parar
+   ELIF setor_agente == "vendas":
+     rotear pra Pedro
+   ELIF setor_agente == "sac":
+     rotear pra Sophia
+   DEFAULT (não bateu nada):
+     atribuir fila humana, parar    // NÃO setar agente IA aqui
+   ```
+
+3. **Padronizar case** — escolha lowercase (`vendas`, `sac`, `humano`) e use em TODOS os pontos:
+   - Prompts dos agentes
+   - Flow de entrada
+   - Router
+   - Default values
+   - Field validators do CUF
+
+### Mitigação no prompt (defesa em profundidade)
+
+Mesmo com flow correto, adicione no prompt de TODO agente uma cláusula anti-loop:
+
+```
+🛑 ANTI-LOOP — se você já emitiu mensagem do tipo "vou direcionar"
+nas últimas 2-3 respostas: NÃO TRANSFIRA DE NOVO. Loop indica bug no
+roteamento NexTags. Responda 1 mensagem curta admitindo limitação e
+PARE de responder até o cliente mandar mensagem nova.
+```
+
+Sem isso, o agente continua tentando transferir mesmo o flow bagunçado, e o cliente vê todas as tentativas.
+
+### Confirmado em
+
+2026-06-04, Veuske Pedro. Pedro tentou transferir 7 vezes pra mesma mensagem ("quero o link pra comprar VK1000 + Couro & Tabaco" — produto que não existe como SKU único). Flow router resetava `setor_agente=PEDRO` toda vez que Pedro setava `humano`. Cliente recebeu 7+ balões idênticos no WhatsApp.
+
+---
+
 ## Lista crescente
 
 Quando descobrir novo quirk, adicione aqui com:
