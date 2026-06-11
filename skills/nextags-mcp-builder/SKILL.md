@@ -328,6 +328,7 @@ nextags-mcp-builder/
 │   ├── link_envio_pattern.md             ← 🆕 UTM obrigatório em TODOS os links
 │   ├── handoff_pattern.md                ← 🆕 transferências IA↔IA / IA↔humano (flows dedicados + resumo_pipeline)
 │   ├── model_config_checklist.md         ← 🆕 config canônica de modelo (Sonnet/temp 2/verbosity média)
+│   ├── no_hardcode_with_tools.md         ← 🆕 NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢

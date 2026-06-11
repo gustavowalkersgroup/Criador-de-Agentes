@@ -1081,6 +1081,34 @@ Sem isso, o agente continua tentando transferir mesmo o flow bagunçado, e o cli
 
 ---
 
+## 25. Shopify search casa por TOKEN inteiro — `title:*vk luxe*` e `title:*Luxe*` dão 0
+
+### O que acontece
+
+A query `title:*{termo}*` (usada nas tools de busca de produto Shopify) casa quando o termo é um **token inteiro** do título, mas FALHA com:
+- **Espaço no meio:** `title:*vk luxe*` → 0, mesmo o produto existindo como "...VKLUXE". O espaço vira separador de termos.
+- **Substring dentro de token:** `title:*Luxe*` → 0, porque "Luxe" está DENTRO do token "VKLUXE" e o índice não acha substring mid-token.
+- **Multi-palavra vira OR amplo:** `title:*refil bamboo*` → traz TODOS os refis (qualquer um com "refil" OU "bamboo"), o produto certo se perde.
+
+`title:*VK1000*` funciona porque "VK1000" é o token inteiro. Por isso VK1000 funcionava e VKLUXE não — confundiu o debug por horas no caso Veuske.
+
+### Como evitar
+
+Não dá pra consertar 100% na query (full-text plain `{termo}` resolve VKLUXE mas perde precisão em fragrância). Conserte na **descrição da tool** + prompt, instruindo o agente a montar o termo certo:
+
+- **Modelos VK:** cole o código SEM espaço/hífen. "vk luxe" → buscar `VKLUXE`; "vk 1000" → `VK1000`.
+- **Fragrâncias:** busque UMA palavra distintiva do nome, nunca "refil X". "refil bamboo" → `bamboo`; "refil couro e tabaco" → `couro tabaco`.
+
+### Como detectar
+
+Cliente pede produto que existe → tool volta `edges: []` → agente trava ("vou confirmar a referência") ou transfere. Teste a query direto no Shopify GraphQL com e sem espaço pra confirmar.
+
+### Confirmado em
+
+2026-06-11, Veuske. "VKLUXE" (uma palavra no título) não achava com "vk luxe"/"Luxe". Corrigido via descrição da tool + seção COMO BUSCAR no prompt. Ver `no_hardcode_with_tools.md`.
+
+---
+
 ## Lista crescente
 
 Quando descobrir novo quirk, adicione aqui com:
