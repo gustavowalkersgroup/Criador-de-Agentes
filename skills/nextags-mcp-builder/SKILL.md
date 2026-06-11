@@ -168,6 +168,17 @@ Sem UTM = sem atribuição = lojista não consegue medir ROI do agente IA. **Ine
 
 A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase de como montar URL. Workflows transacionais e crons concatenam o UTM no Code node antes de mandar pra NexTags.
 
+### Fase 4.45 — Se o brief inclui múltiplos agentes ou handoff humano
+
+**Leia OBRIGATORIAMENTE** `references/handoff_pattern.md` quando o brief tem:
+- 2+ agentes IA (Vendas + SAC, por exemplo)
+- Handoff IA → humano (fila de atendimento)
+- Necessidade de contexto entre agentes (`resumo_pipeline`)
+
+Padrão correto: **flows dedicados por destino** (não router genérico). Cada flow dedicado seta `setor_agente` E envia mensagem inicial. Agente IA só preenche `resumo_pipeline` e dispara o flow correto — **NÃO seta o `setor_agente`**.
+
+Evita o loop de transferência (ver Quirk #24) e dá contexto ao próximo agente. Lição cara aprendida em Veuske 2026-06-04.
+
 ### Fase 4.5 — Se o brief inclui webhooks transacionais (pedido pago/enviado/entregue, carrinho abandonado)
 
 **Leia OBRIGATORIAMENTE** `references/webhook_transactional_pattern.md` antes de gerar qualquer workflow de webhook transacional.
@@ -301,6 +312,7 @@ nextags-mcp-builder/
 │   ├── slim_response_patterns.md         ← heurísticas de slim por entidade
 │   ├── webhook_transactional_pattern.md  ← 🆕 padrão produção (dedup + retry + helpers)
 │   ├── link_envio_pattern.md             ← 🆕 UTM obrigatório em TODOS os links
+│   ├── handoff_pattern.md                ← 🆕 transferências IA↔IA / IA↔humano (flows dedicados + resumo_pipeline)
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢
