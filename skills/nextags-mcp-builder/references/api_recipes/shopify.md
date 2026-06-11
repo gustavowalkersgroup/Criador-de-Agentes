@@ -287,9 +287,111 @@ Shopify usa REST + GraphQL. **Use REST** pra MCPs de atendimento.
 - `GET /orders/{id}.json?fields=...` — detalhe
 
 ### Catálogo
-- `GET /products.json?title={termo}` — buscar por título (match parcial)
+
+⚠️ **REST `?title=X` é EXACT match, não substring.** Pra busca por palavra-chave, use **GraphQL**.
+
+- `GET /products.json?title={titulo_exato}` — match exato (raramente útil)
+- `GET /products.json?handle={handle}` — match por handle
 - `GET /products/{id}.json` — detalhe
 - `GET /products/{id}/variants.json` — variações
+
+**Pra busca por palavra-chave (substring/fulltext):** GraphQL Admin API com wildcards:
+
+```graphql
+{
+  products(first: 5, query: "title:*VK100*") {
+    edges {
+      node {
+        id title handle status productType
+        variants(first: 1) {
+          edges { node { price availableForSale inventoryQuantity } }
+        }
+      }
+    }
+  }
+}
+```
+
+⚠️ **Wildcards `*X*` são OBRIGATÓRIOS** — `title:VK100` (sem wildcards) retorna 0 resultados no GraphQL. `title:*VK100*` retorna matches por substring.
+
+POST `https://{shop}.myshopify.com/admin/api/{version}/graphql.json` com body `{"query": "..."}` — autenticação igual REST (header `X-Shopify-Access-Token`).
+
+## 🛍️ Tools de catálogo pra Vendas (padrão Veuske 2026-06-02)
+
+Quando o cliente tem agente de **VENDAS** que precisa indicar produtos (e enviar links com UTM), o MCP Shopify deve expor essas 3 tools de catálogo:
+
+### 1. `buscar_produto_<cliente>(termo)` — descoberta por palavra-chave
+
+GraphQL com wildcards. Cobre 90% dos casos.
+
+```ts
+{
+  type: 'n8n-nodes-base.httpRequestTool',
+  version: 4.4,
+  config: {
+    name: 'buscar_produto_<cliente>',
+    parameters: {
+      toolDescription: 'Busca produtos no catálogo por palavra-chave (match parcial no título). Use SEMPRE antes de mandar link...',
+      method: 'POST',
+      url: 'https://<shop>.myshopify.com/admin/api/2025-01/graphql.json',
+      authentication: 'none',
+      sendHeaders: true,
+      headerParameters: { parameters: [
+        { name: 'X-Shopify-Access-Token', value: 'shpat_<32-hex>' },
+        { name: 'Content-Type', value: 'application/json' },
+      ]},
+      sendBody: true,
+      specifyBody: 'json',
+      jsonBody: `={ "query": "{ products(first: 5, query: \\"title:*{{ $fromAI('termo', 'palavra-chave', 'string') }}*\\") { edges { node { id title handle status productType variants(first: 1) { edges { node { price availableForSale } } } } } } }" }`,
+      options: { response: { response: { neverError: true } } },
+    }
+  }
+}
+```
+
+### 2. `obter_produto_<cliente>(handle)` — detalhe + todas as variantes
+
+Quando cliente quer saber "esse produto vem em quais tamanhos?", "qual o preço do 1L?", etc.
+
+```graphql
+{
+  productByHandle(handle: "X") {
+    id title handle descriptionHtml productType status
+    variants(first: 20) {
+      edges { node { id title price availableForSale inventoryQuantity sku } }
+    }
+  }
+}
+```
+
+### 3. `listar_<categoria>_<cliente>` — listagem por categoria (sem param)
+
+Quando cliente pede sugestão ("quais fragrâncias vocês têm?"). Usar `title:*<palavra-chave-categoria>*`.
+
+```graphql
+{ products(first: 50, query: "title:*Refil*") { edges { ... } } }
+```
+
+### Padrão de URL pra envio (UTM obrigatório)
+
+O agente monta o link assim:
+
+```
+https://<dominio-loja>.com.br/products/{handle}?utm_source=whatsapp&utm_medium=<agente_origem>&utm_campaign=<campanha>
+```
+
+Exemplo Veuske:
+```
+https://veuske.com.br/products/kit-equipamento-vk100-1l-fragrancia?utm_source=whatsapp&utm_medium=pedro_vendas&utm_campaign=indicacao_consultiva
+```
+
+### Regras do tool description pra o agente seguir
+
+Sempre incluir nas descrições:
+- "NUNCA invente URL ou cite a homepage"
+- "Monte a URL como `https://<dominio>/products/{handle}?utm_source=...&utm_medium=...&utm_campaign=...`"
+- "NUNCA indique produto com `availableForSale: false`"
+- "Use match parcial — `kit VK100 1L` retorna mais opções que `VK100`"
 
 ## 🛡️ Operações → endpoints (validadas em produção)
 
@@ -297,6 +399,9 @@ Shopify usa REST + GraphQL. **Use REST** pra MCPs de atendimento.
 |---|---|---|
 | `buscar_cliente(phone)` | `GET /customers/search.json?query=phone:{phone}&limit=1&fields=id,first_name,last_name,email,phone` | retorna `{customers: [{...}]}` |
 | `listar_pedidos(customer_id)` | `GET /customers/{customer_id}/orders.json?status=any&limit=10&fields=...` | retorna `{orders: [{...}]}` |
+| `buscar_produto_<cliente>(termo)` | `POST /graphql.json` com `products(first:5, query:"title:*{termo}*")` | substring search via GraphQL wildcard |
+| `obter_produto_<cliente>(handle)` | `POST /graphql.json` com `productByHandle(handle:"{handle}")` | todas variantes + estoque |
+| `listar_<categoria>_<cliente>` | `POST /graphql.json` com `products(first:50, query:"title:*<categoria>*")` | catálogo por palavra-chave |
 | `obter_pedido(order_id)` | `GET /orders/{order_id}.json?fields=...` | `order_id` é o `id` numérico interno |
 | `buscar_produto(query)` | `GET /products.json?title={query}` | match parcial por título |
 | `obter_produto(product_id)` | `GET /products/{id}.json` | — |
@@ -311,7 +416,8 @@ Shopify usa REST + GraphQL. **Use REST** pra MCPs de atendimento.
 - **`financial_status` valores:** `paid`, `pending`, `refunded`, `partially_refunded`, `voided`.
 - **`fulfillment_status` valores:** `null` (aguardando envio), `fulfilled` (enviado), `partial`.
 - **`name` vs `id`:** `name` = `"#11488"` (exibir pro cliente, sempre com `#`); `id` = numérico grande tipo `6942885806296` (usar em chamadas à API).
-- **Busca por título:** `?title=ferritin` retorna match parcial — funciona, diferente de outras APIs.
+- **Busca REST por título:** `GET /products.json?title=X` faz **match EXATO**, não substring (confirmado Veuske 2026-06-02). Pra fulltext use GraphQL com `query: "title:*X*"` (wildcards obrigatórios).
+- **GraphQL search precisa de wildcards:** `query: "title:VK100"` retorna 0; `query: "title:*VK100*"` retorna matches por substring. Sem `*` o GraphQL trata como busca exata.
 - **Busca por telefone:** `query=phone:31983635636` — dígitos sem `+55`, sem parênteses. Retorna `{customers: []}` (array, mesmo sem resultados).
 - **Busca por número de pedido:** `query=name=%23{numero}` — sempre com `%23` (URL encoding do `#`).
 - **Rastreio por fulfillment:** `order.fulfillments[0].tracking_number` + `tracking_urls[0]` — null até despacho. Use `estimated_delivery_at` do fulfillment como alternativa.
