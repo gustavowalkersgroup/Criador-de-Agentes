@@ -125,6 +125,47 @@ const cartUrl = cart.spreadsheet.data.purchase_url +
 
 ---
 
+## 🚨 Anti-alucinação de handle — sem fallback hardcoded
+
+**Lição cara da Veuske (2026-06-02):** ter "fallback" de handles hardcoded no prompt do agente é receita pra alucinação.
+
+Caso real:
+- Prompt do Pedro tinha fallback: `VK50/VK100/.../VK1000/VKLuxe → aromatizador-automatico-marketing-olfativo-vk{numero}`
+- Pedro pulou a tool e usou o template direto → gerou `aromatizador-automatico-marketing-olfativo-vk1000`
+- URL real na Shopify era `...-vk-1000` (com hífen). **404 entregue ao cliente.**
+
+Por quê: handles do Shopify (e outras plataformas) **não seguem padrão previsível**. Lojista renomeia produto, slugs ficam com sufixo `-copy`, alguns têm hífens estranhos, outros não. Adivinhar é roleta russa.
+
+### Regra inegociável
+
+> Tool description NUNCA contém **fallback de handle/slug hardcoded**.
+>
+> Se a tool retornar vazio, o agente:
+> 1. Tenta 2-3 variações do termo (palavra-chave mais curta, ortografia alternativa)
+> 2. Se ainda vazio: **NÃO inventa link** — diz "deixa eu confirmar e já te volto" e transfere pro humano
+
+### Por que NÃO ter fallback
+
+| Argumento a favor de fallback | Por que rejeitar |
+|---|---|
+| "Caso a tool falhe, o agente pode mandar algo" | Mandar URL quebrada é PIOR que não mandar nada. Cliente perde confiança. |
+| "Lista pequena de produtos não muda" | Lojista renomeia/cria/arquiva produto sem avisar. Fallback fica desatualizado. |
+| "Economia de chamada de API" | Tool é barata. Confiabilidade vale 100x mais que 100ms. |
+| "IA fica mais rápida com cache mental" | IA confunde fallback com regra geral e nunca chama a tool. |
+
+### Fallback ACEITÁVEL: handle bugado documentado individualmente
+
+A única exceção é documentar **casos específicos confirmados** onde o handle não bate com o título:
+
+```
+⚠️ Quirks de handle confirmados:
+- VK250 → o handle real é "vk150" (não vk250). Tool retorna isso, use exatamente.
+```
+
+Mas isso é **info, não template gerador**. Não vira receita pra adivinhar handles novos.
+
+---
+
 ## 🚫 Antipadrões — NUNCA fazer
 
 | ❌ Errado | ✅ Certo |
