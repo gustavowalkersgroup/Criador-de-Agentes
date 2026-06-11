@@ -239,6 +239,20 @@ Salva relatório em `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`
   - **Se cliente também precisa de prompt:** "use `nextags-prompt-creator` em seguida — passa nome da loja, site, descrição do negócio"
   - **Se infra é pra plugar num prompt existente:** "URL do MCP acima — configura na NexTags como conector"
 
+### Fase 8 — Checklist de config de modelo (OBRIGATÓRIO antes de "pronto")
+
+**Leia OBRIGATORIAMENTE** `references/model_config_checklist.md` e passe pelo user a config canônica do agente no NexTags ANTES de marcar projeto entregue:
+
+- Modelo: **Claude Sonnet 4.6** (ou GPT 5.4 não-mini) — NUNCA "mini" com prompt longo
+- Temperature: **2** (escala 0-10) — máximo 3
+- Verbosity: média
+- Reasoning: alta
+- Max tokens: máximo
+
+Sintomas de config errada (agente pula tool, parafraseia 7x, inventa dado, loop de transferência) custam mais horas pra debugar do que mudar config corretamente no setup. Lição cara aprendida na Veuske 2026-06-11: temp 8 + GPT mini fez Pedro mandar 404 pro cliente e travar em loop. Mudou pra temp 2 + Sonnet 4.6 → resolvido no primeiro teste.
+
+**Não marque entregue sem confirmar config com o user.**
+
 ## 📜 Princípios
 
 ### Agilidade > paranoia com credenciais
@@ -313,6 +327,7 @@ nextags-mcp-builder/
 │   ├── webhook_transactional_pattern.md  ← 🆕 padrão produção (dedup + retry + helpers)
 │   ├── link_envio_pattern.md             ← 🆕 UTM obrigatório em TODOS os links
 │   ├── handoff_pattern.md                ← 🆕 transferências IA↔IA / IA↔humano (flows dedicados + resumo_pipeline)
+│   ├── model_config_checklist.md         ← 🆕 config canônica de modelo (Sonnet/temp 2/verbosity média)
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢
