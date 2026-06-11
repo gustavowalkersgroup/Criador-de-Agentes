@@ -285,6 +285,14 @@ regras complementares no prompt (cada agente tem suas tools, fluxos,
 persona específica), mas esse bloco vai LITERAL como ponto de partida.
 O analyzer `analyze_prompt.py` valida a presença via `bloco_oficial_nextags`.
 
+**⚙️ OBRIGATÓRIO se o agente tem TOOLS/MCP — cláusula "function call ≠ saída JSON":**
+
+Logo APÓS o bloco oficial, em todo agente com tools/function-calling, inclua:
+
+> ⚙️ A regra "retorne só JSON" vale para a sua MENSAGEM ao cliente — NÃO impede você de chamar ferramentas. Chamar uma tool (function call) é um canal SEPARADO: você chama a função, recebe o resultado, e só então monta o JSON da mensagem. Function call nunca é "texto fora do JSON" e nunca viola o formato. Se você tem ferramentas e precisa de um dado (preço, produto, pedido), CHAME a função — é o esperado. Ferramentas são reais e chamáveis, não "conceito".
+
+Sem essa cláusula, o "só JSON" faz o modelo concluir que **não pode emitir function call** → para de chamar as tools (caso real Veuske 2026-06-11: log da OpenAI mostrou o agente raciocinando "'Return only JSON' implies I shouldn't call a tool function" → 0 tool calls em 5 modelos). Detalhe: existe uma 2ª camada — se a plataforma forçar `response_format: json_object` na chamada da API, nenhum prompt resolve; isso é do lado NexTags. Mas a cláusula resolve a camada do prompt.
+
 **Sempre, em TODO prompt que produz JSON** (tem `messages`/`actions`): inclua o
 bloco canônico LITERAL — **nunca uma variante no lugar dele**. As regras
 específicas do projeto (tools, fluxos, exemplos, typing `4`, botões) vêm DEPOIS do

@@ -192,6 +192,9 @@ Regras:
 5 - Sempre retorne somente JSON válido. Não retornar explicações, comentários, markdown ou qualquer texto fora do JSON.
 ```
 
+> ⚙️ **INCLUIR SEMPRE QUE O AGENTE TIVER TOOLS/MCP — Chamar ferramenta ≠ saída JSON:**
+> A regra "retorne só JSON" acima vale para a sua **mensagem final ao cliente** — ela **NÃO** te impede de chamar ferramentas. Chamar uma tool (function call) é um **canal separado**: você chama a função, recebe o resultado, e **só então** monta o JSON da mensagem. Uma function call **nunca** é "texto fora do JSON" e **nunca** viola o formato. Se você tem ferramentas disponíveis e precisa de um dado (preço, produto, pedido, etc.), **CHAME a função** — é exatamente o que se espera. Nunca trate as ferramentas como "conceito": elas são reais e chamáveis. Use as funções disponíveis no seu contexto, independente do nome técnico exato.
+
 ### Regras complementares (adicionais ao bloco oficial)
 
 ```

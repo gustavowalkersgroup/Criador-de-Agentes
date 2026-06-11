@@ -629,6 +629,36 @@ def check_text_outside_json_instruction(content: str) -> bool:
     return any(s in cl for s in signals)
 
 
+def check_tool_call_clarification(content: str) -> list[dict]:
+    """Se o agente tem tools/MCP, o prompt PRECISA esclarecer que function call
+    != saida JSON. Sem isso, o "so JSON" faz o modelo concluir que nao pode
+    emitir function call e ele para de chamar as tools (caso Veuske 2026-06-11:
+    log da OpenAI mostrou o agente raciocinando exatamente isso -> 0 tool calls).
+    So aplica se o prompt tambem tem a instrucao 'so JSON' (senao nao ha conflito)."""
+    low = content.lower()
+    if not check_text_outside_json_instruction(content):
+        return []
+    has_tools = bool(re.search(
+        r'(function\s*call|tool\s*call|cham\w+\s+(a\s+)?(tool|ferramenta|fun[cç][aã]o)|'
+        r'\bmcp\b|\b(buscar|listar|obter|consultar)_[a-z]{3,}|ferramentas?\s+dispon)',
+        low))
+    if not has_tools:
+        return []
+    has_clar = bool(re.search(
+        r'(function\s*call|chamar\s+(a\s+)?(tool|ferramenta|fun[cç][aã]o)).{0,90}'
+        r'(canal\s+separad|n[aã]o\s+(impede|viola)|n[aã]o\s+[eé]\s+["\']?texto\s+fora|≠|canal)',
+        low, re.DOTALL))
+    if has_clar:
+        return []
+    return [{
+        "type": "missing_tool_call_clarification",
+        "severity": "warn",
+        "label": ('Agente tem tools/MCP + instrucao "so JSON" mas falta a clausula '
+                  '"function call != saida JSON" -> o "so JSON" pode suprimir as tool '
+                  'calls (caso Veuske 2026-06-11). Inserir a clausula apos o bloco oficial.'),
+    }]
+
+
 # ----------------------------------------------------------------------
 # Orquestração
 # ----------------------------------------------------------------------
@@ -797,6 +827,13 @@ def analyze(content: str, mode: str = "creator") -> dict:
         bump(fm.get("severity", "warn"))
 
     findings["json_only_instruction_present"] = check_text_outside_json_instruction(content)
+
+    tool_clar = check_tool_call_clarification(content)
+    findings["missing_tool_call_clarification"] = tool_clar
+    findings["summary"]["missing_tool_call_clarification_count"] = len(tool_clar)
+    for tc in tool_clar:
+        bump(tc.get("severity", "warn"))
+
     return findings
 
 

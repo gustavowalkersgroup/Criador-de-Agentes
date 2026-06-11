@@ -631,6 +631,18 @@ canônica que o time NexTags fornece como referência oficial.
 **Não parafrasear o bloco em si:** o texto canônico vai literal; só o conteúdo
 ESPECÍFICO do projeto vem depois.
 
+### ⚙️ OBRIGATÓRIO quando o agente tem TOOLS/MCP — esclarecer "function call ≠ saída JSON"
+
+**Regra:** se o agente tem tools (MCP, function calling), **logo após** o bloco oficial DEVE vir uma cláusula esclarecendo que chamar ferramenta é um canal separado e NÃO viola o "só JSON". Sem isso, o modelo interpreta "retorne só JSON / nada fora do JSON" como **"proibido emitir function call"** e para de chamar as tools — fingindo, qualificando em loop ou fabricando dado.
+
+**Texto a inserir (após o bloco oficial):**
+
+> ⚙️ A regra "retorne só JSON" vale para a sua MENSAGEM ao cliente — NÃO impede você de chamar ferramentas. Chamar uma tool (function call) é um canal SEPARADO: você chama a função, recebe o resultado, e só então monta o JSON da mensagem. Function call nunca é "texto fora do JSON" e nunca viola o formato. Se você tem ferramentas e precisa de um dado (preço, produto, pedido), CHAME a função — é o esperado. Ferramentas são reais e chamáveis, não "conceito".
+
+**Detecção:** prompt tem tools/MCP (menciona function/tool/MCP, ou `analyze_prompt.py` marca tool-uso) MAS não tem essa cláusula → flag e inserir.
+
+**Why (caso real Veuske 2026-06-11):** o log de reasoning da OpenAI mostrou o agente concluindo *"the instruction 'Return only JSON' implies that I shouldn't call a tool function directly"* e *"tool might just be a mental model, not actual function calls"*. Resultado: 0 tool calls em 5 modelos diferentes. A causa-raiz tinha 2 camadas — (1) este texto do prompt suprimindo a chamada [corrigível aqui] e (2) possível `response_format: json_object` forçado na API NexTags [fora do prompt, lado da plataforma]. Esta cláusula resolve a camada 1. Ver [[no-hardcode-with-tools]] e quirk de tool-call suprimido.
+
 ---
 
 ## 11. Exemplos JSON envolvidos em fences markdown (`` ```json ``)
