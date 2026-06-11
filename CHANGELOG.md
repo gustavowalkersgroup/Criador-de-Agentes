@@ -122,5 +122,6 @@ end-to-end. **Todas as mudanças são aditivas / não-quebra.**
 - Instalador (`install.ps1` / `install.sh`) e correção do erro de PowerShell com
   stderr do git.
 
+[1.1.1]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.1
 [1.1.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.0
 [1.0.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.0.0
