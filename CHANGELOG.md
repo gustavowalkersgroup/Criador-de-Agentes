@@ -5,7 +5,7 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [1.2.0] - 2026-06-11
+## [1.1.1] - 2026-06-11
 
 Adiciona a 5ª skill, **`nextags-webchat-tester`**, nascida de um caso real: dirigir o
 agente publicado ao vivo pelo webchat (via WebSocket) para validar mudanças na infra
@@ -27,7 +27,7 @@ de verdade — não só simular o prompt em contexto.
   dinamicamente; o webchat é público (sem token/credencial).
 
 ### Alterado
-- `plugin.json` / `marketplace.json`: versão **1.2.0**; descrição passa de 4 para 5 skills.
+- `plugin.json` / `marketplace.json`: versão **1.1.1**; descrição passa de 4 para 5 skills.
 - README: tabela, instalação, uso e árvore do repo atualizados para 5 skills.
 
 ## [1.1.0] - 2026-06-05
