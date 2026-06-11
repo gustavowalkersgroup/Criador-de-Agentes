@@ -154,15 +154,19 @@ Todos os `create_workflow_from_code` devem incluir o `folderId` da pasta do clie
 - Cron de **campanha** (D+80 refil, reativação, recuperação)
 - Qualquer fluxo onde o cliente recebe URL clicável da loja
 
-**Padrão obrigatório** em todos os casos:
+**Padrão obrigatório** em todos os casos (já com valores hardcoded por cliente):
 
 ```
-https://<dominio>/products/{handle}?utm_source=whatsapp&utm_medium=<agente>&utm_campaign=<campanha>
+https://<dominio-do-cliente>/products/{handle}?utm_source=whatsapp&utm_medium=<nome_agente>_<funcao>&utm_campaign=<contexto>
 ```
+
+Exemplo Veuske: `https://veuske.com.br/products/kit-vk100/?utm_source=whatsapp&utm_medium=pedro_vendas&utm_campaign=indicacao_consultiva`
 
 Sem UTM = sem atribuição = lojista não consegue medir ROI do agente IA. **Inegociável.**
 
-A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase de como montar URL (ver `link_envio_pattern.md`). Workflows transacionais e crons concatenam o UTM no Code node antes de mandar pra NexTags.
+⚠️ **Cuidado com placeholders.** A tool description vai pra IA em runtime. Hardcode TODOS os valores (`dominio`, `medium`, `campaign`) na string da description — só `{handle}` permanece como placeholder (porque ESSE valor vem do retorno da tool). Ver §"Distinção crítica" em `link_envio_pattern.md`.
+
+A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase de como montar URL. Workflows transacionais e crons concatenam o UTM no Code node antes de mandar pra NexTags.
 
 ### Fase 4.5 — Se o brief inclui webhooks transacionais (pedido pago/enviado/entregue, carrinho abandonado)
 

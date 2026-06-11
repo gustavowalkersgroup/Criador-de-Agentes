@@ -57,17 +57,47 @@ Com UTM:
 
 ## 🛠️ Como aplicar no MCP / workflow
 
+> ⚠️ **DISTINÇÃO CRÍTICA — leia antes de copiar exemplos**
+>
+> Neste arquivo, `<agente>`, `<dominio>`, `<campanha>` são **placeholders pra você (Claude/quem está construindo)**, não pra IA em runtime.
+>
+> Quando você for escrever a tool description que vai pro MCP, **substitua TODOS os placeholders por valores literais hardcoded** apropriados ao cliente.
+>
+> A IA de runtime (Pedro, Sophia, etc.) **não sabe** o que é `<agente>` — se ela ler `utm_medium=<agente>` na tool description, vai mandar literalmente `utm_medium=<agente>` na URL. URL quebrada, atribuição zero.
+
 ### Caso 1: Tool de catálogo retorna `handle` → agente monta a URL
 
-Tool description tem que dizer **literalmente**:
+A tool description tem que conter o template **JÁ COM TUDO HARDCODED** pro cliente específico:
 
+❌ **ERRADO** (placeholders crus que vão pra IA):
 ```
-Pra mandar o link ao cliente, monte sempre como:
-https://<dominio>/products/{handle}?utm_source=whatsapp&utm_medium=<agente>&utm_campaign=<campanha>
-onde {handle} vem do campo 'handle' do produto retornado.
+Monte a URL como: https://<dominio>/products/{handle}?utm_source=whatsapp&utm_medium=<agente>&utm_campaign=<campanha>
 ```
 
-O agente é quem concatena. Não tente fazer no n8n com tool — vira fricção.
+✅ **CERTO** (Veuske Pedro — tudo literal):
+```
+Monte a URL como: https://veuske.com.br/products/{handle}?utm_source=whatsapp&utm_medium=pedro_vendas&utm_campaign=indicacao_consultiva
+```
+
+✅ **CERTO** (cliente fictício "Mayuí Fit Wear" Lia Vendas):
+```
+Monte a URL como: https://mayuifitwear.com.br/produto/{slug}?utm_source=whatsapp&utm_medium=lia_vendas&utm_campaign=indicacao_consultiva
+```
+
+Apenas `{handle}` / `{slug}` permanece como placeholder na tool description — porque ESSE valor vem do retorno da tool em runtime. Tudo o resto é literal.
+
+**O agente é quem concatena.** Não tente fazer no n8n com tool — vira fricção.
+
+### Como escolher `utm_medium` e `utm_campaign` pro cliente
+
+Quando você for construir o MCP de um cliente novo:
+
+1. **Liste os agentes que vão enviar link** (geralmente 1-3 por cliente). Ex: Pedro (vendas), Sophia (SAC).
+2. **Defina `utm_medium` por agente** — formato `<nome_lowercase>_<funcao>`. Ex: `pedro_vendas`, `sophia_sac`, `lia_vendas`.
+3. **Defina 1 `utm_campaign` default por agente** — o contexto principal do envio. Ex: Pedro = `indicacao_consultiva`; Sophia geralmente não envia link, mas se enviar (upsell pós-venda), pode ser `pos_venda_upsell`.
+4. **Hardcode esses 2 valores na tool description** — não peça pra IA escolher.
+
+Se o agente envia link em **múltiplos contextos** (raro), liste no prompt do agente quais `utm_campaign` usar e quando. Mas mantém o `utm_medium` fixo.
 
 ### Caso 2: Webhook transacional dispara fluxo com link
 
