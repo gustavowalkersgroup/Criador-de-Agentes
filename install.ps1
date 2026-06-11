@@ -1,4 +1,4 @@
-# install.ps1 — instala as 4 skills NexTags no ~/.claude/skills/ no Windows.
+# install.ps1 — instala as 5 skills NexTags no ~/.claude/skills/ no Windows.
 # Uso: irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 #      ou: .\install.ps1 (rodando localmente após clone)
 
@@ -8,7 +8,7 @@
 $ErrorActionPreference = "Continue"
 
 $RepoUrl = "https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder")
+$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester")
 $TargetDir = Join-Path $env:USERPROFILE ".claude\skills"
 
 function Write-Status {
@@ -18,7 +18,7 @@ function Write-Status {
 }
 
 Write-Host "╔════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║   NexTags Tools — Instalação de 4 Skills      ║" -ForegroundColor Green
+Write-Host "║   NexTags Tools — Instalação de 5 Skills      ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 
@@ -144,6 +144,7 @@ Write-Host "  /nextags-prompt-creator   # gerar prompt do zero"
 Write-Host "  /nextags-prompt-fixer     # auditar/corrigir prompt"
 Write-Host "  /nextags-json-fixer       # validar saída JSON do agente"
 Write-Host "  /nextags-mcp-builder      # construir MCP no n8n"
+Write-Host "  /nextags-webchat-tester   # testar o agente publicado no webchat"
 Write-Host ""
 Write-Host "Backup das skills anteriores (se existirem): *.bak na mesma pasta."
 
