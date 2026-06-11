@@ -1,6 +1,6 @@
 # NexTags Tools — Suite de Skills para Claude Code
 
-Coleção de 4 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
+Coleção de 5 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
 
 | Skill | O que faz |
 |---|---|
@@ -8,6 +8,7 @@ Coleção de 4 skills profissionais para acelerar a criação, auditoria e corre
 | `nextags-prompt-fixer` | Audita/corrige prompts existentes contra as Regras Absolutas da plataforma. Detecta JSON inválido, ações proibidas, markdown vazado, placeholders genéricos, seções de meta-documentação no prompt. |
 | `nextags-json-fixer` | Valida e corrige a SAÍDA JSON gerada pelo agente em runtime. Útil quando o bot retorna JSON quebrado, com fence ```json em volta, sem `messages`, etc. |
 | `nextags-mcp-builder` | Constrói o servidor MCP no n8n que liga o agente IA às APIs do cliente (Tray, VTEX, Shopify, Bling, Martz, etc.). |
+| `nextags-webchat-tester` | Testa o agente PUBLICADO ao vivo, dirigindo o WebSocket do webchat por Python (sem extensão de browser). Exercita a stack real (NexTags + MCP + backend); pega erro de MCP, handoff, transferência fantasma, renderização de card. |
 
 ---
 
@@ -19,7 +20,7 @@ Coleção de 4 skills profissionais para acelerar a criação, auditoria e corre
 # Adiciona o marketplace
 /plugin marketplace add gustavowalkersgroup/Criador-de-Agentes
 
-# Instala todas as 4 skills de uma vez
+# Instala todas as 5 skills de uma vez
 /plugin install nextags-tools@nextags-marketplace
 ```
 
@@ -37,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agen
 irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 ```
 
-Os scripts copiam as 4 skills pra `~/.claude/skills/` e fazem backup das versões anteriores (se existirem) com sufixo `.bak`.
+Os scripts copiam as 5 skills pra `~/.claude/skills/` e fazem backup das versões anteriores (se existirem) com sufixo `.bak`.
 
 ### Opção 3 — Instalação manual (controle total)
 
@@ -59,13 +60,14 @@ cp -r skills/* ~/.claude/skills/
 
 ## 🎯 Como usar
 
-Após instalar, reinicia o Claude Code e usa qualquer uma das 4 skills:
+Após instalar, reinicia o Claude Code e usa qualquer uma das 5 skills:
 
 ```bash
 /nextags-prompt-creator   # gerar prompt do zero
 /nextags-prompt-fixer     # auditar/corrigir prompt existente
 /nextags-json-fixer       # validar JSON de saída do agente
 /nextags-mcp-builder      # construir MCP no n8n pra ligar APIs
+/nextags-webchat-tester   # testar o agente publicado ao vivo no webchat
 ```
 
 Cada skill responde a triggers em português e inglês — pode chamar diretamente ou descrever a tarefa naturalmente.
@@ -95,7 +97,8 @@ Criador-de-Agentes/
 │   ├── nextags-prompt-creator/
 │   ├── nextags-prompt-fixer/
 │   ├── nextags-json-fixer/
-│   └── nextags-mcp-builder/
+│   ├── nextags-mcp-builder/
+│   └── nextags-webchat-tester/
 ├── install.sh                   # instalador Linux/macOS
 ├── install.ps1                  # instalador Windows
 └── README.md

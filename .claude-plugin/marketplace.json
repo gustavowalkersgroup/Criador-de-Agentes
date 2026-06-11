@@ -5,15 +5,15 @@
     "url": "https://github.com/gustavowalkersgroup"
   },
   "metadata": {
-    "version": "1.1.0",
-    "description": "Marketplace oficial das ferramentas NexTags para Claude Code — criação, auditoria e correção de agentes de IA da plataforma Messenger Messaging Platform."
+    "version": "1.2.0",
+    "description": "Marketplace oficial das ferramentas NexTags para Claude Code — criação, auditoria, correção e teste de agentes de IA da plataforma Messenger Messaging Platform."
   },
   "plugins": [
     {
       "name": "nextags-tools",
       "source": ".",
-      "description": "Suite completa de 4 skills NexTags: prompt-creator, prompt-fixer, json-fixer, mcp-builder.",
-      "version": "1.1.0",
+      "description": "Suite completa de 5 skills NexTags: prompt-creator, prompt-fixer, json-fixer, mcp-builder, webchat-tester.",
+      "version": "1.2.0",
       "category": "ai-agents",
       "keywords": ["nextags", "atendimento", "chatbot", "prompt-engineering"]
     }

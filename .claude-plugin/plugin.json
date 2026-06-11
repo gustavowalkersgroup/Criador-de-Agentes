@@ -1,7 +1,7 @@
 {
   "name": "nextags-tools",
-  "version": "1.1.0",
-  "description": "Suite de 4 skills para acelerar a criação, auditoria e correção de agentes de IA da plataforma NexTags Messenger Messaging Platform. Inclui: gerador de prompts (prompt-creator), auditor/linter de prompts (prompt-fixer), validador de JSON de saída (json-fixer) e construtor de MCPs (mcp-builder).",
+  "version": "1.2.0",
+  "description": "Suite de 5 skills para acelerar a criação, auditoria, correção e teste de agentes de IA da plataforma NexTags Messenger Messaging Platform. Inclui: gerador de prompts (prompt-creator), auditor/linter de prompts (prompt-fixer), validador de JSON de saída (json-fixer), construtor de MCPs (mcp-builder) e tester de webchat ao vivo (webchat-tester).",
   "author": {
     "name": "Gustavo Walkers Group",
     "url": "https://github.com/gustavowalkersgroup"
@@ -16,6 +16,8 @@
     "messenger-messaging-platform",
     "prompt-engineering",
     "json-validation",
-    "mcp"
+    "mcp",
+    "webchat",
+    "testing"
   ]
 }
