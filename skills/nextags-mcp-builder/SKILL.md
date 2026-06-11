@@ -145,6 +145,25 @@ Antes de criar, **valida com `validate_workflow`** do MCP n8n. Depois cria com `
 
 Todos os `create_workflow_from_code` devem incluir o `folderId` da pasta do cliente.
 
+### Fase 4.4 — REGRA UNIVERSAL: links com UTM (TODOS os clientes)
+
+**Leia OBRIGATORIAMENTE** `references/link_envio_pattern.md` SEMPRE que o brief mencionar:
+
+- Agente de **Vendas** (vai enviar link de produto/kit)
+- Webhook transacional com **link no payload** (pedido pago, carrinho abandonado, recompra)
+- Cron de **campanha** (D+80 refil, reativação, recuperação)
+- Qualquer fluxo onde o cliente recebe URL clicável da loja
+
+**Padrão obrigatório** em todos os casos:
+
+```
+https://<dominio>/products/{handle}?utm_source=whatsapp&utm_medium=<agente>&utm_campaign=<campanha>
+```
+
+Sem UTM = sem atribuição = lojista não consegue medir ROI do agente IA. **Inegociável.**
+
+A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase de como montar URL (ver `link_envio_pattern.md`). Workflows transacionais e crons concatenam o UTM no Code node antes de mandar pra NexTags.
+
 ### Fase 4.5 — Se o brief inclui webhooks transacionais (pedido pago/enviado/entregue, carrinho abandonado)
 
 **Leia OBRIGATORIAMENTE** `references/webhook_transactional_pattern.md` antes de gerar qualquer workflow de webhook transacional.
@@ -277,6 +296,7 @@ nextags-mcp-builder/
 │   ├── tool_descriptions_guide.md        ← descrições perfeitas pra LLM
 │   ├── slim_response_patterns.md         ← heurísticas de slim por entidade
 │   ├── webhook_transactional_pattern.md  ← 🆕 padrão produção (dedup + retry + helpers)
+│   ├── link_envio_pattern.md             ← 🆕 UTM obrigatório em TODOS os links
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢
