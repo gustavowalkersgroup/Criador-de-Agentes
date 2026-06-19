@@ -539,6 +539,12 @@ Abertura com nome: {"messages":[{"message":{"text":"Oi, {{first_name}}! Tudo bem
 Abertura sem nome: {"messages":[{"message":{"text":"Oi! Tudo bem? Como posso te ajudar?"}}]}
 ```
 
+5. **CUFs por canal e caso "Guest" (webchat):**
+   - Instagram → preferir `{{ig_user_name}}` em vez de `{{first_name}}` nesse canal.
+   - Facebook → preferir `{{page_user_name}}` em vez de `{{first_name}}` nesse canal.
+   - Webchat → `{{first_name}}` pode chegar como `"Guest"` (usuário não logado). `Guest` nunca é o nome da pessoa. Se o prompt atende webchat e usa `{{first_name}}` sem tratar o caso "Guest", **sugerir adicionar** a regra: "Se `{{first_name}}` = 'Guest' → perguntar nome + `set_field_value` pra atualizar `first_name`."
+   - `{{phone}}` em SAC: quando preenchido, pode consultar pedidos na tool sem pedir ao cliente. Se o prompt de SAC tem tool de pedidos mas não usa `{{phone}}`, sugerir como melhoria (pendência opcional).
+
 **Princípio:** use CUFs SOMENTE quando necessário. Não force `{{first_name}}` em toda mensagem — saudação e momentos-chave bastam.
 
 ---
@@ -792,3 +798,21 @@ mas os exemplos mostram um preço real (ex.: "R$ 129,90"), troque por placeholde
 - Travessão / em-dash (`—`) em campos `text` — sinal de "cara de IA"; sugerir trocar
   por vírgula, ponto ou "e". Idem diminutivos forçados ("rapidinho", "horinha").
 - Emoji 🤖 em mensagem — assume "sou bot"; sugerir remover.
+
+---
+
+## 20. Disparo / broadcast sem interação do cliente (sugerir, não bloquear)
+
+**Contexto:** na plataforma NexTags, mensagens proativas (disparos, campanhas, templates ativos) chegam como mensagens no chat. Sem a regra de disparo, a IA pode responder a um disparo que ela recebeu — causando loop ou invadindo conversa que o cliente ainda não iniciou.
+
+**Como detectar no prompt:** o prompt instrui a IA a não responder quando receber mensagem de disparo sem interação real do cliente?
+
+**Como corrigir:** se o agente atua em canais com disparos/campanhas ativos e o prompt não tem essa regra, **sugerir adicionar** como item da seção Anti-alucinação:
+
+```
+DISPARO / BROADCAST: se receber mensagem proativa (disparo, campanha, template
+ativo) sem interação real do cliente, NÃO RESPONDA. Aguarde a primeira mensagem
+genuína do cliente. Nunca invada conversa que o cliente ainda não iniciou.
+```
+
+**Prioridade:** pendência opcional — não é violação bloqueante. Listar no relatório se ausente em agente com campanhas ativas.

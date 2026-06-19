@@ -20,7 +20,7 @@
 
 | CUF | Descrição |
 |---|---|
-| `{{first_name}}` | Primeiro nome do usuário. Personalização amigável. |
+| `{{first_name}}` | Primeiro nome do usuário. Personalização amigável. ⚠️ **Webchat**: entrega `"Guest"` quando o usuário não está logado — nunca é o nome real; perguntar + `set_field_value`. **Validar** antes de usar: se for frase, empresa ou expressão religiosa, pedir o nome. |
 | `{{last_name}}` | Sobrenome. Personalização mais formal. |
 | `{{full_name}}` | Nome completo (primeiro + sobrenome). |
 | `{{email}}` | E-mail do usuário. |

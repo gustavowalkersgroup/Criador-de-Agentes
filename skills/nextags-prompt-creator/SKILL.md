@@ -121,6 +121,18 @@ Decida (pelo briefing + perguntas) entre:
   set_field_value (stage monotônico + resumo acumulativo) + checklist final.
 - **Misto (vendas + SAC)** → inclua 6B e 8B com uma regra de troca de modo.
 
+**5.1 — Projetos com 2+ IAs: crie o Roteador automaticamente.**
+
+Quando o projeto terá 2 ou mais agentes (ex.: SAC + Vendas, Vendas + Redes Sociais), um **Roteador** deve ser criado **junto, sem perguntar ao humano** — é padrão automático.
+
+O Roteador é um prompt ultraleve:
+- Saída: **1 palavra** (`vendas`, `sac`, `ignorar`, etc.) — nada mais
+- Formato: **texto puro**, sem JSON, sem tools, sem MCP
+- Detecta BOTs → `ignorar`; mas **NUNCA ignora humanos** (imagens, áudios, arquivos = humano → encaminhar)
+- Modelo: GPT-4.1 nano, temperatura `0`, verbosidade mínima, reasoning baixo
+- Personalizado para o tipo de empresa (os destinos dependem dos outros agentes)
+- Template completo em `references/prompt_skeleton.md` §8F
+
 **Eixo ortogonal — o agente tem MCP/tools de catálogo?** Decida junto com o tipo:
 - **Com MCP:** preço/estoque/disponibilidade vêm da tool (fonte de verdade); placeholder `R$ 0,00` nos exemplos.
 - **Sem MCP ("Estática Pura", ~38% dos casos reais):** NÃO prometa consulta dinâmica. Para preço/estoque/frete sem fonte: remeta ao site ou transfira — NUNCA fabrique. Gere link de busca por regra (ex.: `/search/?q=<termo>`) em vez de hardcodar URL por SKU. NUNCA hardcode preço/cupom com validade fixa ("até 28/02", "válido só hoje") — apodrece.
@@ -192,6 +204,8 @@ A plataforma NexTags tem um conjunto rico de **Custom User Fields (CUFs)** nativ
 | Uso | CUF |
 |---|---|
 | Primeiro nome do cliente | `{{first_name}}` |
+| Nome no Instagram | `{{ig_user_name}}` |
+| Nome no Facebook | `{{page_user_name}}` |
 | Nome completo | `{{full_name}}` |
 | E-mail | `{{email}}` |
 | Telefone | `{{phone}}` |
@@ -204,6 +218,10 @@ A plataforma NexTags tem um conjunto rico de **Custom User Fields (CUFs)** nativ
 | Hora local do cliente (âncora de prazo/saudação) | `{{current_user_time}}` |
 | Última mensagem | `{{last_text_input}}` |
 
+**`{{phone}}` em SAC — consulta silenciosa:** agentes de SAC podem usar `{{phone}}` para consultar pedidos na tool **sem pedir ao cliente** — desde que o campo esteja preenchido. Sempre verifique se tem valor antes de usar; se vazio, solicite o dado normalmente.
+
+**CUFs específicos da conta:** além dos campos nativos, cada conta pode ter CUFs personalizados (link de carrinho, pedidos, endereço, CPF, agendamentos, pipeline, etc.). Para descobri-los: peça ao implantador a lista de Custom Fields da conta OU extraia dos webhooks de conversas.
+
 **CUFs de ESCRITA via `set_field_value` (agentes que capturam lead/pipeline):**
 Grave dados SANITIZADOS: telefone sem `+` (`5511XXXXXXXXX`), e-mail em minúsculas,
 valores como `'379.00'` (ponto decimal, sem `R$`). Campos de classificação usam
@@ -214,9 +232,18 @@ de `send_flow` no array de actions (o flow lê os campos no momento que dispara)
 **Regra de Contexto Temporal:** quando houver qualquer lógica de prazo ou saudação
 por horário, use `{{current_user_time}}` e proíba o agente de inventar data/hora.
 
-**Validação de `{{first_name}}`:** antes de saudar, valide o valor — se for frase, empresa,
-número ou expressão (não um primeiro nome real), use saudação neutra ou pergunte o nome,
-para evitar "Olá, Deus é bom!".
+**Validação de nome por canal — regras críticas:**
+
+| Canal | CUF de nome | Regra especial |
+|---|---|---|
+| WhatsApp | `{{first_name}}` | Validar conteúdo (ver abaixo) |
+| Instagram | `{{ig_user_name}}` | Preferir em vez de `{{first_name}}` |
+| Facebook Messenger | `{{page_user_name}}` | Preferir em vez de `{{first_name}}` |
+| Webchat | `{{first_name}}` | Se valor = **"Guest"** → perguntar nome obrigatoriamente |
+
+⚠️ **WEBCHAT — "Guest" nunca é nome de pessoa:** o webchat preenche `{{first_name}}` = `"Guest"` quando não há usuário logado. A IA **DEVE** perguntar o nome e salvar com `{"action":"set_field_value","field_name":"first_name","value":"<nome_informado>"}`.
+
+⚠️ **Validação geral:** antes de saudar pelo nome, verifique se o valor é um primeiro nome humano real. Se for frase, nome de empresa, expressão religiosa ("Deus é fiel"), número, ou qualquer coisa fora do padrão → saudação neutra ("Oi! Tudo bem?") e/ou perguntar + `set_field_value` para atualizar. Evita "Olá, Deus é bom!".
 
 **Use somente se for necessário.** Não force `{{first_name}}` em toda mensagem — saudação inicial e momentos-chave bastam.
 

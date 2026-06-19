@@ -5,6 +5,44 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.2.0] - 2026-06-19
+
+Adiciona conhecimento de plataforma ausente nas skills de criação e correção de
+prompts: CUFs específicos por canal, regra do "Guest" no webchat, padrão de
+roteador multi-agente e regra de disparo/broadcast.
+**Todas as mudanças são aditivas / não-quebra.**
+
+### Adicionado
+
+**`nextags-prompt-creator`**
+- **CUFs por canal** na tabela de referência e nas instruções de validação:
+  `{{ig_user_name}}` (Instagram) e `{{page_user_name}}` (Facebook Messenger).
+- **Regra WEBCHAT / Guest** (§ de validação de `{{first_name}}`): webchat entrega
+  `"Guest"` quando o usuário não está logado — nunca é nome real; IA deve perguntar
+  o nome e salvar com `set_field_value`. Bloco de tabela por canal adicionado.
+- **`{{phone}}` em SAC**: nota de que o telefone do contato pode ser usado para
+  consultar pedidos silenciosamente, sem perguntar ao cliente.
+- **§5.1 Roteador automático**: quando o projeto tem 2+ IAs, criar roteador
+  automaticamente (sem perguntar ao humano). Saída: 1 palavra (texto puro, sem JSON,
+  sem tools, sem MCP). Detecta BOTs e responde "ignorar"; nunca ignora humano.
+  Imagens/áudios/arquivos = humano → rotear normalmente.
+- **§8F Roteador de multi-agente** em `prompt_skeleton.md`: template completo com
+  modelo GPT-4.1 nano, temperatura 0, verbosidade mínima, reasoning baixo.
+- **Anti-alucinação item 9** em `prompt_skeleton.md`: regra de disparo/broadcast —
+  não responder a disparos/campanhas sem interação real do cliente.
+
+**`nextags-prompt-fixer`**
+- **Regra 14 — CUFs**: item 5 com tabela de CUFs por canal (Instagram, Facebook,
+  webchat/Guest) e nota sobre `{{phone}}` em SAC.
+- **Regra 20 — Disparo/broadcast**: nova seção em `regras_absolutas.md` para
+  detectar e sugerir a regra de silêncio em agentes com campanhas ativas.
+- **Tabela rápida** em `SKILL.md`: 2 novas linhas — Guest sem tratamento / CUF
+  errado por canal; e ausência de regra de disparo/broadcast.
+
+**`nextags-prompt-creator` — `cufs_nextags.md`**
+- Linha de `{{first_name}}` atualizada com aviso inline sobre webchat/Guest e
+  regra de validação/`set_field_value`.
+
 ## [1.1.1] - 2026-06-11
 
 Adiciona a 5ª skill, **`nextags-webchat-tester`**, nascida de um caso real: dirigir o
@@ -122,6 +160,10 @@ end-to-end. **Todas as mudanças são aditivas / não-quebra.**
 - Instalador (`install.ps1` / `install.sh`) e correção do erro de PowerShell com
   stderr do git.
 
+<<<<<<< HEAD
+=======
+[1.2.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.2.0
+>>>>>>> 40c4138 (feat(skills): CUFs por canal, roteador multi-agente e regra de disparo)
 [1.1.1]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.1
 [1.1.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.0
 [1.0.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.0.0

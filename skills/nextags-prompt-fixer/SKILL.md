@@ -128,6 +128,8 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | Ordem `send_flow` antes de `set_field_value` | Reordenar: campos PRIMEIRO, `send_flow` por último (senão campos chegam vazios). Ver Regra 16. |
 | `>1` botão `web_url` / CTA >20 chars / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp). |
 | Data fixa que apodrece ("28/02", "até hoje") / preço literal em exemplo com tool | Ver Regra 18 (datas e preço literal). |
+| `{{first_name}}` = "Guest" sem tratamento (webchat) / CUF errado por canal | Sugerir: "Guest" → perguntar nome + `set_field_value`; Instagram → `{{ig_user_name}}`; Facebook → `{{page_user_name}}`. Ver Regra 14. |
+| Regra de disparo/broadcast ausente em agente com campanhas ativas | Sugerir adicionar à Anti-alucinação. Ver Regra 20. |
 
 ### 4. Versionamento do arquivo corrigido
 
