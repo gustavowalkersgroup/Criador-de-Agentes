@@ -8,14 +8,16 @@ type: tool
 
 Fabrica a **infraestrutura MCP** completa no n8n pra um cliente novo da NexTags. Recebe uns poucos inputs e entrega workflows ativos prontos pra serem consumidos por qualquer agente.
 
-## 🚨 Regra inegociável — pasta e naming no n8n
+## 🚨 Regra inegociável — pasta no n8n antes de qualquer workflow
 
-**Antes de criar qualquer workflow, criar uma pasta com o nome exato do cliente no n8n.**
+**Antes de criar qualquer workflow, confirmar a pasta do cliente no n8n.**
 
-1. Chamar `search_folders` para verificar se a pasta já existe
-2. Se não existir, criar a pasta (ex: `Veuske`, `Mayuí Fit Wear`) via `create_folder` ou equivalente
-3. Passar `folderId` em **todos** os `create_workflow_from_code` — sem exceção
-4. O **nome do cliente DEVE aparecer no nome de todos os workflows** — MCP, backends, smoke test, refresh, reset
+1. Chamar `search_folders` com o nome do cliente
+2. Se encontrar → usar o `folderId` retornado
+3. Se não encontrar → **perguntar ao usuário** antes de criar: *"Não encontrei a pasta '[Nome]' no n8n. Ela já existe com outro nome, ou devo criar agora?"*
+4. Só criar a pasta com `create_folder` após confirmação do usuário (ou se ele já tiver dito "pode criar")
+5. Passar `folderId` em **todos** os `create_workflow_from_code` — sem exceção
+6. O **nome do cliente DEVE aparecer no nome de todos os workflows** — MCP, backends, smoke test, refresh, reset
 
 Exemplos corretos:
 - `Veuske MCP` ✅
@@ -38,6 +40,29 @@ Errado:
 - Teste pós-deploy obrigatório: `curl -X POST` no endpoint deve devolver 200 + JSON-RPC `initialize` válido. Se vier 404 "did you mean DELETE?" → v1.1, corrige
 
 Detalhes técnicos completos: `references/quirks_n8n.md` §1.
+
+## 🚨 Regra inegociável — campos nativos Nextags no payload `/api/contacts`
+
+Toda vez que um workflow n8n fizer `POST https://app.nextagsai.com.br/api/contacts`, estes campos vão **diretamente no root** do JSON — **nunca** como `set_field_value` na array `actions`:
+
+| Campo raiz   | Valor                             |
+|--------------|-----------------------------------|
+| `first_name` | Primeiro nome do contato          |
+| `last_name`  | Sobrenome(s) do contato           |
+| `email`      | E-mail                            |
+| `phone`      | Telefone E164 (`+5511999999999`)  |
+
+O restante (CPF/CNPJ, número do pedido, status, valor, rastreio, etc.) vai em `actions` como `set_field_value`.
+
+```json
+// ❌ Errado — email/nome como CUF
+{ "actions": [{ "action": "set_field_value", "field_name": "ClienteEmailNS", "value": "..." }] }
+
+// ✅ Certo — campos nativos no root
+{ "first_name": "João", "last_name": "Silva", "email": "j@x.com", "phone": "+5511999999999", "actions": [...] }
+```
+
+Criar CUFs para nome/email/telefone/documento é redundante, polui o admin da NexTags e quebra filtros nativos da plataforma. Lição aprendida em neuroFood 2026-06-24.
 
 ## ⚠️ Escopo — o que essa skill faz E NÃO faz
 
@@ -307,6 +332,21 @@ LLM escolhe tool só pela descrição. Toda tool gerada deve seguir `references/
 ### Não chuta valores
 
 Doc REST mente. Sempre teste endpoint real antes de gerar tool. Aprendido na marra: Martz tem endpoints fantasma, Tray exige `%termo%`, etc.
+
+### Mínimo de workflows no n8n
+
+Antes de criar um workflow novo, pergunte: **"esse trabalho pode entrar em um workflow já existente?"**
+
+- **Webhooks:** múltiplos eventos do mesmo sistema (aprovado/enviado/entregue) → 1 único webhook com Switch/IF, não 1 workflow por evento
+- **Backends:** operações similares podem ser consolidadas com Switch (ex: `buscar_pedido` e `listar_pedidos` juntos se a lógica é próxima)
+- **Cron:** 1 refresh de token por API, não 1 por operação
+- **Smoke test:** 1 por cliente, não 1 por tool
+
+Meta por perfil:
+- Auth key fixa → **N+2** workflows (N backends + 1 MCP + 1 smoke)
+- OAuth → **N+4** workflows (adiciona refresh + reset)
+
+Qualquer coisa além disso precisa de justificativa explícita. O home do n8n não é lixeira.
 
 ### Idempotente
 
