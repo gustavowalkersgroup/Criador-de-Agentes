@@ -5,6 +5,33 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.3.0] - 2026-07-17
+
+Adiciona a 6ª skill, **`nextags-webhook-builder`**, irmã da `nextags-mcp-builder`:
+constrói e audita **webhooks/disparos transacionais** (pedido pago/enviado/entregue,
+carrinho abandonado) com dedup, `send_flow` e padrão validado por auditoria de produção.
+**Todas as mudanças são aditivas / não-quebra.**
+
+### Adicionado
+
+**`nextags-webhook-builder`** (nova skill)
+- Padrão validado por auditoria de **29 fluxos transacionais legíveis** (de 159 em 101
+  clientes) + **45 episódios de conversa**: 3 formas de roteamento (1-por-status /
+  endpoint-único-com-switch / flow-router-único) escolhidas pela emissão da plataforma;
+  webhook nativo vs polling por plataforma; dedup via Data Table; separação
+  `order_id`/`order_number`; multi-plataforma; resiliência (retry/onError/anti-429); HMAC;
+  naming de CUFs.
+- `references/padrao_transacional.md` (padrão completo + matriz de evidências) e
+  `references/antipadroes.md` (catálogo de erros reais, incl. o **antipadrão nº1**: texto
+  direto em vez de `send_flow`).
+- `assets/`: templates n8n copy-paste — `endpoint_unico.js`, `webhook_por_status.js`,
+  `polling_carrinho.js` + `_helpers.js` (formatarTelefone BR, verificarDado,
+  separarNomeSobrenome, comUTM).
+
+### Alterado
+- `plugin.json` / `marketplace.json`: versão **1.3.0**; descrição de 5 para 6 skills.
+- `install.ps1` / `install.sh`: instalam a 6ª skill + linha de uso `/nextags-webhook-builder`.
+
 ## [1.2.0] - 2026-06-19
 
 Adiciona conhecimento de plataforma ausente nas skills de criação e correção de
@@ -160,10 +187,8 @@ end-to-end. **Todas as mudanças são aditivas / não-quebra.**
 - Instalador (`install.ps1` / `install.sh`) e correção do erro de PowerShell com
   stderr do git.
 
-<<<<<<< HEAD
-=======
+[1.3.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.3.0
 [1.2.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.2.0
->>>>>>> 40c4138 (feat(skills): CUFs por canal, roteador multi-agente e regra de disparo)
 [1.1.1]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.1
 [1.1.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.0
 [1.0.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.0.0

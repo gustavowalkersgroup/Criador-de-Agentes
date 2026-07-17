@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# install.sh — instala as 5 skills NexTags no ~/.claude/skills/ sem precisar de marketplace.
+# install.sh — instala as 6 skills NexTags no ~/.claude/skills/ sem precisar de marketplace.
 # Uso: curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.sh | bash
 #      ou: bash install.sh (rodando localmente após clone)
 
 set -euo pipefail
 
 REPO_URL="https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester")
+SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder")
 TARGET_DIR="${HOME}/.claude/skills"
 
 # Cores
@@ -16,7 +16,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${GREEN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║   NexTags Tools — Instalação de 5 Skills      ║${NC}"
+echo -e "${GREEN}║   NexTags Tools — Instalação de 6 Skills      ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -81,7 +81,8 @@ echo "Como usar no Claude Code:"
 echo "  /nextags-prompt-creator   # gerar prompt do zero"
 echo "  /nextags-prompt-fixer     # auditar/corrigir prompt"
 echo "  /nextags-json-fixer       # validar saída JSON do agente"
-echo "  /nextags-mcp-builder      # construir MCP no n8n"
+echo "  /nextags-mcp-builder      # construir MCP no n8n (atendimento sob demanda)"
+echo "  /nextags-webhook-builder  # construir/auditar webhooks transacionais (disparo proativo)"
 echo "  /nextags-webchat-tester   # testar o agente publicado no webchat"
 echo ""
 echo "Backup das skills anteriores (se existirem): *.bak na mesma pasta."
