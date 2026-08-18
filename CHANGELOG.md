@@ -5,6 +5,38 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.4.0] - 2026-08-18
+
+Documenta a **mecânica de leitura dos CUFs** na `nextags-prompt-creator` — a informação
+que faltava para o gerador decidir quais campos escrever no prompt e por quê.
+**Todas as mudanças são aditivas / não-quebra.**
+
+### Adicionado
+
+**`nextags-prompt-creator`**
+- **Princípio fundamental do CUF como canal de leitura** (`SKILL.md` + `references/cufs_nextags.md`):
+  se o CUF está escrito no prompt, a IA LÊ o conteúdo; se não está, ela é CEGA para o dado.
+  A plataforma entrega ao modelo o texto já interpolado — o modelo não acessa o perfil do
+  contato. Documenta as três consequências: (a) para a IA DECIDIR com base num dado, o CUF
+  precisa estar escrito mesmo que nunca seja exibido; (b) padrão **"bloco de contexto"**
+  (CUFs no topo, só de entrada, nunca exibidos); (c) CUF "reservado para depois" não existe.
+- **Os três modos de falha de todo CUF incluído** — vazio (renderiza `"Oi, !"`), **stale**
+  (campos `last_*` guardam a última ocorrência, que pode ser de meses atrás, e a IA lê como
+  se fosse do turno atual) e **injeção** (campos que carregam texto de terceiros:
+  `last_fb_comment`, `last_commented_post_text`, `last_text_input`, `user_notes`).
+- **Tabelas de CUF por canal completas e corrigidas** — Instagram com coluna de cuidado por
+  campo; Facebook Messenger completada (`fb_chat_link`, `last_ad` e os cross-platform, que
+  faltavam). `{{total_tagged}}` e `{{total_new_tagged}}` marcados como **exclusivos do
+  Facebook** — não funcionam no Instagram.
+- **Distinção operacional entre as superfícies do Instagram:** `{{last_story_id}}` traz
+  **apenas o ID**, não o conteúdo da story — em story o agente é cego ao que a cliente vê e
+  precisa perguntar; já `{{last_commented_post_text}}` traz a legenda inteira do post. As
+  duas superfícies exigem regras diferentes.
+- **`{{first_name}}` no Instagram** vem do nome de EXIBIÇÃO do perfil, escrito pela própria
+  pessoa — passa a ser tratado como dado, nunca como instrução (junto da nota de Webchat
+  `"Guest"` que já existia).
+- Checklist de seleção de CUFs por canal antes de gerar o prompt.
+
 ## [1.3.0] - 2026-07-17
 
 Adiciona a 6ª skill, **`nextags-webhook-builder`**, irmã da `nextags-mcp-builder`:
