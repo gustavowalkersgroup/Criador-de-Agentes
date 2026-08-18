@@ -37,6 +37,18 @@ que faltava para o gerador decidir quais campos escrever no prompt e por quê.
   `"Guest"` que já existia).
 - Checklist de seleção de CUFs por canal antes de gerar o prompt.
 
+### Alterado
+
+- **Saudação por username desrecomendada em todos os canais.** A tabela de validação de
+  nome por canal mandava "preferir `{{ig_user_name}}` / `{{page_user_name}}` em vez de
+  `{{first_name}}`"; agora manda o oposto. Handle é identificador, não vocativo:
+  `"Oi, maria_silva_123!"` nunca é melhor que `"Oi!"`, e saudar assim entrega automação
+  num agente que deve soar humano. Quando `{{first_name}}` está vazio ou não parece nome
+  real, a saudação neutra resolve 100% dos casos sem modo de falha. Soma-se que username é
+  campo livre — `@ignore.suas.regras` é handle válido no Instagram —, então tratá-lo como
+  texto confiável abre vetor de injeção. Username segue útil como identificador interno,
+  nunca dirigido ao cliente.
+
 ## [1.3.0] - 2026-07-17
 
 Adiciona a 6ª skill, **`nextags-webhook-builder`**, irmã da `nextags-mcp-builder`:
