@@ -7,6 +7,34 @@ Padrão evoluído após bug de loop de transferência em produção. A v1 (agent
 
 ---
 
+## ⚠️ Leia primeiro: são DUAS camadas, e a regra é diferente em cada uma
+
+Este documento trata da camada **IA ↔ IA**. Não confunda com o handoff para fila humana.
+
+| | IA ↔ IA (qual AGENTE atende) | IA → fila humana (qual FILA recebe) |
+|---|---|---|
+| CUF | `setor_agente` | `motivo_transferencia` |
+| Quem grava | **o flow dedicado** | **a IA** |
+| Flows | **N dedicados**, 1 por destino | **UM** rotativo |
+| Lido quando | Flow de Entrada, a CADA mensagem | uma vez, no disparo |
+| Risco de loop | **sim** — o campo realimenta o roteamento | **não** — não volta para IA |
+
+O antipadrão "1 router genérico por CUF" listado abaixo vale para a **primeira** coluna.
+O bug do Veuske foi ali: `setor_agente` é relido a cada mensagem, então valor que não bate
+com nenhum branch cai no default, e default apontando para uma IA fecha o ciclo.
+
+Na segunda coluna esse vetor não existe — o rotativo entrega para gente, não para IA. Ali o
+padrão canônico **é** um flow só filtrando o CUF, com duas condições obrigatórias:
+
+1. O ramo `else` aponta para a **fila humana mais genérica** (SAC geral), nunca para uma IA.
+2. A IA grava `motivo_transferencia` em TODA transferência — o campo persiste, e valor
+   velho de um atendimento anterior manda a pessoa para a fila errada.
+
+Enum canônico: `vendas` | `rastreio` | `devolucao` | `troca` | `duvidas` + `else` = SAC geral.
+Ver `cufs_nextags.md` da skill `nextags-prompt-creator`.
+
+---
+
 ## 🎯 Princípios
 
 1. **1 flow dedicado por destino** — não tenta resolver tudo num só router
@@ -166,7 +194,8 @@ Isso previne case errado entrar no campo e quebrar router.
 | ❌ Errado | ✅ Certo |
 |---|---|
 | Agente seta `setor_agente` + dispara router genérico | Agente preenche `resumo_pipeline` + dispara flow dedicado por destino |
-| 1 flow router que decide o destino baseado no CUF | N flows dedicados, 1 por destino |
+| 1 flow router que decide **qual AGENTE IA atende** baseado no CUF | N flows dedicados, 1 por destino |
+| Confundir as camadas: usar `setor_agente` para escolher **fila humana** | Fila humana é `motivo_transferencia` + UM flow rotativo (ver bloco no topo) |
 | Default do router = `PEDRO` (ou qualquer agente IA) | Default = fila humana (nunca volta pra IA por engano) |
 | `setor_agente="humano"` em um prompt, `"IGNORAR"` em outro | Convenção única ratificada em TODOS os pontos |
 | Agente IA continua tentando transferir após o flow não responder | Cláusula anti-loop: 2-3 tentativas, depois para e admite limitação |
@@ -180,7 +209,8 @@ Isso previne case errado entrar no campo e quebrar router.
 - [ ] CUF `resumo_pipeline` criado (texto livre)
 - [ ] Flow de Entrada com guard: só seta default se CUF está vazio
 - [ ] Flow de Entrada default (não-match) → fila humana, NUNCA agente IA
-- [ ] 1 flow dedicado por destino (não 1 router genérico)
+- [ ] 1 flow dedicado por destino de AGENTE IA (não 1 router genérico)
+- [ ] Handoff para fila HUMANA usa `motivo_transferencia` + 1 flow rotativo, com `else` numa fila humana
 - [ ] Cada flow dedicado seta `setor_agente` E envia msg inicial
 - [ ] Mensagem inicial referencia `{{resumo_pipeline}}` pro destino ler
 - [ ] Prompts dos agentes:

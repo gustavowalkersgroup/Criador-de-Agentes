@@ -5,6 +5,34 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Adicionado
+
+**Padrão canônico de handoff nas skills de prompt** — `resumo_pipeline`, `motivo_transferencia`
+e `setor_agente` estavam documentados só na `nextags-mcp-builder` (infra). A
+`nextags-prompt-creator`, que ESCREVE os prompts, não os conhecia — e por isso gerava N
+placeholders de flow e nome de campo ad hoc por cliente.
+
+- `cufs_nextags.md` (prompt-creator **e** prompt-fixer): nova seção "CUFs de ESCRITA
+  canônicos do método", separando as duas camadas de handoff (IA↔IA via `setor_agente`
+  escrito pelo FLOW; IA→fila humana via `motivo_transferencia` escrito pela IA), o enum
+  canônico (`vendas`/`rastreio`/`devolucao`/`troca`/`duvidas` + `else` = SAC geral), a
+  regra de desambiguação `troca` vs `devolucao`, e o modo de falha por **campo stale**.
+- `prompt_skeleton.md`: a seção de transferência passa a ensinar **um** flow rotativo com
+  destino por CUF, em vez de `{ID_DO_FLUXO_TRANSFERENCIA}` + `<FLOW_SAC>` + `<FLOW_ATRASO>`.
+- `perguntas_obrigatorias.md` (2.2): pergunta UM flow_id rotativo e os valores do enum,
+  em vez de um flow por motivo.
+- `handoff_pattern.md` (mcp-builder): bloco no topo distinguindo as duas camadas. O
+  antipadrão "1 router genérico por CUF" vale para IA↔IA (onde o campo é relido a cada
+  mensagem e fecha o ciclo — bug do Veuske); para fila humana o rotativo é o padrão, com
+  `else` obrigatoriamente numa fila humana.
+
+Origem: projeto Joias Degan (02/09/2026), onde 66 ocorrências de 3 placeholders foram
+colapsadas em 1 flow rotativo + CUF.
+
+---
+
 ## [1.3.0] - 2026-07-17
 
 Adiciona a 6ª skill, **`nextags-webhook-builder`**, irmã da `nextags-mcp-builder`:
