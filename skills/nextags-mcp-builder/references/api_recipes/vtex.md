@@ -149,10 +149,19 @@ VTEX usa Master Data v1 com entidade `CL` (clients) pra storage de clientes.
 
 - `httpRequestTool` direto no MCP (sem backends dedicados)
 - 1 credencial `httpCustomAuth` (com os 2 headers em JSON)
-- Slim response em cada tool via `optimizeResponse: true` + `fieldsToInclude: selected`
+- Slim response em cada tool via **Code node manual** — ⚠️ **não** `optimizeResponse` do n8n:
+  ele entrega JSON cru via MCP Streamable HTTP (Quirk #18, `SKILL.md`). Esta recipe
+  recomendava `optimizeResponse: true` até 2026-09-03 e foi seguida assim em produção
+  (Hiven, 12 tools) — se pegar um MCP antigo com esse parâmetro, é retrofit pendente
 - Sem data table, sem cron
 
 **MCP típico VTEX:** 8-10 tools cobrindo catálogo+pedidos+clientes+rastreio.
+
+**Exceção de naming registrada:** todos os MCPs VTEX do corpus usam prefixo em inglês
+(`vtex_search_products_public`, `vtex_get_order_status`, `vtex_search_orders_by_client`),
+fugindo do padrão `verbo_objeto` em PT-BR do `tool_descriptions_guide.md`. Em MCP VTEX
+existente, **mantenha o padrão do cliente** — renomear tool quebra o prompt que a chama.
+Em projeto novo, PT-BR continua sendo o padrão.
 
 ## 🔗 Links
 

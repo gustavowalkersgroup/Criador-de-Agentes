@@ -66,16 +66,23 @@ apontando para o fluxo de transferência do projeto.
  "actions":[{"action":"transfer_conversation_to","value":"human"}]}
 ```
 
-**Depois (preferir send_flow quando há flow):**
+**Depois (preferir send_flow quando há flow — trio de handoff antes, Regra 21):**
 ```json
 {"messages":[{"message":{"text":"Vou te transferir."}}],
- "actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DE_TRANSFERENCIA>"}]}
+ "actions":[
+   {"action":"set_field_value","field_name":"motivo_transferencia","value":"<enum>"},
+   {"action":"set_field_value","field_name":"prioridade_pipeline","value":"<baixa|media|alta>"},
+   {"action":"set_field_value","field_name":"resumo_pipeline","value":"<2-4 frases>"},
+   {"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}
+ ]}
 ```
 
 ⚠️ Se NÃO há flow de transferência configurado, `transfer_conversation_to` é
 fallback legítimo — mantenha. Se o `flow_id` correto não estiver definido no
-prompt, **mantenha o placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no
-relatório: "⚠️ Definir o ID do fluxo de transferência antes de subir em produção."
+prompt, **mantenha o placeholder** `<ID_DO_FLUXO_PIPELINE>` e adicione no
+relatório: "⚠️ Definir o ID do fluxo de pipeline antes de subir em produção."
+O trio `motivo_transferencia`/`prioridade_pipeline`/`resumo_pipeline` é
+obrigatório antes de todo `send_flow` de transferência — ver Regra 21.
 
 ---
 
@@ -315,3 +322,113 @@ como violação bloqueante.
 
 Se uma correção exigiria tocar em qualquer uma dessas coisas, ela vira
 **pendência humana** automaticamente.
+
+---
+
+## 21. Campos canônicos de handoff (motivo_transferencia · prioridade_pipeline · resumo_pipeline)
+
+**Regra:** todo agente que transfere para humano gera, no MESMO JSON, antes do
+`send_flow` de pipeline: `set_field_value motivo_transferencia` (enum
+canônico por setor), `set_field_value prioridade_pipeline`
+(`baixa|media|alta`), `set_field_value resumo_pipeline` (2-4 frases), nesta
+ordem, com `send_flow` sempre por último. Existe **UM** `<ID_DO_FLUXO_PIPELINE>`
+— a fila é decidida pelo VALOR de `motivo_transferencia`, não pelo `flow_id`.
+Detalhe completo (enum por setor, critério de prioridade, conteúdo do
+resumo, tabela de legado) em `references/campos_canonicos.md` §2, §2.1-§2.4 —
+não duplicar aqui.
+
+Enum resumido (minúsculas, sem acento, sem plural): Parcerias
+`ugc|colaboracao|influencer|revenda|atacado`; Comercial `vendas|carrinho`;
+SAC `rastreio|devolucao|troca|duvida` (`duvida` = catch-all; `sac_geral`
+não existe mais). Cada valor que o agente pode usar precisa de ≥1 exemplo
+JSON verbatim no prompt gerado.
+
+**A IA NUNCA grava `setor_agente` nem `tipo_setor`** — esses são exclusivos
+do Roteador e do Revalidador. Ao gerar o skeleton de um agente (Vendas, SAC,
+extras), nunca incluir esses dois campos nas actions de exemplo; a única
+transferência que um agente faz é para HUMANO via o trio acima.
+
+Campo stale: os três campos persistem no contato — gerar sempre a regra
+explícita ("grave os três em TODA transferência, mesmo repetindo valor")
+e nunca um exemplo de `send_flow` sem os três `set_field_value` antes.
+
+---
+
+## 22. Bloco AVISOS ATIVOS e notas para editores
+
+**Regra:** todo prompt de agente gerado (exceto Roteador/Revalidador, que não
+levam este bloco) inclui, perto do topo, o bloco `📣 AVISOS ATIVOS` no
+formato canônico, vazio por padrão:
+
+```
+📣 AVISOS ATIVOS
+> 🔧 NOTA PARA EDITORES: edite SÓ as linhas entre os marcadores. Vazio = sem aviso. Remova avisos vencidos.
+=== INÍCIO DOS AVISOS ===
+(nenhum aviso ativo)
+=== FIM DOS AVISOS ===
+Se houver aviso acima, considere-o em prazos, disponibilidade e promoções. Se estiver vazio, ignore.
+```
+
+Além disso, gerar notas curtas `> 🔧 NOTA PARA EDITORES:` (1 linha, ≤200
+caracteres) nos pontos de edição futura provável: AVISOS ATIVOS, tabela de
+`motivo_transferencia`, tabela de flow_ids, tabela de tools, bloco DADOS
+DESTA CONVERSA, base de conhecimento. Lista completa e frases-modelo em
+`references/campos_canonicos.md` §6.1-§6.2.
+
+**Whitelist:** uma linha `> 🔧 NOTA PARA EDITORES:` não é meta-documentação
+proibida — é a única forma de nota permitida dentro do prompt gerado. Continua
+proibido gerar changelog, versão, pendências, TODO ou justificativas de
+decisão dentro do prompt (isso vai só no relatório do creator) — a
+whitelist vale só para essa 1 linha curta (≤200 caracteres), nunca para um
+parágrafo disfarçado com o mesmo prefixo.
+
+---
+
+## 24. Título de botão: máximo 20 caracteres
+
+**Regra:** todo `title` de botão em template `button` cabe em **20 caracteres**.
+Acima disso o passo "Filtro JSON" do fluxo de entrada — o reparador de JSON que
+roda entre o agente e o envio — **substitui o título por `"Comprar agora"`**, sem
+erro, sem log e sem nada que apareça no painel.
+
+**Por que é bloqueante e não estilo:** o cliente recebe um botão com o texto errado
+e ninguém fica sabendo. Num agente de SAC o efeito é grotesco — `"Acompanhar meu
+pedido"` (21 caracteres) chega como `"Comprar agora"` embaixo de uma mensagem sobre
+devolução. O analisador (`analyze_prompt.py`, check `button_misuse`) bloqueia acima
+de 20.
+
+**Alcance:** a troca só pega `payload.buttons` (template `button`). Botão dentro de
+`payload.elements[].buttons` (carrossel) **não** passa por ela — mas título curto
+continua sendo a regra, porque o botão longo é truncado na tela do WhatsApp de
+qualquer jeito.
+
+```json
+{"type":"web_url","url":"https://…","title":"Rastrear pedido"}
+```
+
+`"Rastrear pedido"` = 15. `"Acompanhar meu pedido"` = 21 → vira `"Comprar agora"`.
+
+> 🔧 NOTA PARA EDITORES: 20 caracteres é limite do fluxo, não preferência de estilo.
+
+(evidência: código do passo "Filtro JSON" em produção, enviado pelo dono em 2026-09-03)
+
+---
+
+## 27. Prometer envio sem a action que entrega
+
+**Regra:** se a mensagem diz que vai enviar alguma coisa ("vou te mandar o catálogo",
+"já te envio a tabela de medidas", "segue em anexo"), o **mesmo JSON** precisa entregar:
+um attachment, ou o `send_flow` do fluxo que envia. Sem isso a frase é mentira — o cliente
+espera e não chega nada.
+
+**Caso real:** a IA escreveu "vou enviar a tabela de medidas" em **três turnos seguidos**
+sem nenhuma action; a cliente pediu de novo a cada turno e nunca recebeu (DOLPS v1.7).
+
+**Como corrigir:** ou acrescenta a action que entrega, ou reescreve a mensagem para não
+prometer ("a tabela de medidas está no site, em Ajuda > Tamanhos"). Prometer e não entregar
+é pior que dizer que não tem.
+
+O analisador avisa (`promessa_sem_entrega`, warn) quando acha promessa de envio num JSON sem
+`send_flow` e sem attachment. É warn, não block: o envio pode vir de um fluxo disparado
+depois — mas confira, porque na maioria dos casos não vem.
+

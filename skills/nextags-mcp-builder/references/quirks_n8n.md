@@ -608,11 +608,18 @@ Confirmado em 2026-05-26, debugging smoke test Veuske ZOPPY. `buscar_cupom` rece
 
 ---
 
-## 20. `toolWorkflow` NÃO propaga argumentos de clientes MCP externos — em NENHUM modo
+## 20. `toolWorkflow` pode não propagar argumentos de clientes MCP externos (depende da versão do n8n)
 
 ### O que acontece
 
-`@n8n/n8n-nodes-langchain.toolWorkflow` v2.2 **não entrega os argumentos da tool call ao backend em nenhuma configuração** quando o MCP é chamado por cliente externo (NexTags, OpenAI Playground, qualquer cliente HTTP).
+`@n8n/n8n-nodes-langchain.toolWorkflow` v2.2 **não entregou os argumentos da tool call ao backend em nenhuma configuração testada** quando o MCP é chamado por cliente externo (NexTags, OpenAI Playground, qualquer cliente HTTP).
+
+> ⚠️ **Não é universal.** A Nalisa registrou em 2026-07-03 as 3 tools do MCP com
+> `toolWorkflow` + `$fromAI` (`defineBelow`) **propagando corretamente** naquela instância,
+> com `tools/call consultar_pedido` devolvendo dado real. A Verdena, na mesma janela,
+> reproduziu a falha. Trate como **dependente de versão/instância**, não como lei: o padrão
+> continua sendo `httpRequestTool` (funciona nos dois casos); `toolWorkflow` só depois de
+> smoke test por `curl` naquela instância. Nunca decida por dedução.
 
 **Ambos os modos falham:**
 
@@ -765,7 +772,7 @@ Sempre que precisar enviar um JSON body que:
 
 ---
 
-## 22. Token hardcoded em `headerParameters` > credential `httpHeaderAuth` (padrão Naah Store)
+## 22. Credencial nomeada é o padrão — e o que quebra nela depois de todo `update_workflow`
 
 ### O que acontece
 
@@ -775,9 +782,22 @@ Configurar `httpRequestTool` com `authentication: 'genericCredentialType'` + `ne
 2. **Credencial errada auto-linkada** (Quirk #3) — n8n às vezes pega outra credencial httpHeaderAuth qualquer do projeto.
 3. **Valor da credencial desatualizado** — credencial foi criada com token X há 3 sessions; user e dev acham que está atualizada, mas continua com X. Erros de auth viram pesadelo de debug.
 
-### Como evitar
+### Decisão (2026-09-03)
 
-Quando o token/key é **estático** (não OAuth com refresh), bote direto em `headerParameters`:
+**Credencial nomeada do n8n é o padrão**, inclusive para token estático: o token não vaza em
+export/backup e rotaciona sem editar N nodes. As três portas acima são o **custo aceito**, e o
+jeito de pagar é procedimento, não gambiarra:
+
+- Depois de **todo** `update_workflow`, conferir se a credencial continua vinculada e se é a
+  certa (o n8n desvincula ao recriar nodes, e às vezes vincula outra do projeto — Quirk #3).
+- Conferir isso **antes** de dizer que a entrega está pronta; entra no runbook "PASSOS PRA
+  COLOCAR EM PÉ" do relatório.
+- Ao criar a credencial, anotar no relatório qual token foi usado (a **origem**, nunca o
+  valor) — o modo de falha nº 3 é credencial velha que todo mundo acha que está atualizada.
+
+O hardcode em `headerParameters` continua descrito abaixo porque é o que existe em vários
+clientes rodando — **não é para copiar em projeto novo**, e não se migra cliente em produção
+só por isso:
 
 ```ts
 {
@@ -964,8 +984,8 @@ function fone(t) {
 }
 
 // Uso: fone(phone_country_code + phone)
-// Ex: fone('55' + '92991267599') → '+559291267599' (DDD 92, fora de SE)
-// Ex: fone('55' + '22998052905') → '+5522998052905' (DDD 22, dentro de SE)
+// Ex: fone('55' + '92990000000') → '+559290000000' (DDD 92, fora de SE)
+// Ex: fone('55' + '22990000000') → '+5522990000000' (DDD 22, dentro de SE)
 ```
 
 ### Detalhes
@@ -977,7 +997,7 @@ function fone(t) {
 
 ### Confirmado em
 
-2026-05-28, Verdena MARTZ. DDD 92 (Manaus) com phone `92991267599` → `fone()` produz `+559291267599` (8 dígitos locais) → `contact_created: true`. Sem `fone()`, `+5592991267599` (9 dígitos) → `"Invalid phone number"`.
+2026-05-28, Verdena MARTZ. DDD 92 (Manaus) com phone `92990000000` → `fone()` produz `+559290000000` (8 dígitos locais) → `contact_created: true`. Sem `fone()`, `+5592990000000` (9 dígitos) → `"Invalid phone number"`.
 
 ---
 
@@ -998,7 +1018,7 @@ A NexTags rejeita corpos com `tags: [...]` ou `custom_fields: {...}` diretos. Es
   "actions": [
     { "action": "add_tag", "tag_name": "verdena" },
     { "action": "set_field_value", "field_name": "martz_order_id", "value": "uuid" },
-    { "action": "send_flow", "flow_id": 12345 }
+    { "action": "send_flow", "flow_id": "12345" }
   ]
 }
 ```
@@ -1009,7 +1029,7 @@ A NexTags rejeita corpos com `tags: [...]` ou `custom_fields: {...}` diretos. Es
 
 ---
 
-## 24. Flow router NexTags que reseta `setor_agente` causa loop de transferência
+## 27. Flow router NexTags que reseta `setor_agente` causa loop de transferência
 
 ### O que acontece
 
@@ -1081,7 +1101,7 @@ Sem isso, o agente continua tentando transferir mesmo o flow bagunçado, e o cli
 
 ---
 
-## 25. Shopify search casa por TOKEN inteiro — `title:*vk luxe*` e `title:*Luxe*` dão 0
+## 28. Shopify search casa por TOKEN inteiro — `title:*vk luxe*` e `title:*Luxe*` dão 0
 
 ### O que acontece
 
@@ -1109,11 +1129,192 @@ Cliente pede produto que existe → tool volta `edges: []` → agente trava ("vo
 
 ---
 
+## 29. `raw.githubusercontent.com` serve `.mp4` como `application/octet-stream` — WhatsApp rejeita
+
+### O que acontece
+
+Ao usar GitHub como banco de mídia (ver `mcp_github_repo_pattern.md`), servir o arquivo direto de `raw.githubusercontent.com/<owner>/<repo>/main/<path>` entrega o Content-Type genérico `application/octet-stream` para binários (`.mp4`, `.ogg`, etc.), independente da extensão real. O WhatsApp rejeita vídeo entregue com esse Content-Type — o anexo não abre ou a mensagem falha.
+
+### Como evitar
+
+Nunca usar `raw.githubusercontent.com` para servir mídia que vai pro WhatsApp. Ler pelo jsDelivr:
+
+```
+https://cdn.jsdelivr.net/gh/<owner>/<repo>@main/<path>
+```
+
+jsDelivr serve o Content-Type correto (`video/mp4`, `image/jpeg`, `audio/ogg`) a partir do mesmo repositório GitHub, sem mudar nada no conteúdo.
+
+### Confirmado em
+
+Medido em 2026-08-31. Documentado na sticky note de produção do Poé Backend Buscar Mídia (`kyLZitHeBz7PXXwp`): *"O catálogo é lido a cada chamada via cdn.jsdelivr.net — NUNCA via raw.githubusercontent, que serve .mp4 como application/octet-stream e faz o WhatsApp rejeitar o vídeo."*
+
+---
+
+## 30. `toolHttpRequest` + `placeholderDefinitions` colapsa o schema da tool em `{input}` — nunca dispara
+
+### O que acontece
+
+Declarar os parâmetros de uma tool MCP usando `@n8n/n8n-nodes-langchain.toolHttpRequest` com `placeholderDefinitions` (em vez de `n8n-nodes-base.httpRequestTool` com `$fromAI(...)` por parâmetro) faz o n8n colapsar o schema JSON exposto ao cliente MCP externo (NexTags) num único campo genérico `{input}` (string). O cliente MCP não consegue mapear os parâmetros reais — a tool nunca dispara com os argumentos corretos em produção.
+
+### Como evitar
+
+Usar sempre `n8n-nodes-base.httpRequestTool` v4.4/v4.5 com `$fromAI(...)` diretamente em cada parâmetro (query/header/body). **Nunca** `toolHttpRequest` + `placeholderDefinitions` para tool consumida por cliente MCP externo.
+
+### Confirmado em
+
+Evidência Poé (MCP `lk0lpDShxXFGia7D`) — tool configurada com `toolHttpRequest` + `placeholderDefinitions` nunca disparava corretamente contra o backend; migrada pra `httpRequestTool` + `$fromAI`.
+
+---
+
+## 31. URL pública do próprio n8n dá connection refused quando chamada de DENTRO do n8n
+
+### O que acontece
+
+Um workflow n8n (tipicamente uma tool MCP no padrão "tool → backend interno") que chama a URL PÚBLICA do próprio n8n (`https://nextags.app.br/webhook/...`) pra acionar outro workflow recebe connection refused / timeout. A URL pública passa por proxy/túnel externo e não permite a instância chamar a si mesma por esse caminho.
+
+### Como evitar
+
+Chamar o backend pela URL INTERNA, resolvida dentro da rede do próprio n8n:
+
+```
+http://n8n:5678/webhook/<path>
+```
+
+Só usar a URL pública (`nextags.app.br/webhook/...`) quando o CHAMADOR é externo (o NexTags em si, ou serviço fora da rede do n8n).
+
+### Confirmado em
+
+Padrão de produção Cantarola Backend — a tool MCP chama `http://n8n:5678/webhook/cantarola-*` (URL interna); a URL pública é reservada pros backends expostos diretamente ao mundo (ex: Poé, Meiskin `montar-carrinho`).
+
+---
+
+## 32. Dedup gravado ANTES do sucesso marca o cliente como "notificado" pra sempre
+
+### O que acontece
+
+Se o node de dedup (Data Table upsert/insert) roda em paralelo com a chamada à NexTags, ou antes dela confirmar sucesso, uma falha transitória (token placeholder, 401, instabilidade) grava o registro como "já notificado" mesmo a mensagem nunca tendo saído. Corrigir a causa da falha depois não resolve — o dedup já bloqueia qualquer reenvio, e o cliente real nunca recebe a notificação.
+
+### Como evitar
+
+Sempre nesta ordem: `Notificar NexTags (onError: continueErrorOutput)` → `IF sucesso?` → **só no ramo de sucesso** grava a Data Table de dedup.
+
+### Confirmado em
+
+Nordmann Meling Webhook Pedidos v3 (`ln7ZTWGwTyV2KVRQ`), corrigindo bug da v2. Meiskin PIX Expirado v2 (`bvR8NeB5e4BdOzyD`): a 1ª execução automática rodou com token placeholder, as 51 notificações falharam (401) mas o dedup foi gravado do mesmo jeito — os 51 clientes reais jamais seriam notificados ao colocar o token real. Tabela de dedup recriada limpa após o fix.
+
+---
+
+## 33. BW Commerce sempre responde HTTP 200 (mesmo em erro) — envelope `{registros, erros}` precisa estar na tool description
+
+### O que acontece
+
+A API da BW Commerce nunca retorna status HTTP de erro (4xx/5xx), mesmo com credencial errada ou rota inválida — ela sempre responde `200` com `{registros: [], erros: [...], totalRegistros: N}`. Um backend/tool que trata "200 = sucesso" e ignora `erros[]` confunde falha de credencial com "pedido não existe": o agente diz ao cliente "não encontrei seu pedido" quando na verdade é falha técnica de autenticação.
+
+### Como evitar
+
+Não usar `dataField`/otimização automática nessas tools — o agente precisa VER `erros[]`. A tool description tem que explicar o envelope de forma explícita:
+
+```
+FORMATO DA RESPOSTA - leia antes de concluir qualquer coisa:
+A BW responde SEMPRE HTTP 200, mesmo quando falha.
+- registros vazio E erros vazio  -> o pedido realmente não foi encontrado.
+- erros COM conteúdo             -> problema TÉCNICO. NUNCA peça pro cliente
+  conferir o número nesse caso: avise que o sistema está instável e transfira.
+```
+
+### Confirmado em
+
+Degan MCP (`Wt3SsrCxQ2zwwnOo`), sticky note "Nota" — "ENVELOPE DA BW (a spec está errada nisso)": as 3 tools de BW não usam `dataField` de propósito, exatamente por isso.
+
+---
+
+## 34. `/api/users` é variante legada de `/api/contacts` — não usar em projeto novo
+
+### O que acontece
+
+Existe pelo menos 1 workflow de produção (AliveMed Dispatcher — PIX e Carrinho) chamando `POST https://app.nextagsai.com.br/api/users` em vez do endpoint canônico `POST /api/contacts`, sem documentação de por quê. Parece uma variante/alias mais antigo da mesma funcionalidade — [SEM EVIDÊNCIA DIRETA] de diferença real de schema ou comportamento entre os dois.
+
+### Como evitar
+
+Em projeto novo, sempre `POST /api/contacts`. Se herdar um fluxo de cliente já rodando com `/api/users` e funcionando, **não trocar** sem confirmar com o dono antes — pode não ser 100% equivalente.
+
+### Confirmado em
+
+AliveMed Dispatcher — PIX/Carrinho: único workflow do corpus de 21 lidos usando `/api/users`.
+
+---
+
+## 35. Rate limit NexTags ~100 requisições/60s
+
+### O que acontece
+
+A API NexTags tem um limite de aproximadamente 100 requisições por 60 segundos por conta. Disparo em lote (broadcast, reativação de base, campanha) sem throttle esbarra nesse limite e passa a falhar/perder requisições no meio do lote.
+
+### Como evitar
+
+Padrão "pesca-e-marca": cron de baixa frequência que processa 1 (ou N calculado) registro pendente por vez de uma Data Table e marca como enviado antes do próximo tick, respeitando o rate limit. Ajustar `batchInterval`/`limit` do HTTP Request pra nunca ultrapassar ~100 req/60s — e reavaliar a arquitetura (não só o cron) quando o volume crescer.
+
+### Confirmado em
+
+Privilège Broadcast (`b9IJblHOEurFgj6o`) — sticky note: *"ajustar N e batchInterval do HTTP Request pra respeitar rate limit real da API NexTags (100 req/60s — ver workflow EXPORTAR CONVERSAS v5)."*
+
+---
+
 ## Lista crescente
 
 Quando descobrir novo quirk, adicione aqui com:
 - **O que acontece** (sintoma)
 - **Como evitar** (correção)
+---
+
+## 36. Sessão MCP perdida atrás de proxy/CDN — `Server not initialized` e a cascata de alucinação
+
+### O que acontece
+
+O cliente MCP externo lista as tools normalmente, mas toda `tools/call` falha com
+`Bad Request: Server not initialized`. O Streamable HTTP do MCP Trigger v2 é **com estado**:
+o `initialize` devolve um `Mcp-Session-Id` que precisa voltar em toda requisição seguinte, e
+todas elas precisam cair na **mesma instância**. Um proxy ou CDN stateless na frente (ex.:
+Cloudflare sem sticky session) rebobina o `initialize` e o `tools/call` chega numa sessão que
+não existe.
+
+### Por que é pior do que parece
+
+A falha não vira erro visível pro cliente final: o agente **inventa em cima do vazio**. No caso
+documentado (Wazzu), com as tools listadas mas nenhuma chamável, a IA respondeu com nome de
+produto "provavelmente" tirado da memória, "consulte no site" no lugar do preço que a tool
+traria, e um link de busca genérico em vez do `canonical_url` real. Da perspectiva de quem lê o
+log da NexTags, o agente estava conversando normalmente.
+
+### Como detectar
+
+`curl` do fluxo completo, guardando o header entre as chamadas: `initialize` → pegar
+`Mcp-Session-Id` → `tools/list` → `tools/call` com o mesmo id. Se `tools/list` passa e
+`tools/call` devolve `Server not initialized`, é sessão, não tool. Confirme se há proxy/CDN na
+frente do n8n e se ele mantém afinidade de sessão.
+
+---
+
+## 37. Roteador que devolve o JSON da plataforma estoura "Max Flow — Too many blocks"
+
+### O que acontece
+
+Prompt de roteador/classificador escrito com o bloco oficial da NexTags acaba respondendo
+`{"messages":[...],"actions":[...]}` em vez da palavra única. A produção devolve
+`"Max Flow — Too many blocks sent in a single response"` e o roteamento não acontece.
+
+### Por que é útil saber
+
+Essa mensagem é **sinal diagnóstico**: quem a vê num fluxo de entrada quase sempre tem um
+roteador com o formato errado, não um problema de volume de mensagem. Roteador e revalidador
+respondem **texto puro, 1 palavra, sem JSON** — ver `campos_canonicos.md` §1 e a exceção de
+roteador/revalidador nas regras do `nextags-prompt-fixer`.
+
+(evidência: Hiven, Orquestrador v1.0)
+
+---
+
 - **Como detectar** (como diagnosticar se aparecer)
 
 Esse arquivo é o principal blocker de bug repetido. Mantenha atualizado.

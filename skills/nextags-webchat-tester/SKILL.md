@@ -1,6 +1,6 @@
 ---
 name: nextags-webchat-tester
-description: "Testa um agente de webchat NexTags (plataforma tapthetable) AO VIVO, dirigindo o WebSocket do webchat por Python — sem extensão do Chrome e sem simular 'no córtex'. Exercita a stack REAL publicada (modelo do NexTags + MCP + APIs de backend tipo Nuvemshop/Bling/Shopify). Use sempre que o usuário quiser TESTAR/VALIDAR/conversar com o bot PUBLICADO via webchat, confirmar que uma mudança de prompt/MCP funcionou na infra real, simular uma conversa de cliente, ou debugar roteamento/handoff/transferência ao vivo. Gatilhos PT-BR: 'testar o bot no webchat', 'testar via webchat', 'conversar com a IA ao vivo', 'mandar mensagem pro agente', 'validar o atendente no webchat', 'rodar um teste no webchat', 'o bot respondeu certo?', 'testa o agente publicado'. EN: 'test the nextags bot via webchat', 'drive the live webchat', 'talk to the deployed agent'. Diferente de simular o prompt em contexto: aqui passa pelo NexTags + MCP + backend de verdade (pega erro de credencial de MCP, payload grande, renderização de card, handoff entre agentes, transferência fantasma)."
+description: "Testa um agente de webchat NexTags AO VIVO via WebSocket (Python, sem Chrome). Exercita a stack real: modelo NexTags + MCP + APIs de backend (Nuvemshop, Bling, Shopify). Use para validar prompt/persona, roteamento, render de card/imagem, tool calling MCP, transferências e handoffs ao vivo. Detecta erros reais (credencial MCP, payload grande, card não renderiza, transferência fantasma) que simulação em contexto não pega. Lições: webchat testa prompt/roteamento/tools; fluxos com telefone testam em WhatsApp real; número fixo não recebe send_flow via API."
 metadata:
   type: reference
 ---
@@ -17,6 +17,21 @@ Conversa com um agente de webchat **NexTags** (white-label da plataforma **tapth
 
 > **Por que não simular em contexto?** A simulação ("eu atuo como o bot dado o prompt") usa dados de tool FALSOS e pula a camada de backend/Meta. O teste real pega coisas que a simulação nunca pega: **credencial de MCP quebrada**, payload grande que trava a resposta, card que não renderiza, handoff que não dispara, etc.
 
+## O que o webchat TESTA e o que NAO testa
+
+**TESTA:**
+- **Prompt e persona** — agente responde conforme roteado (setor_agente decidido pelo roteador).
+- **Roteamento** — cada execução = contato novo = `setor_agente` vazio → roteador classifica de novo.
+- **Render de card e imagem** — template e URL de backend chegam corretamente.
+- **Transferência fantasma** — detecta quando o prompt anuncia "vou te passar" mas não emite `send_flow`.
+- **Tool calling via MCP** — funciona no webchat (o caso Veuske 2026-06-11 foi config de modelo — temperature alta + modelo mini — não limitação do canal).
+
+**NAO testa:**
+- **Fluxos n8n que dependem de telefone** (transacionais, disparos, `send_flow` por API para um número) — o contato de webchat não tem número. Testar com contato WhatsApp real (celular).
+- **Número fixo** — nunca recebe `send_flow`/mensagem via API (NexTags acrescenta o 9 e o número vira inválido). Não usar fixo como contato de teste.
+
+**Nota:** Mensagens de teste "gibberish" ou muito curtas podem cair no revalidador e ser arquivadas/bloqueadas. Use mensagens humanas e contextualizadas nos testes.
+
 ## Pré-requisitos
 
 1. `pip install websocket-client`
@@ -30,7 +45,7 @@ python scripts/webchat_test.py <page_id> "primeira mensagem" ["segunda mensagem"
 ```
 
 - Cada mensagem extra vai **em sequência na MESMA conversa** (1 contato novo).
-- Para testar **cenários isolados** (resetar contexto e CUFs de roteamento como `agente_setor`), **rode o script várias vezes** — cada execução cria um contato novo.
+- Para testar **cenários isolados** (resetar contexto e CUFs de roteamento como `setor_agente`), **rode o script várias vezes** — cada execução cria um contato novo.
 
 Exemplos:
 ```bash
@@ -64,15 +79,15 @@ A página `/webchat/` é um app Vue que fala por **WebSocket**. Sequência:
 - **Ping keepalive obrigatório:** respostas que chamam MCP demoram (10–40s) e o servidor **derruba a conexão ociosa** no meio. Mande `ws.ping()` a cada ~6s enquanto espera. (O script já faz.)
 - **Janela de espera generosa:** respostas com tool/card podem levar 30–60s. Use `espera=45..75`.
 - **"Kickstarter":** se NADA volta (0 frames e `getConversation` só com a sua mensagem), provavelmente o **agente não está sendo acionado** (gatilho/welcome desligado no NexTags). Não é o seu código — peça pro usuário conferir o acionamento do agente.
-- **Cada conversa = contato novo:** `createUser` por conversa reseta contexto e CUFs (ex.: `agente_setor` que controla roteamento). Misturar cenários no mesmo contato contamina o teste.
+- **Cada conversa = contato novo:** `createUser` por conversa reseta contexto e CUFs (ex.: `setor_agente` e `tipo_setor` que controlam roteamento e revalidação). Misturar cenários no mesmo contato contamina o teste. Cada execução do script = novo contato = CUFs vazios = roteador decide de novo.
 - **send_flow não aparece nos frames:** a ação `send_flow` é executada no servidor; você **não** vê o action no WS. O sinal de que um **handoff/transferência disparou** é uma mensagem com o **texto característico do OUTRO agente/fluxo** aparecendo na sequência (ex.: a Maya respondendo num fluxo iniciado pela Lara). Use isso pra confirmar que a transferência foi REAL e não "fantasma" (texto "vou te passar" sem o agente novo assumir).
-- **Não dispare transferências pra HUMANO em teste:** flows de atendente humano criam **ticket real** na fila. Teste handoffs entre IAs (que só trocam de fluxo) e evite os gatilhos de humano/financeiro.
+- **Não dispare transferências pra HUMANO em teste:** flows de pipeline criam **ticket real** na fila e card real no painel. Se precisar testar handoff/transferência, use um flow de pipeline de TESTE ou valide pelos CUFs gravados via API `GET /contacts/{id}/custom_fields` (leia `motivo_transferencia`, `prioridade_pipeline`, `resumo_pipeline`).
 - **Ordem dos frames pode interleaving:** mensagens próximas chegam quase juntas e podem sair fora de ordem no log; julgue pelo conteúdo, não pela ordem exata.
-- **🚨 WEBCHAT ≠ WHATSAPP pra tool-call MCP (lição cara — Veuske 2026-06-11):** o canal webchat (channel 9) pode **NÃO disparar as funções MCP** do jeito que o WhatsApp dispara. No caso Veuske, o webchat mostrou 0 execuções / qualificação em loop por horas, enquanto o **WhatsApp chamava a tool de primeira** (preço/link/handle reais). **NUNCA conclua que "o agente não chama a tool / as tools estão quebradas" só a partir do webchat.** Se o agente qualifica/não busca no webchat mas você suspeita que deveria buscar: **valide no WhatsApp real ANTES de mexer em prompt/modelo/MCP.** Use a forense de n8n executions pra confirmar — mas lembre que ela refle o que o canal testado de fato disparou. O webchat é ótimo pra checar prompt/persona/roteamento/render de card; é **não-confiável** como única prova de tool-calling.
+- **Tool calling via MCP funciona no webchat; revise config antes de culpar o MCP:** Se o agente não chama a tool no webchat, primeiro revise: (1) **temperature do modelo** — deve estar ≤ 3 (não 5+); (2) **modelo** — não use mini se a tool é crítica; (3) **prompt** — hardcode duplicando a tool em exemplo JSON (padrão dos prompts de produção). Se mesmo após revisar a ferramenta não é disparada no webchat, **confirme no WhatsApp real (celular) ANTES de mexer no MCP** — o caso Veuske foi config de modelo, não bug da stack. Use n8n executions pra forense: ela reflete o que o canal testado disparou de fato. O webchat é ótimo pra checar prompt/persona/roteamento/render de card; é confiável para tool calling.
 
 ## Como interpretar o resultado
 
 - `BOT[text]` = mensagem de texto. `BOT[image]` = imagem (confira a URL real do backend, ex.: `acdn-us.mitiendanube.com/...`). `BOT[card]` = template/botão (texto + URL do botão).
 - **Card com imagem/preço/link reais do backend** = o MCP respondeu de verdade (não foi "decorado" do prompt).
-- **Saudação do agente errado** (ex.: SAC respondendo pergunta de venda) = problema de **roteamento** (config do NexTags, ex.: CUF `agente_setor`).
+- **Saudação do agente errado** (ex.: SAC respondendo pergunta de venda) = problema de **roteamento** (config do NexTags, ex.: CUF `setor_agente` escrito pelo roteador, ou verificar se o contato anterior deixou `setor_agente` gravado — nesse caso rode o script de novo para resetar).
 - **"vou te passar..." e nenhum agente novo assume** = **transferência fantasma** (o prompt anunciou transferência sem emitir o `send_flow`).

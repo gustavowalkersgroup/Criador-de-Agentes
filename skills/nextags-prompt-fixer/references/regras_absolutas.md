@@ -99,15 +99,22 @@ genérico; nunca tentar adivinhar o ID do admin.
  "actions":[{"action":"transfer_conversation_to","value":"human"}]}
 ```
 
-**Depois:**
+**Depois (trio de handoff antes do send_flow — Regra 21):**
 ```json
 {"messages":[{"message":{"text":"Vou te transferir."}}],
- "actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DE_TRANSFERENCIA>"}]}
+ "actions":[
+   {"action":"set_field_value","field_name":"motivo_transferencia","value":"<enum>"},
+   {"action":"set_field_value","field_name":"prioridade_pipeline","value":"<baixa|media|alta>"},
+   {"action":"set_field_value","field_name":"resumo_pipeline","value":"<2-4 frases>"},
+   {"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}
+ ]}
 ```
 
 ⚠️ Se o `flow_id` correto não estiver definido no prompt, **mantenha o
-placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no relatório:
-"⚠️ Definir o ID do fluxo de transferência antes de subir em produção."
+placeholder** `<ID_DO_FLUXO_PIPELINE>` e adicione no relatório: "⚠️ Definir o
+ID do fluxo de pipeline antes de subir em produção." O trio
+`motivo_transferencia`/`prioridade_pipeline`/`resumo_pipeline` é obrigatório
+antes deste `send_flow` — ver Regra 21.
 
 ---
 
@@ -132,9 +139,10 @@ ou chamadas com parênteses `Nome()`.
 
 **Como corrigir:**
 - Transferência (`connect_user_to_human`, `transferir_suporte/atendimento`)
-  → `send_flow` + `<ID_DO_FLUXO_DE_TRANSFERENCIA>` (placeholder se o ID não
-  está no prompt). Uma `messages` de transição é opcional por UX (ver
-  Regra 10) — o `send_flow` dispara com ou sem ela.
+  → trio de handoff (`motivo_transferencia`/`prioridade_pipeline`/
+  `resumo_pipeline`, Regra 21) + `send_flow` com `<ID_DO_FLUXO_PIPELINE>`
+  (placeholder se o ID não está no prompt). Uma `messages` de transição é
+  opcional por UX (ver Regra 10) — o `send_flow` dispara com ou sem ela.
 - Função de dado legada (`buscar_pedido`, `Rotativo()`) → marcar PENDÊNCIA:
   precisa virar tool/MCP real; não é ação de JSON. Não inventar substituto.
 
@@ -186,12 +194,15 @@ fluxo ao clicar, são PERMITIDOS — ver Regra 17 — e não exigem `url`.)
   por mensagem**, mas a IA **raramente** usa (o padrão é texto + `send_flow`,
   ou 1 botão `web_url`). Não bloquear quando aparecer.
 - **CTA ≤ 20 caracteres** ("Comprar Agora", "Finalizar Pedido", "Quero o meu").
+  Não é preferência de estilo: acima de 20 o reparador de JSON do fluxo troca o
+  título por "Comprar agora" sem avisar. Regra 24 explica o mecanismo.
 - **Campo `text` no payload é OBRIGATÓRIO** (descrição/preço). Sem `text` =
   card inválido.
 - **Botão de carrinho aponta pro CHECKOUT, nunca pra URL de produto**
   (Duda-vendas: "no carrinho, botão sempre pro checkout").
 - **Fechamento com 3 chaves `}}}`** no bloco de botão é o erro de sintaxe
-  mais comum (Duda-vendas: "dois `}}` = JSON inválido").
+  mais comum (Duda-vendas: "dois `}}` = JSON inválido"). O reparador do fluxo
+  tem um remendo só para isso — sinal de quanto o erro se repete.
 
 **Como corrigir:** se houver >1 botão `web_url` → manter o primeiro, virar
 texto o resto. Se houver >3 botões `postback` → manter 3, virar texto o resto.
@@ -415,11 +426,27 @@ send_flow vier antes, os campos chegam vazios."*
 Verbatim (Flora): ordem fixa exigida — (a) mensagem ao cliente, (b)
 `set_field_value` com `assunto_ticket`, (c) `send_flow`.
 
-**Handoff com contexto (preservar se já existir; não inventar se não):**
+**Trio canônico de handoff para humano (caso específico desta regra — ver
+Regra 21 para o detalhe completo):** quando o `set_field_value` que precede
+`send_flow` é parte de uma transferência para humano (não um `set_field_value`
+qualquer), a ordem fixa é `motivo_transferencia` → `prioridade_pipeline` →
+`resumo_pipeline` → `send_flow`, sempre os três antes do disparo. Enum,
+critério de prioridade e conteúdo do resumo: Regra 21 e
+`references/campos_canonicos.md` §2.
+
+**Handoff com contexto (preservar a PRÁTICA; migrar o NOME do campo):**
 prompts-ouro gravam um briefing pro humano via `set_field_value` ANTES de
-transferir (Flora: `assunto_ticket`; Nex: `nex_resumo`). Se o prompt já faz
-isso, NUNCA remover — é padrão-ouro. Se não faz, NÃO inventar conteúdo de
-campo (vira pendência opcional, não correção).
+transferir (evidência histórica: Flora usava `assunto_ticket`, Nex usava
+`nex_resumo`). A PRÁTICA em si — sempre resumir o caso antes de transferir —
+é padrão-ouro e NUNCA se remove. O NOME do campo é legado — mas
+**não renomeie**: `assunto_ticket`, `nex_resumo`, `resumo_lead`,
+`sac_resumo`, `resumo_atendimento`, `resumo_para_pipeline` e
+`assunto_atendimento` são o mesmo conceito que hoje se chama
+`resumo_pipeline`, e em cliente rodando **a infra inteira já está montada em
+cima do nome atual**. Registre a equivalência no RELATÓRIO e siga; trocar o
+`field_name` no prompt quebra o fluxo que lê o nome antigo, em silêncio. Se o prompt não grava briefing nenhum antes de transferir, NÃO
+invente conteúdo de campo (vira pendência opcional, não correção) — mas o
+NOME do campo a usar, se vier a existir, já é `resumo_pipeline`.
 
 **Silêncio total pós-handoff (preservar):** ~13/25 instruem o agente a não
 responder nada após o `send_flow` de transferência ("mesmo que a cliente
@@ -464,6 +491,17 @@ Meta-documentação serve só pro humano. Não tem nenhum ganho operacional incl
 **Heurística adicional:** se um cabeçalho contém "v1.0", "v2.0", "v2.5" e está acompanhado de tabela com "antes/depois" ou "problema/correção", é changelog.
 
 **Cabeçalho do prompt:** uma linha curta tipo `# PROMPT — AGENTE X` está OK. O que NÃO está OK é metadado expandido: `**Versão:** v3.0 | **Data:** Maio/2026 | **Responsável:** Dev X`. Esse metadado vira ruído pro LLM.
+
+**Whitelist — não é meta-doc (Regra 22):** uma linha que começa com
+`> 🔧 NOTA PARA EDITORES:` **não é flagrada** por este check, mesmo contendo
+palavras como "não altere" ou "confirme antes de mudar" — é uma nota
+operacional curta (≤1 linha, ~200 caracteres) endereçada a quem for editar o
+prompt no futuro (humano ou outra LLM), não histórico/justificativa. A
+whitelist cobre SÓ esse marcador exato; um bloco maior de texto que só usa a
+mesma frase de abertura mas segue por várias linhas de changelog/pendência
+continua proibido — nesse caso, encurte para 1 linha (mantendo a intenção) em
+vez de remover, ou migre o excedente pro relatório se não for editável em
+1 linha. Ver Regra 22 para o formato completo de AVISOS ATIVOS e notas.
 
 **Como corrigir:**
 
@@ -539,11 +577,60 @@ Abertura com nome: {"messages":[{"message":{"text":"Oi, {{first_name}}! Tudo bem
 Abertura sem nome: {"messages":[{"message":{"text":"Oi! Tudo bem? Como posso te ajudar?"}}]}
 ```
 
-5. **CUFs por canal e caso "Guest" (webchat):**
-   - Instagram → preferir `{{ig_user_name}}` em vez de `{{first_name}}` nesse canal.
-   - Facebook → preferir `{{page_user_name}}` em vez de `{{first_name}}` nesse canal.
-   - Webchat → `{{first_name}}` pode chegar como `"Guest"` (usuário não logado). `Guest` nunca é o nome da pessoa. Se o prompt atende webchat e usa `{{first_name}}` sem tratar o caso "Guest", **sugerir adicionar** a regra: "Se `{{first_name}}` = 'Guest' → perguntar nome + `set_field_value` pra atualizar `first_name`."
+5. **Regra do nome (`first_name`) — canônica, TODOS os canais (evidência: SPEC
+   §5.3, princípio transversal 5):** se `{{first_name}}` vier vazio, for
+   literalmente `"Guest"` ou não parecer primeiro nome de pessoa (e-mail,
+   número, "Usuário", texto genérico), a IA faz saudação neutra e pergunta o
+   nome UMA vez; ao receber, grava
+   `{"action":"set_field_value","field_name":"first_name","value":"<nome>"}`.
+   Não repetir a pergunta se a pessoa não responder. Vale pra Messenger,
+   WhatsApp, Instagram e Webchat — **não é mais regra exclusiva de webchat**
+   (correção de versão anterior desta referência, que só cobria "Guest" em
+   webchat como sugestão opcional).
+
+   **Como corrigir:** se o prompt já trata `{{first_name}}` vazio/"Guest" como
+   sugestão opcional ou só menciona o caso webchat, **promova** para a regra
+   obrigatória acima, com o `set_field_value` explícito e valendo pra todo
+   canal. Se o prompt não tem o bloco `## DADOS DESTA CONVERSA` (Regra 22.4
+   abaixo), a tag `{{first_name}}` pode nem estar visível pra IA — insira o
+   bloco (ver "achado" logo acima nesta mesma referência: CUF é
+   find-and-replace no texto, não uma tool).
+
+6. **CUFs por canal (correção — v1.4.0 revoga a orientação anterior desta
+   referência):** `{{first_name}}` validado (regra do nome, item 5 acima) é o
+   CUF de saudação em **TODOS** os canais, Instagram e Facebook incluídos.
+   **NUNCA saudar pelo username** (`{{ig_user_name}}`, `{{page_user_name}}`,
+   `{{username}}`): username é identificador, não vocativo — "Oi,
+   maria_silva_123!" nunca é melhor que "Oi!" neutro, e é campo de texto
+   livre do próprio usuário, logo vetor de injeção de prompt (cliente escreve
+   o username, não a plataforma). Use `{{ig_user_name}}`/`{{page_user_name}}`
+   **só como identificador interno** (log, resumo_pipeline, correlação com
+   CRM) — nunca dirigido ao cliente na mensagem. `{{total_tagged}}` e
+   `{{total_new_tagged}}` só existem no Facebook (comentários marcados) — não
+   inventar equivalente em outro canal. Se encontrar um prompt saudando por
+   username em IG/FB, **corrigir para `{{first_name}}`** com a mesma regra de
+   fallback do item 5 (vazio/"Guest"/não-nome → perguntar uma vez).
    - `{{phone}}` em SAC: quando preenchido, pode consultar pedidos na tool sem pedir ao cliente. Se o prompt de SAC tem tool de pedidos mas não usa `{{phone}}`, sugerir como melhoria (pendência opcional).
+
+7. **Prompt manda "usar dados do cliente" sem `{{campo}}` escrito no texto
+   (padrão de fix):** se o prompt tem instrução tipo "use os dados do cliente
+   pra personalizar" ou "considere o histórico do cliente" mas nenhum
+   `{{campo}}` aparece literalmente no texto, a IA não enxerga NENHUM dado —
+   CUF só é visível se a tag estiver escrita ali (ver "achado" acima). **Corrija
+   inserindo o bloco canônico**, logo após IDENTIDADE/AVISOS ATIVOS:
+
+   ```
+   ## DADOS DESTA CONVERSA (uso interno — nunca liste de volta para o cliente)
+   Nome: {{first_name}} · Telefone: {{phone}} · E-mail: {{email}} · Hora local: {{current_user_time}}
+   {SE SAC/transacional} Último pedido: {{numero_pedido}} · Status: {{status_pedido}} · Rastreio: {{rastreio_url}} · Previsão: {{previsao_entrega}}
+   > 🔧 NOTA PARA EDITORES: a IA só enxerga campo escrito aqui como {{campo}}. Campo vazio = ignorar.
+   ```
+
+   Mantenha a linha "SE SAC/transacional" só se o agente atender pedidos;
+   remova se não se aplicar. Não invente CUFs específicos da conta fora de
+   `references/cufs_nextags.md` ou `references/campos_canonicos.md` — se o
+   prompt cita um campo que não consta nessas listas, vira pendência
+   ("confirmar com o dono se este CUF existe na conta").
 
 **Princípio:** use CUFs SOMENTE quando necessário. Não force `{{first_name}}` em toda mensagem — saudação e momentos-chave bastam.
 
@@ -669,7 +756,7 @@ ESPECÍFICO do projeto vem depois.
 
 ---
 
-## 16. Campo `type` dentro de `payload` (erro mais comum em attachments)
+## 25. Campo `type` dentro de `payload` (erro mais comum em attachments)
 
 **Regra:** em qualquer `attachment`, o campo `type` fica **FORA** de
 `payload`, no mesmo nível dele. A plataforma NexTags ignora o `type`
@@ -701,7 +788,7 @@ nada. É uma transformação puramente estrutural.
 
 ---
 
-## 17. Formato de imagem proibido (`.webp`, `.avif`, `.svg`, `.gif`)
+## 26. Formato de imagem proibido (`.webp`, `.avif`, `.svg`, `.gif`)
 
 **Regra:** a plataforma NexTags entrega imagens nos canais (WhatsApp,
 Instagram, Messenger) e **só aceita JPEG e PNG**. Imagens em outros
@@ -709,6 +796,10 @@ formatos quebram a entrega em pelo menos um canal.
 
 - ✅ Permitidos: `.jpg`, `.jpeg`, `.png` (Content-Type `image/jpeg` ou `image/png`).
 - ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
+- ❌ Além do formato, a **Meta bloqueia por tamanho**: imagem acima de **5 MB** e vídeo acima
+  de **15 MB** não são enviados. 1 MB a mais já basta — e não aparece erro para o cliente.
+- ❌ PNG com **16 bits por canal** é rejeitado mesmo abaixo de 5 MB (o CDN da Shopify entrega
+  assim por padrão).
 
 **Detecção do script:** `analyze_prompt.py` reporta
 `forbidden_image_formats_count` quando encontra URLs em
@@ -816,3 +907,305 @@ genuína do cliente. Nunca invada conversa que o cliente ainda não iniciou.
 ```
 
 **Prioridade:** pendência opcional — não é violação bloqueante. Listar no relatório se ausente em agente com campanhas ativas.
+
+---
+
+## 20b. Handoff sem fricção (adendo SPEC §10.14 — sugerir, não bloquear)
+
+**Regra:** a saída para humano precisa ser fácil, óbvia e sempre disponível —
+o cliente nunca deve sentir que está "preso" no bot. Evidência (Cantarola,
+decisor Nivaldo): *"fica irritado quando entra em um bot e não consegue
+sair"*; *"a IA não pode empurrar o cliente para outro número — foi
+exatamente isso que ele criticou na solução atual"*; *"a equipe precisa
+conseguir assumir a conversa a qualquer momento, sem fricção"*; *"o agente
+não se reapresenta a cada handoff"* — para o cliente a conversa é contínua,
+o contexto viaja em `resumo_pipeline` (§2.3/Regra 21), não em uma nova
+apresentação.
+
+**Como detectar no prompt:**
+- O texto instrui a IA a direcionar o cliente para OUTRO número de
+  WhatsApp/telefone/canal em vez de usar `send_flow` no mesmo canal
+  ("te passo o número da loja", "chama a gente no zap XX")?
+- O texto instrui o agente a se reapresentar/repetir a saudação inicial
+  ("Oi, sou o assistente virtual da <empresa>...") depois de um handoff
+  já ocorrido na mesma conversa, ou depois que um humano assumiu?
+
+**Como corrigir:** **sugerir, nunca bloquear** — é uma pendência opcional no
+relatório, não uma violação estrutural:
+- Empurrar para outro número → sugerir substituir por `send_flow` para o
+  fluxo de pipeline (Regra 21), que mantém o atendimento no mesmo canal/
+  conversa.
+- Instrução de reapresentação pós-handoff → sugerir remover; o contexto para
+  o operador humano já está em `resumo_pipeline`, não precisa ser repetido
+  ao cliente.
+
+Não alterar automaticamente: pode ser decisão de negócio do dono do prompt
+(ex.: linha de WhatsApp comercial separada da linha de SAC, por design). Só
+registrar como sugestão.
+
+---
+
+## 21. Campos canônicos de handoff (motivo_transferencia · prioridade_pipeline · resumo_pipeline)
+
+**Regra:** antes de qualquer `send_flow` de transferência para humano, a IA
+grava, nesta ordem, os três campos que dirigem o fluxo de pipeline:
+`motivo_transferencia` (enum canônico por setor), `prioridade_pipeline`
+(`baixa|media|alta`), `resumo_pipeline` (texto, 2-4 frases). Existe **UM**
+flow de pipeline (`<ID_DO_FLUXO_PIPELINE>`) — quem escolhe a fila é o VALOR
+de `motivo_transferencia`, nunca o `flow_id`. Detalhe completo (critério de
+cada valor, conteúdo do resumo, o que o fluxo de pipeline faz) está em
+`references/campos_canonicos.md` §2, §2.1-§2.4 — **não duplicado aqui**.
+
+### Enum canônico (valores; critério completo em campos_canonicos.md §2.1)
+
+```
+Parcerias: ugc | colaboracao | influencer | revenda | atacado
+Comercial: vendas | carrinho
+SAC:       rastreio | devolucao | troca | duvida   (duvida = catch-all)
+```
+
+Minúsculas, sem acento, sem plural (`duvida`, não `duvidas`).
+
+### Mapeamento de legado → canônico (ao auditar prompt existente)
+
+| Legado (nome/valor) | Canônico | Observação |
+|---|---|---|
+| `duvidas` | `duvida` | singular, sem plural |
+| `sac_geral` | `duvida` | catch-all agora é `duvida`, mesmo destino do `else` |
+| `assunto_ticket` / `resumo_lead` / `sac_resumo` | `resumo_pipeline` | um resumo só, §2.3 |
+| `sac_prioridade` | `prioridade_pipeline` | valores `baixa\|media\|alta` |
+| `sac_categoria` | `motivo_transferencia` | enum acima |
+
+**Como corrigir — e o que NÃO corrigir.** A tabela acima é mapa de
+equivalência, **não roteiro de renomeação**. Em cliente que já roda, a infra
+(fluxos, condições, filtros de pipeline) está montada sobre o nome e o valor
+atuais: renomear o `field_name` no prompt quebra tudo isso em silêncio, sem
+erro nenhum no painel. Então:
+
+- **Nome de campo legado (`sac_categoria`, `motivo_pipeline`, `urgencia`,
+  `assunto_ticket`…): NÃO renomeie.** Registre no relatório, na seção de
+  observações, dizendo qual é o canônico equivalente. A decisão de migrar é
+  do dono, em janela combinada, campo e fluxo na mesma mudança.
+- **Valor com erro de digitação ou plural dentro do MESMO campo canônico**
+  (`duvidas`→`duvida`): aí sim corrija — é normalização de valor, o campo
+  continua o mesmo.
+- **Valor fora de qualquer enum:** ver "Quando NÃO corrigir" abaixo antes de
+  forçar reescrita.
+
+Vale só para projeto NOVO: aí o canônico entra desde o começo.
+
+### Ordem fixa + `send_flow` por último
+
+```
+{"actions":[
+  {"action":"set_field_value","field_name":"motivo_transferencia","value":"<enum>"},
+  {"action":"set_field_value","field_name":"prioridade_pipeline","value":"<baixa|media|alta>"},
+  {"action":"set_field_value","field_name":"resumo_pipeline","value":"<2 a 4 frases>"},
+  {"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}
+]}
+```
+
+Ver também Regra 16 (ordem geral das actions).
+
+### Campo stale (pior que campo vazio)
+
+Os três campos **persistem no contato**. Transferir sem gravá-los faz o
+fluxo ler o valor do atendimento ANTERIOR da mesma pessoa — parece
+funcionar, mas cai na fila/prioridade erradas sem aparecer como erro. Ao
+corrigir: nunca deixe um exemplo de `send_flow` de transferência sem os três
+`set_field_value` antes; se o prompt já tinha um resumo/motivo em outro
+campo (legado), migre o CONTEÚDO para o campo canônico em vez de descartá-lo.
+
+### BLOQUEIO: a IA nunca grava `setor_agente` nem `tipo_setor`
+
+Esses dois campos são exclusivos do Roteador e do Revalidador,
+respectivamente (nunca de um agente). Se um JSON de exemplo do prompt tiver
+`set_field_value` com `field_name` `setor_agente` ou `tipo_setor`:
+
+**Padrão de fix:**
+1. **Remover a action.** É sempre a primeira ação — nunca deixar a gravação
+   errada no lugar.
+2. Se a intenção do prompt era "trocar de IA" (ex.: agente de Vendas tentando
+   "passar para o SAC" gravando `setor_agente=sac`), isso é o padrão legado
+   Veuske (`references/campos_canonicos.md` §8.1) — abandonado por causar
+   loop de roteamento em produção. **Converta em transferência para HUMANO**
+   com o `motivo_transferencia` mais adequado ao caso (`duvida` se não há um
+   específico) + registre pendência explícita: "Prompt tentava rotear entre
+   IAs via `setor_agente`/`tipo_setor` — convertido para transferência
+   humana; se o objetivo real era troca automática de especialista, é
+   decisão de arquitetura (2+ IAs coordenadas por um roteador único), não
+   algo que se resolve dentro do prompt de um agente — revisar com o dono."
+
+**Antes (bloqueado — IA tentando rotear entre agentes):**
+```
+{"actions":[{"action":"set_field_value","field_name":"setor_agente","value":"sac"}]}
+```
+
+**Depois (convertido em transferência para humano):**
+```
+{"actions":[
+  {"action":"set_field_value","field_name":"motivo_transferencia","value":"duvida"},
+  {"action":"set_field_value","field_name":"prioridade_pipeline","value":"baixa"},
+  {"action":"set_field_value","field_name":"resumo_pipeline","value":"<resumo real do caso — preencher com o contexto da conversa>"},
+  {"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}
+]}
+```
+
+### Quando NÃO corrigir
+
+Se o prompt documenta explicitamente um enum PRÓPRIO do cliente para
+`motivo_transferencia` (valores diferentes do canônico, descritos numa
+tabela do próprio prompt, com nota de que o flow do cliente filtra por eles
+— ex.: Cantarola usa `garantia` no painel de SAC, SPEC §10.12) — **não force
+o canônico**. Registre no relatório como "aviso resolvido": o enum é
+intencional e documentado no prompt, a divergência foi conferida e não
+precisa de correção.
+
+---
+
+## 22. Bloco AVISOS ATIVOS e notas para editores
+
+**Regra:** todo prompt de agente (exceto Roteador/Revalidador — ver Regra 23)
+tem, no topo, um bloco `📣 AVISOS ATIVOS` no formato canônico, e pode conter
+notas curtas `> 🔧 NOTA PARA EDITORES:` nos pontos de edição futura provável.
+Inserir/normalizar esse bloco é uma correção **estrutural** — cria um espaço
+editável, não muda nenhum comportamento do agente.
+
+### Formato canônico (`references/campos_canonicos.md` §6.1)
+
+```
+📣 AVISOS ATIVOS
+> 🔧 NOTA PARA EDITORES: edite SÓ as linhas entre os marcadores. Vazio = sem aviso. Remova avisos vencidos.
+=== INÍCIO DOS AVISOS ===
+(nenhum aviso ativo)
+=== FIM DOS AVISOS ===
+Se houver aviso acima, considere-o em prazos, disponibilidade e promoções. Se estiver vazio, ignore.
+```
+
+**Como corrigir — bloco ausente:** inserir o bloco acima, vazio
+(`(nenhum aviso ativo)` entre os marcadores), logo no topo do prompt (antes
+ou logo após IDENTIDADE). Não preencher com nenhum aviso — quem preenche é o
+cliente depois.
+
+**Como corrigir — bloco antigo/informal presente:** se o prompt já tem uma
+seção parecida sem os marcadores `=== INÍCIO/FIM DOS AVISOS ===` (ex.: um
+parágrafo solto de "Promoção ativa até X" no meio do texto, ou um cabeçalho
+"Avisos:" sem estrutura), **normalizar para o formato canônico acima**,
+preservando o CONTEÚDO do(s) aviso(s) ativo(s) que já estavam ali — mover
+para dentro dos marcadores, não descartar.
+
+### Notas para editores — permitidas, curtas
+
+Uma linha começando com `> 🔧 NOTA PARA EDITORES:`, até ~200 caracteres, sem
+histórico nem justificativa longa, é **permitida** e não conta como
+meta-documentação (whitelist — ver Regra 15). Local típico: AVISOS ATIVOS;
+tabela de `motivo_transferencia` ("não altere os valores: o fluxo filtra
+estas strings"); tabela de flow_ids ("troque só o id, mantenha o nome da
+chave"); tabela de tools ("nomes vêm do MCP; não renomeie sem mudar o n8n");
+bloco DADOS DESTA CONVERSA ("adicione um `{{campo}}` aqui para a IA passar a
+enxergá-lo"); base de conhecimento ("preço/estoque vêm da tool, não escreva
+aqui") — ver `campos_canonicos.md` §6.2 para a lista completa.
+
+**Nota LONGA (fora do padrão):** se encontrar uma nota com esse marcador
+passando de ~200 caracteres ou se estendendo por várias linhas, **encurte**
+para o essencial (1 linha), preservando a intenção — não remova a nota
+inteira.
+
+**Continua proibido (Regra 15):** changelog, histórico de versão, pendências
+internas, TODO, justificativas de decisão passada — mesmo disfarçado como
+"nota para editores". A whitelist cobre só a linha de 1 marcador; um bloco de
+várias linhas com esse prefixo seguido de conteúdo de changelog continua
+sendo meta-doc e sai do prompt (migrar pro relatório).
+
+---
+
+## 23. Exceção: prompts de Roteador e Revalidador (saída de 1 palavra)
+
+**Regra:** um prompt de Roteador (grava `setor_agente` =
+`vendas`\|`sac`\|`ignorar`) ou de Revalidador (grava `tipo_setor`
+= `humano`\|`bot`) tem natureza DIFERENTE de um prompt de agente: a saída
+esperada é **UMA PALAVRA** em texto puro, sem JSON, sem tools, sem
+transferência (`references/campos_canonicos.md` §1, §1.1; SPEC §5.5,
+§8F-§8G).
+
+**Como identificar:** a instrução central manda responder com EXATAMENTE uma
+palavra, minúscula, sem mais nada, e o prompt proíbe explicitamente
+JSON/explicação/qualquer texto adicional.
+
+**Ao auditar um prompt desses, NÃO exigir:**
+- Bloco oficial de saída JSON (Regra 12) — o roteador/revalidador não produz JSON.
+- `send_flow` / trio de handoff (Regra 21) — nenhum dos dois transfere; só classificam.
+- Bloco AVISOS ATIVOS / DADOS DESTA CONVERSA (Regra 22, campos_canonicos §6.1/§6.3) —
+  não fazem sentido num classificador que não conversa com o cliente.
+- Seções obrigatórias de agente (Regra 7): anti-alucinação, não-revelar-IA,
+  texto-padrão, fora-de-escopo — não se aplicam a quem não conversa.
+
+**Nota sobre o `analyze_prompt.py`:** no modo fixer, o script já rebaixa a
+ausência de `send_flow`/bloco JSON para **aviso (warn)** em vez de bloqueio
+quando reconhece um padrão de saída de 1 palavra. Ainda assim, a leitura
+humana desta regra é o que decide: se o `findings.json` marcar "seção
+obrigatória ausente" ou "bloco oficial ausente" para um prompt claramente
+roteador/revalidador, **ignore esse achado** — não é um "quando não
+corrigir" no sentido de deixar pendência, é um falso positivo esperado para
+este tipo de prompt. Documente no relatório como "exceção aplicada
+(roteador/revalidador)", não como pendência.
+
+**O que SIM verificar num roteador/revalidador:**
+- A saída é mesmo texto puro de 1 palavra (nunca JSON).
+- Roteador: nunca responde `ignorar` para quem mandou mídia
+  (imagem/áudio/arquivo) ou qualquer sinal humano — na dúvida, roteia para
+  um setor real, nunca para a análise humano×bot.
+- Revalidador: a regra de ouro "na dúvida → `humano`" está presente; a fonte
+  é o histórico ESTENDIDO (`{{chat_history_details_large}}`, 200 mensagens),
+  não só a última mensagem recebida.
+
+---
+
+## 24. Título de botão: máximo 20 caracteres
+
+**Regra:** todo `title` de botão em template `button` cabe em **20 caracteres**.
+Acima disso o passo "Filtro JSON" do fluxo de entrada — o reparador de JSON que
+roda entre o agente e o envio — **substitui o título por `"Comprar agora"`**, sem
+erro, sem log e sem nada que apareça no painel.
+
+**Por que é bloqueante e não estilo:** o cliente recebe um botão com o texto errado
+e ninguém fica sabendo. Num agente de SAC o efeito é grotesco — `"Acompanhar meu
+pedido"` (21 caracteres) chega como `"Comprar agora"` embaixo de uma mensagem sobre
+devolução. O analisador (`analyze_prompt.py`, check `button_misuse`) bloqueia acima
+de 20.
+
+**Alcance:** a troca só pega `payload.buttons` (template `button`). Botão dentro de
+`payload.elements[].buttons` (carrossel) **não** passa por ela — mas título curto
+continua sendo a regra, porque o botão longo é truncado na tela do WhatsApp de
+qualquer jeito.
+
+```json
+{"type":"web_url","url":"https://…","title":"Rastrear pedido"}
+```
+
+`"Rastrear pedido"` = 15. `"Acompanhar meu pedido"` = 21 → vira `"Comprar agora"`.
+
+> 🔧 NOTA PARA EDITORES: 20 caracteres é limite do fluxo, não preferência de estilo.
+
+(evidência: código do passo "Filtro JSON" em produção, enviado pelo dono em 2026-09-03)
+
+---
+
+## 27. Prometer envio sem a action que entrega
+
+**Regra:** se a mensagem diz que vai enviar alguma coisa ("vou te mandar o catálogo",
+"já te envio a tabela de medidas", "segue em anexo"), o **mesmo JSON** precisa entregar:
+um attachment, ou o `send_flow` do fluxo que envia. Sem isso a frase é mentira — o cliente
+espera e não chega nada.
+
+**Caso real:** a IA escreveu "vou enviar a tabela de medidas" em **três turnos seguidos**
+sem nenhuma action; a cliente pediu de novo a cada turno e nunca recebeu (DOLPS v1.7).
+
+**Como corrigir:** ou acrescenta a action que entrega, ou reescreve a mensagem para não
+prometer ("a tabela de medidas está no site, em Ajuda > Tamanhos"). Prometer e não entregar
+é pior que dizer que não tem.
+
+O analisador avisa (`promessa_sem_entrega`, warn) quando acha promessa de envio num JSON sem
+`send_flow` e sem attachment. É warn, não block: o envio pode vir de um fluxo disparado
+depois — mas confira, porque na maioria dos casos não vem.
+

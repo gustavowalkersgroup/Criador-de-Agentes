@@ -28,7 +28,7 @@ Se você ver **qualquer** desses comportamentos depois de plugar o MCP, **revise
 - ✗ Agente "diz que vai chamar" mas não chama a tool
 - ✗ Mesma resposta com palavras diferentes a cada turno ("Vou confirmar...", "Perfeito, vou direcionar...", "Vou verificar com o time...")
 - ✗ Agente inventa dado (handle, ID, preço) em vez de consultar
-- ✗ Loop de transferência (combinado com Quirk #24)
+- ✗ Loop de transferência (combinado com Quirk #27)
 - ✗ Resposta inconsistente (ora tool, ora texto criativo, ora transferência)
 - ✗ Agente ignora regras explícitas do prompt mesmo com proibição inegociável
 
@@ -61,6 +61,6 @@ Se algum desses estiver diferente — especialmente temperature acima de 3 ou mo
 
 ## 🔗 Cross-references
 
-- `references/quirks_n8n.md` Quirk #24 — loop de transferência pode ter config de modelo como **co-fator** (não só flow). Verifique os 2.
-- `references/handoff_pattern.md` — flows dedicados sozinhos não consertam se modelo tá inventando.
+- `references/quirks_n8n.md` Quirk #27 — loop de transferência pode ter config de modelo como **co-fator** (não só flow). Verifique os 2.
+- `references/handoff_pattern.md` — roteador único/revalidador certos sozinhos não consertam se o modelo tá inventando.
 - `references/tool_descriptions_guide.md` — descrição perfeita não compensa modelo mini com temperature 8.

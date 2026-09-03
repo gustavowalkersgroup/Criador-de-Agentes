@@ -20,7 +20,7 @@ Mapeia o esqueleto comum de TODO MCP construído com essa skill. Decisões varia
        │  auth: none (default) | headerAuth│
        └─┬────────────────────────────────┘
          │
-         │  N tools subnodes (httpRequestTool OU toolWorkflow)
+         │  N tools subnodes (httpRequestTool — padrão; ver nota do Caso B)
          │
          ▼ depende do tipo de auth (ver abaixo)
 ```
@@ -64,19 +64,46 @@ API exige fluxo OAuth com `access_token` curto + `refresh_token` longo. Exemplos
 MCP Trigger v2     │           Workflow: Refresh Token
    │               │           (Schedule 60min)
    │               │
-   ├─ tool 1 (toolWorkflow → Backend 1 → lê token → API)
-   ├─ tool 2 (toolWorkflow → Backend 2 → lê token → API)
+   ├─ tool 1 (httpRequestTool → Backend 1 → lê token → API)
+   ├─ tool 2 (httpRequestTool → Backend 2 → lê token → API)
    └─ tool N ...
 
 Workflow auxiliar: Reset Token (manual, recovery)
 Workflow auxiliar: Smoke Test (manual, diagnóstico)
 ```
 
-**Por que backends dedicados em vez de tool direto:**
+**Por que backends dedicados em vez de tool direto:** o token vive numa data table e precisa
+ser lido a cada chamada; o backend é quem lê. 1 workflow backend por operação, cada um com seu
+próprio webhook, chamado pela **URL interna** `http://n8n:5678/webhook/<path>` (Quirk #31 — a
+URL pública não é alcançável de dentro do n8n).
 
-`@n8n/n8n-nodes-langchain.toolWorkflow.workflowInputs` descarta valores estáticos — só passa adiante o que vem via `$fromAI`. Não dá pra usar router único com parâmetro `operation`. Solução: 1 workflow backend por operação. Cada um tem seu próprio Execute Workflow Trigger com 1 input dinâmico.
+**Por que `httpRequestTool` e não `toolWorkflow`:** duas armadilhas somadas. A primeira é o
+`workflowInputs` do `toolWorkflow`, que descarta valores estáticos — só passa adiante o que vem
+via `$fromAI`, então não dá pra montar router único com parâmetro `operation` (Quirk #2). A
+segunda é o Quirk #20: com cliente MCP externo (NexTags, OpenAI), os argumentos da `tools/call`
+podem chegar `null`. Esse segundo depende da versão do n8n — foi reproduzido na Verdena e
+**não** ocorreu na Nalisa (2026-07-03, `toolWorkflow` + `$fromAI` devolvendo dado real). O
+`httpRequestTool` funciona nas duas situações, então é o padrão; `toolWorkflow` só depois de
+smoke test por `curl` naquela instância.
 
 Veja `quirks_n8n.md` pra detalhes.
+
+### Caso D — GitHub como banco (cliente sem ERP/API)
+
+Cliente sem ERP/sistema com API, catálogo de mídias/FAQ/preços razoavelmente estável.
+
+**Arquitetura:**
+
+```
+MCP Trigger v2
+   └─ tool (httpRequestTool + $fromAI) → Backend (webhook, URL INTERNA http://n8n:5678/...)
+                                            → HTTP GET jsDelivr (catalogo.json no GitHub)
+                                            → Code node: filtra + slim + ação explícita
+```
+
+Nunca ler via `raw.githubusercontent.com` (MIME errado quebra mídia no WhatsApp — Quirk
+#29). Trocar mídia/preço/FAQ = commit no repo, nada muda no n8n. Detalhe completo:
+`references/mcp_github_repo_pattern.md`.
 
 ### Caso C — Híbrido multi-API
 
@@ -96,6 +123,47 @@ Cron de Refresh + Reset Manual + Smoke Test só pro lado Tray.
 ```
 
 Cada API tem credencial separada. Data table só pras com refresh. Tools no MCP misturam tipos.
+
+## Padrão "tool → backend interno via webhook" (quando usar em vez de tool direto)
+
+Duas formas de ligar a tool MCP ao dado real:
+
+1. **Tool → API do cliente direto** (`httpRequestTool` com `$fromAI` chamando a API do
+   parceiro sem intermediário) — mais simples, é o default dos Casos A/B/C acima.
+2. **Tool → backend interno via webhook** (`httpRequestTool` chamando
+   `http://n8n:5678/webhook/<path>` — **URL interna**, nunca a pública `nextags.app.br`,
+   que dá connection refused de dentro do próprio n8n — Quirk #31): um workflow backend
+   separado processa a chamada real (à API do cliente, ao GitHub-como-banco, a outro
+   sistema). Separa o "contrato com a IA" (tool description, validação, slim) da camada de
+   integração — permite trocar o backend sem tocar no MCP.
+
+Use o padrão 2 quando: (a) o backend precisa de lógica não-trivial (Caso D, filtro de
+catálogo); (b) múltiplas tools chamam a mesma origem e você quer centralizar o slim/parse;
+(c) o dado não vem de uma API HTTP simples (ex.: leitura de Data Table, agregação de mais
+de uma fonte).
+
+## Sticky note obrigatório em todo workflow
+
+Todo workflow criado por essa skill leva uma sticky note no topo do canvas. Modelo
+canônico e exemplo real: `SKILL.md` §"Sticky note explicativo". Não é opcional — é a
+documentação que sobrevive à sessão, e "ativo mas sem sticky" é a mesma classe de bug que
+"ativo com placeholder não preenchido".
+
+## Convenção de Data Tables de estado/dedup/heartbeat
+
+- **Dedup/estado** (replay, polling, fila): 1 Data Table por cliente+plataforma, nome
+  `<Cliente> <Plataforma> Orders State` (ou `... Carrinho Dedup`). Grava **depois** do
+  sucesso do POST na NexTags, nunca antes (Quirk #32). Compara estágio anterior × novo, não
+  "existe linha" — ver `webhook_transactional_pattern.md` (histórico) e a skill
+  `nextags-webhook-builder` para o padrão vigente.
+- **Heartbeat** (automação agendada crítica): Data Table separada gravando "cheguei até
+  aqui" a cada execução do D-0/D-1. Um Watchdog (cron que lê a tabela e compara contra a
+  lista esperada) + um Error Workflow (`settings.errorWorkflow`) formam o par
+  complementar — o Error Workflow não pega falha de infra ANTES do primeiro node rodar;
+  só o Watchdog detecta ausência. Padrão de referência: Otogama Watchdog
+  (`Gtxxg7YTbApcT4tE`) + Otogama Error Handler (`W7cuLshLtted1VPz`). Recomendar os DOIS
+  juntos pra qualquer automação agendada crítica (lembretes, confirmações, transacionais em
+  cron), não só um `errorWorkflow` isolado.
 
 ## Decisão 2: granularidade das tools
 

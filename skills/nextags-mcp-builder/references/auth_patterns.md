@@ -110,13 +110,13 @@ Cliente deve fornecer:
 
 4. **Workflow Smoke Test (manual)** — testa endpoints da API com token vivo, sem passar pelo MCP. Diagnóstico.
 
-5. **N Workflows Backend** (1 por operação) — chamados pelo MCP via `toolWorkflow`:
-   - Execute Workflow Trigger com 1 input dinâmico
+5. **N Workflows Backend** (1 por operação) — chamados pelo MCP via `httpRequestTool` na URL interna `http://n8n:5678/webhook/<path>`:
+   - Webhook Trigger (o `httpRequestTool` chama por HTTP interno)
    - Data table get (lê token vivo)
    - HTTP request à API com `Authorization: Bearer {{ token }}`
    - Code node de slim
 
-6. **Workflow MCP** com `toolWorkflow` nodes apontando pros backends
+6. **Workflow MCP** com nodes `httpRequestTool` apontando pros backends (não `toolWorkflow` — ver `arquitetura_padrao.md`, Caso B)
 
 **Exemplo de produção:** cliente Tray (moda fitness). Setup típico = 8 workflows no n8n: 1 MCP + 4 backends (índice, search, detalhe, variação) + 1 refresh cron + 1 reset manual + 1 smoke test. IDs específicos são gerados na criação — consulte o painel n8n do cliente.
 

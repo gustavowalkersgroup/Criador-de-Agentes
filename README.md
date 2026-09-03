@@ -4,12 +4,14 @@ Coleção de 6 skills profissionais para acelerar a criação, auditoria e corre
 
 | Skill | O que faz |
 |---|---|
-| `nextags-prompt-creator` | Gera prompts de atendimento NexTags do zero a partir de briefing + URL da empresa. Faz scraping, faz perguntas obrigatórias, audita automaticamente. |
-| `nextags-prompt-fixer` | Audita/corrige prompts existentes contra as Regras Absolutas da plataforma. Detecta JSON inválido, ações proibidas, markdown vazado, placeholders genéricos, seções de meta-documentação no prompt. |
+| `nextags-prompt-creator` | Gera prompts de atendimento NexTags do zero a partir de briefing + URL da empresa. Faz scraping, faz perguntas obrigatórias, gera roteador/revalidador quando o projeto tem 2+ IAs, escreve os campos canônicos de handoff e audita automaticamente. |
+| `nextags-prompt-fixer` | Audita/corrige prompts existentes contra as Regras Absolutas da plataforma. Detecta JSON inválido, ações proibidas, markdown vazado, placeholders genéricos, seções de meta-documentação, campo de roteamento gravado pela IA (deveria ser só do roteador/revalidador) e enum de transferência fora do canônico. |
 | `nextags-json-fixer` | Valida e corrige a SAÍDA JSON gerada pelo agente em runtime. Útil quando o bot retorna JSON quebrado, com fence ```json em volta, sem `messages`, etc. |
-| `nextags-mcp-builder` | Constrói o servidor MCP no n8n que liga o agente IA às APIs do cliente (Tray, VTEX, Shopify, Bling, Martz, etc.) — atendimento sob demanda. |
-| `nextags-webhook-builder` | Constrói e audita webhooks/disparos **transacionais** (pedido pago/enviado/entregue, carrinho abandonado) no n8n, roteando pra NexTags com dedup e `send_flow`. Irmã da mcp-builder (disparo proativo). Padrão validado por auditoria de produção. |
+| `nextags-mcp-builder` | Constrói o servidor MCP no n8n que liga o agente IA às APIs do cliente (Tray, VTEX, Shopify, Bling, Martz, etc.) — atendimento sob demanda. Garante a infra dos campos canônicos (roteador/revalidador/handoff) sem decidir prompt. |
+| `nextags-webhook-builder` | Constrói e audita webhooks/disparos **transacionais** (pedido pago/enviado/entregue, carrinho abandonado) no n8n, com CUFs canônicos, dedup e `send_flow`. Irmã da mcp-builder (disparo proativo). Padrão validado por auditoria de produção. |
 | `nextags-webchat-tester` | Testa o agente PUBLICADO ao vivo, dirigindo o WebSocket do webchat por Python (sem extensão de browser). Exercita a stack real (NexTags + MCP + backend); pega erro de MCP, handoff, transferência fantasma, renderização de card. |
+
+Todas as skills compartilham a mesma referência de **campos canônicos** (`campos_canonicos.md` — roteador, revalidador, handoff e CUFs transacionais), replicada de forma idêntica entre `nextags-prompt-creator`, `nextags-prompt-fixer`, `nextags-mcp-builder` e `nextags-webhook-builder`.
 
 ---
 
@@ -83,8 +85,9 @@ As skills compartilham princípios comuns:
 - **Bloco oficial NexTags obrigatório** — toda IA gerada inclui as instruções canônicas de saída JSON.
 - **Sem markdown vazando** — proibido fences ` ```json `, asteriscos, bullets, headers dentro dos campos de texto.
 - **CUFs do sistema** — placeholders devem usar `{{first_name}}` etc., nunca `[nome]`.
-- **Prompts enxutos** — meta de 15-20 KB por prompt. Auditoria/changelog/pendências vão pro RELATÓRIO, não pro prompt.
-- **Ações permitidas explícitas** — só `send_flow` pra humano e `set_field_value` pra roteamento entre agentes.
+- **Prompts enxutos, meta por tipo** — consultivo (Vendas) mira 30-45 KB; SAC/triagem mira 10-20 KB. Auditoria/changelog/pendências vão pro RELATÓRIO, não pro prompt.
+- **IA nunca roteia entre agentes** — o roteador (1 palavra, roda a cada mensagem) grava `setor_agente`; a IA só transfere para humano, e faz isso gravando `motivo_transferencia` + `prioridade_pipeline` + `resumo_pipeline` e disparando UM fluxo de pipeline (`send_flow`).
+- **Campos canônicos compartilhados** (`campos_canonicos.md`) — nome exato, minúsculas, snake_case, sem acento; o mesmo em qualquer cliente, salvo exceção registrada no relatório.
 
 ---
 

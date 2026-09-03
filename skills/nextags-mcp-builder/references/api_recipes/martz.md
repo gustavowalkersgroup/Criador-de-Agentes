@@ -96,7 +96,7 @@ Caso A — key fixa. Tools `httpRequestTool` direto. Sem backends, sem data tabl
 
 **Quando usar Martz vs API fonte direto:**
 
-- **Use Martz pra pedidos + clientes** — normaliza, tem search livre rico, recebe webhooks da API fonte automaticamente
+- **Use Martz pra CONSULTA de pedidos + clientes** — normaliza e tem search livre rico. Consulta sob demanda, não notificação (ver aviso abaixo)
 - **Use API fonte (Tray/Nuvemshop/Shopify) pra catálogo rico** — descrição, imagens, estoque, variações
 - **Híbrido é o padrão** — visto na Mayuí (Tray catálogo + Martz pedidos/clientes)
 
@@ -104,11 +104,29 @@ Caso A — key fixa. Tools `httpRequestTool` direto. Sem backends, sem data tabl
 
 - Doc: https://martz-api-docs.readme.io/reference
 - Painel: (a confirmar com cliente)
-- Última visita: Maio/2026
+- Última visita: Maio/2026 (webhooks e busca revisados contra relatórios de campo em 2026-09-03)
 - Confiabilidade: **MÉDIA** — Readme.io tem endpoints fantasma; sempre validar com chamada real
 
 ## 📝 Notas históricas
 
 - **Mayuí Fit Wear** foi o primeiro uso de Martz na NexTags. Aprendemos os endpoints fantasma na marra.
 - Martz funciona como **proxy normalizador multi-plataforma** — uma API consistente independente da plataforma de origem (Tray, Shopify, vnda, etc.)
-- Pedidos transacionais (novo, enviado, entregue, carrinho abandonado) já saem por webhooks Martz pra NexTags — **não precisa montar webhooks próprios**
+- ~~Pedidos transacionais já saem por webhooks Martz~~ — **ERRADO, corrigido em 2026-09-03.**
+
+## ⛔ Martz NÃO manda webhook de pedido nem de carrinho
+
+O Martz é **CRM/fidelidade**, não sync de pedido. Os webhooks dele são `customer.*`,
+`popup.assigned`, `survey.answered`, `bonus.*` e `conversation.message.*` — **9 eventos, e
+nenhum `order.*` ou `cart.*`**. Também não há filtro de status utilizável: `?status=` e
+`?raw_status=` são aceitos com HTTP 200 e **não filtram nada** (parâmetro fantasma).
+
+Consequência prática: **transacional de pedido nunca sai pelo Martz.** Se o cliente precisa
+de notificação proativa (pago, enviado, entregue, carrinho abandonado), a fonte tem que ser
+a plataforma de origem ou polling — ver a skill `nextags-webhook-builder`. Prometer
+transacional via Martz é vender o que não existe.
+
+Outro detalhe do mesmo par de relatórios: **não busque pedido pelo campo `number`** — devolve
+centenas de resultados aleatórios. Use `order_number`, que é o número real da loja de origem.
+
+(evidência: Verdena e Nalisa, dois relatórios independentes de junho e julho/2026, ambos
+posteriores à última visita da doc)

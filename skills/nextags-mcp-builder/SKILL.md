@@ -8,15 +8,22 @@ type: tool
 
 Fabrica a **infraestrutura MCP** completa no n8n pra um cliente novo da NexTags. Recebe uns poucos inputs e entrega workflows ativos prontos pra serem consumidos por qualquer agente.
 
+## 🚨 O MCP mora no n8n — não se constrói servidor à parte
+
+Não proponha (nem aceite briefing pedindo) servidor MCP standalone em Node/Express/TypeScript
+com `server.tool()` e Zod. Todo MCP desta operação é n8n: MCP Server Trigger v2 + tools +
+backends. Já houve rascunho pedindo servidor externo "seguindo o padrão da Mayuí" quando o MCP
+real da Mayuí é 100% n8n — o rascunho tinha entendido errado a própria referência que citava.
+
 ## 🚨 Regra inegociável — pasta no n8n antes de qualquer workflow
 
 **Antes de criar qualquer workflow, confirmar a pasta do cliente no n8n.**
 
 1. Chamar `search_folders` com o nome do cliente
 2. Se encontrar → usar o `folderId` retornado
-3. Se não encontrar → **perguntar ao usuário** antes de criar: *"Não encontrei a pasta '[Nome]' no n8n. Ela já existe com outro nome, ou devo criar agora?"*
-4. Só criar a pasta com `create_folder` após confirmação do usuário (ou se ele já tiver dito "pode criar")
-5. Passar `folderId` em **todos** os `create_workflow_from_code` — sem exceção
+3. Se não encontrar → **perguntar ao usuário**: *"Não encontrei a pasta '[Nome]' no n8n. Ela já existe com outro nome, ou você cria agora na interface?"*
+4. ⚠️ **Não existe `create_folder` no MCP do n8n** — a criação de pasta é manual, na interface web. Peça ao usuário e espere. Enquanto a pasta não existir, o fallback é: criar os workflows, aplicar **tag com o nome do cliente** em todos, e **`move_workflows_to_folder`** assim que a pasta existir. Esse caminho é pendência de entrega, não pode ficar esquecido (Nalisa 2026-07-03 e Cantarola ficaram soltos no projeto pessoal; Otogama idem).
+5. Passar `folderId` em **todos** os `create_workflow_from_code` quando a pasta existir — sem exceção
 6. O **nome do cliente DEVE aparecer no nome de todos os workflows** — MCP, backends, smoke test, refresh, reset
 
 Exemplos corretos:
@@ -41,6 +48,83 @@ Errado:
 
 Detalhes técnicos completos: `references/quirks_n8n.md` §1.
 
+## 🚨 Regra inegociável — n8n sempre via API/MCP, nunca via navegador/UI
+
+Toda criação/edição de workflow n8n passa pelo MCP do n8n, nesta ordem:
+
+```
+search_workflows → validate_workflow → create_workflow_from_code / update_workflow → publish_workflow
+```
+
+**Nunca** automação de UI (clicar em nodes, arrastar, colar JSON manualmente no editor
+web). `search_workflows` primeiro pra checar se já existe (idempotência); `validate_workflow`
+antes de criar/atualizar pra pegar erro de schema cedo; `create_workflow_from_code` ou
+`update_workflow` pra aplicar; `publish_workflow`/ativar ao final. Se alguma dessas tools
+falhar ou não cobrir um caso, pare e pergunte — não tente contornar abrindo o n8n no
+browser.
+
+## 🚨 Regra inegociável — sticky note explicativo em TODO workflow
+
+Todo workflow criado por essa skill leva **1 sticky note no topo do canvas**, como
+`n8n-nodes-base.stickyNote`. É documentação executável: fica junto do workflow, não numa
+wiki externa que ninguém abre de novo.
+
+**Modelo canônico** (adaptado de Degan/Nordmann/Poé, corpus de 21 workflows n8n em produção):
+
+```
+## <Cliente> <Sistema> — <o que é>
+Endpoint: <URL pública completa>
+ESTADO EM dd/mm
+  <o que está confirmado por chamada real / o que falta>
+CREDENCIAIS
+  <Nome do header, Bearer ou valor puro, de que conta>
+PENDENTE / NÃO ATIVAR antes de…
+  <lista do que falta preencher antes de ligar>
+ARMADILHAS (com evidência)
+  <"confirmado por chamada real em dd/mm": ...>
+DE ONDE VEIO a lista de campos
+  <"não foi de memória" — cite a fonte real>
+Decisões negativas
+  <"não usar X de propósito, porque…">
+```
+
+**Exemplo real curto** (Degan MCP, `Wt3SsrCxQ2zwwnOo`):
+
+```
+## Degan MCP - Praticx + BW
+Endpoint: https://nextags.app.br/mcp/degan-mcp
+ESTADO EM 02/09
+  BW  -> slug degan1 CONFIRMADO por chamada real. Falta a credencial.
+  Praticx -> host ainda PENDENTE nas 3 tools de catalogo (servidor local da Degan).
+CREDENCIAIS
+  BW Commerce Token -> Header Auth, header 'Token', valor puro. NAO e Bearer.
+  Praticx API Token -> Bearer.
+ENVELOPE DA BW (a spec esta errada nisso)
+  Toda resposta: { registros: [...], erros: [...], totalRegistros: N }
+  Sempre HTTP 200, inclusive em falha de autenticacao.
+PrecoCusto fica FORA das tools de catalogo de proposito - nao adicionar em fields.
+```
+
+Nunca deixe a sticky dizer "pronto"/"ativo" enquanto ainda há placeholder no código — isso
+é contradição a ser flagrada em auditoria, não um detalhe cosmético.
+
+## 🚨 Regra inegociável — Data Table de dedup/estado + heartbeat pra automação crítica
+
+Todo workflow que pode receber **replay**, faz **polling**, ou processa uma **fila** leva
+uma Data Table de dedup/estado — nome `<Cliente> <Plataforma> Orders State` (ou `...
+Carrinho Dedup`). A gravação do dedup só acontece **depois** do sucesso do POST na NexTags,
+nunca antes/em paralelo — gravar antes marca o cliente como "notificado" pra sempre mesmo
+quando a chamada falhou (evidência: Nordmann v2/v3, Meiskin v1/v2 — 51 clientes reais que
+nunca seriam notificados; `references/quirks_n8n.md` Quirk #32). Para automação **agendada
+crítica** (lembretes, confirmações, cron transacional), o par heartbeat+watchdog+error
+workflow é obrigatório, não opcional: um Error Workflow (`settings.errorWorkflow`) cobre
+falha que gerou exceção capturável, mas **não** cobre o worker do n8n morrendo antes do
+primeiro node rodar — só um Watchdog (cron que lê uma tabela de heartbeat e detecta
+ausência) cobre esse caso. Padrão de referência: Otogama Watchdog (`Gtxxg7YTbApcT4tE`) +
+Otogama Error Handler (`W7cuLshLtted1VPz`), motivados pelo mesmo incidente real (worker
+morto, `startedAt: null`, nenhum alerta interno disparou). Detalhe de implementação:
+`references/arquitetura_padrao.md` §"Convenção de Data Tables de estado/dedup/heartbeat".
+
 ## 🚨 Regra inegociável — campos nativos Nextags no payload `/api/contacts`
 
 Toda vez que um workflow n8n fizer `POST https://app.nextagsai.com.br/api/contacts`, estes campos vão **diretamente no root** do JSON — **nunca** como `set_field_value` na array `actions`:
@@ -63,6 +147,53 @@ O restante (CPF/CNPJ, número do pedido, status, valor, rastreio, etc.) vai em `
 ```
 
 Criar CUFs para nome/email/telefone/documento é redundante, polui o admin da NexTags e quebra filtros nativos da plataforma. Lição aprendida em neuroFood 2026-06-24.
+
+## 🔌 Como expor as tools para a NexTags enxergar
+
+Doutrina consolidada de como uma tool sai do n8n e chega visível/chamável pela NexTags:
+
+1. **Trigger:** MCP Server Trigger **v2**, path `/mcp/<slug>` — Streamable HTTP (ver regra
+   de transporte acima e `quirks_n8n.md` §1).
+2. **Tools:** sempre `n8n-nodes-base.httpRequestTool` v4.4/v4.5, com `$fromAI(...)` em cada
+   parâmetro dinâmico. **Nunca** `toolHttpRequest` + `placeholderDefinitions` — colapsa o
+   schema exposto ao cliente MCP externo num único campo `{input}` e a tool nunca dispara
+   com os argumentos certos (evidência Poé, MCP `lk0lpDShxXFGia7D`; `quirks_n8n.md` Quirk
+   #30). **`toolWorkflow` depende da versão do n8n** e por isso não é o padrão: o Quirk #20
+   (argumentos chegando `null` com cliente MCP externo) foi reproduzido na Verdena, mas a
+   Nalisa registrou `toolWorkflow` + `$fromAI` funcionando na instância dela em 2026-07-03,
+   com `tools/call` devolvendo dado real. Em projeto novo use `httpRequestTool`, que funciona
+   nas duas situações; só considere `toolWorkflow` depois de um smoke test por `curl` naquela
+   instância — nunca por dedução.
+3. **`neverError: true` em toda tool** (`options.response.response.neverError`): sem ele
+   qualquer 4xx vira `NodeOperationError` técnico em vez de corpo de resposta que a IA
+   consegue ler e explicar ao cliente (evidência: Hiven).
+4. **Backend (quando houver):** a tool chama o backend pela **URL interna**
+   `http://n8n:5678/webhook/<path>` — a URL pública (`nextags.app.br/webhook/...`) dá
+   *connection refused* quando chamada de DENTRO do próprio n8n (`quirks_n8n.md` Quirk
+   #31). Padrão "tool → backend interno": `references/arquitetura_padrao.md`.
+5. **Description:** segue `references/tool_descriptions_guide.md` (quando usar / quando
+   NÃO usar / parâmetros / retorno / comportamento em vazio e erro / campos proibidos) +
+   a frase **"Nunca cite o nome desta ferramenta para a pessoa"** dentro da própria
+   description (**[SEM EVIDÊNCIA DIRETA]** — nenhuma tool do corpus lido usa essa frase
+   literalmente; é recomendação por analogia, não padrão observado — ver
+   `tool_descriptions_guide.md`).
+6. **Settings:** `availableInMCP: true` — necessário pro workflow poder ser lido/auditado
+   via MCP do n8n.
+7. **Conferir do lado NexTags:** depois de publicar, confirmar que a tool aparece pra
+   NexTags com `GET /agents/mcp` (ver `../nextags-webhook-builder/references/api_nextags.md`)
+   — não basta o workflow estar ativo no n8n, precisa aparecer nesse endpoint.
+   **Sem credencial nativa da loja** (Tray/Nuvemshop/Yampi-Dooki/Bagy): antes de pedir a
+   chave da plataforma ao cliente, avalie o **Gateway Proxy NexTags**
+   (`../nextags-webhook-builder/references/gateway_proxy_nextags.md`) como fonte alternativa
+   de leitura de pedido/rastreio pro MCP.
+8. **Gate de escrita:** tool que ESCREVE (criar pedido, alterar cadastro) nunca é liberada
+   sem controle. Padrão: escopo **read-only** pra SAC; **escrita só na IA de Vendas**, e só
+   com aprovação humana quando o domínio exigir (ex.: valor alto, dado sensível); testar
+   sempre com **contato interno** antes de ligar a tool pra base de clientes real
+   (evidência: requisitos SAP N2 — "SAC = read-only; Vendas = read + create controlado";
+   Solentes Net N2 — "Testar primeiro com um contato interno antes de ligar para os 344 da
+   onda 1"). Registrar no relatório de entrega quais tools são de escrita e qual gate foi
+   aplicado.
 
 ## ⚠️ Escopo — o que essa skill faz E NÃO faz
 
@@ -160,7 +291,7 @@ Copia templates de `assets/` e customiza:
 Antes de criar, **valida com `validate_workflow`** do MCP n8n. Depois cria com `create_workflow_from_code`.
 
 **Ordem de criação:**
-0. **Pasta do cliente** — `search_folders` → criar se não existir → guardar `folderId`
+0. **Pasta do cliente** — `search_folders` → se não existir, pedir ao usuário que crie na interface (não há `create_folder` na API) → guardar `folderId`
 1. Data table de tokens (se OAuth)
 2. Refresh Token workflow (se OAuth) — nome: `<Cliente> Refresh Token — <API>`
 3. Reset Token workflow manual (se OAuth) — nome: `<Cliente> Reset Token — <API> (manual)`
@@ -195,30 +326,54 @@ A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase 
 
 ### Fase 4.45 — Se o brief inclui múltiplos agentes ou handoff humano
 
-**Leia OBRIGATORIAMENTE** `references/handoff_pattern.md` quando o brief tem:
+**Leia OBRIGATORIAMENTE** `references/handoff_pattern.md` (reescrito) e
+`references/campos_canonicos.md` quando o brief tem:
 - 2+ agentes IA (Vendas + SAC, por exemplo)
 - Handoff IA → humano (fila de atendimento)
-- Necessidade de contexto entre agentes (`resumo_pipeline`)
+- Necessidade de contexto pro pipeline (`resumo_pipeline`)
 
-Padrão correto: **flows dedicados por destino** (não router genérico). Cada flow dedicado seta `setor_agente` E envia mensagem inicial. Agente IA só preenche `resumo_pipeline` e dispara o flow correto — **NÃO seta o `setor_agente`**.
+**Modelo canônico atual** (substitui o padrão de flows dedicados por destino):
 
-Evita o loop de transferência (ver Quirk #24) e dá contexto ao próximo agente. Lição cara aprendida em Veuske 2026-06-04.
+- **UM roteador único** roda a cada mensagem e é o ÚNICO que grava `setor_agente`
+  (`vendas` \| `sac` \| `ignorar`). Um **revalidador** (2ª camada, só no
+  `else`) grava `tipo_setor` (`humano` \| `bot`).
+- **Nenhuma IA transfere para outra IA.** A IA só transfere pra HUMANO, gravando o trio
+  `motivo_transferencia` + `prioridade_pipeline` + `resumo_pipeline` e disparando **UM**
+  `flow_id` de pipeline (nunca um flow por fila/agente).
+- Esta skill **não decide** nada disso (enum, prioridade, texto do resumo são do prompt —
+  `nextags-prompt-creator`/`nextags-prompt-fixer`). O que cabe ao MCP-builder é **garantir
+  a infra**: os CUFs canônicos existem na conta, com o tipo certo (`setor_agente` Texto,
+  `tipo_setor` Seleção única, `motivo_transferencia` Texto, `prioridade_pipeline` Seleção
+  única, `resumo_pipeline` Texto/Long Text). Setup idempotente por API:
+  `GET /accounts/custom_fields` → diff → `POST /accounts/custom_fields {name, type}` (ver
+  `campos_canonicos.md` §7.5). A API não tem DELETE — dry-run antes de criar.
+
+Diagrama completo do fluxo de entrada, fluxo de pipeline, enum por painel e checklist de
+auditoria: `references/handoff_pattern.md`. Guard contra o loop do roteador (Quirk #27):
+mesmo arquivo, §4.
 
 ### Fase 4.5 — Se o brief inclui webhooks transacionais (pedido pago/enviado/entregue, carrinho abandonado)
 
-**Leia OBRIGATORIAMENTE** `references/webhook_transactional_pattern.md` antes de gerar qualquer workflow de webhook transacional.
+O padrão vigente pra webhook transacional está na skill **`nextags-webhook-builder`**, não
+mais nesta skill. Aponte o usuário pra lá quando o brief incluir transacional:
 
-Esse pattern é o padrão **produção testado** (Rafa @Walkers, Veuske 2026-05-28). Cobre:
+- Naming canônico **snake_case** + campo `origem_pedido` (nunca a plataforma no nome do
+  campo) — ver `campos_canonicos.md` §5.
+- **Dedup só grava depois do sucesso** do POST na NexTags, nunca antes/em paralelo (ver
+  regra inegociável de Data Table acima e `quirks_n8n.md` Quirk #32).
 
-1. **URL hierárquica:** `/webhook/{cliente}/{plataforma}/{evento}` (não use traços)
-2. **Dedup via Data Table** — só dispara se status mudou (evita replay)
-3. **Switch por `status.alias`**, não por `body.event` — mais robusto
-4. **Helpers JS prontos:** `formatarTelefone` (BR completo), `verificarDado` (default safe), `separarNomeSobrenome`
-5. **HTTP Request com `retryOnFail: true` + `waitBetweenTries: 5000` + `onError: continueErrorOutput`** — não trava chain
-6. **CUFs CamelCase + sufixo de origem** (YMP, SHP) — mais limpo no admin
-7. **Pedido novo = INSERT; pedido existente = UPDATE** no banco de dedup
+`references/webhook_transactional_pattern.md`, nesta skill, é **histórico** (padrão
+Rafa/Veuske, CamelCase + sufixo de origem) — mantido só de referência, carrega banner no
+topo apontando pro padrão vigente. **Não copiar** esse arquivo em projeto novo.
 
-**NÃO use a v1** (FLOW_MAP por `event`, sem dedup, sem retry, sem helpers) — está deprecada.
+### Fase 4.6 — Cliente sem ERP/API: MCP com GitHub como banco
+
+Quando o cliente não tem sistema com API pra consultar catálogo de mídias, FAQ ou tabela de
+preços estável, **leia OBRIGATORIAMENTE** `references/mcp_github_repo_pattern.md` antes de
+desenhar a infra. Resumo: repo GitHub com `catalogo.json`, lido via jsDelivr (nunca
+`raw.githubusercontent` — MIME errado quebra mídia no WhatsApp, Quirk #29), backend n8n
+filtra e devolve ação explícita (`disponivel:false` → "não prometa"; `erro_tecnico:true` →
+só texto). Trocar mídia/preço = commit no repo, nada muda no n8n nem no prompt.
 
 ### Fase 5 — Slim response em todo backend
 
@@ -232,7 +387,7 @@ Aplica Code node de slim em CADA backend (ver `references/slim_response_patterns
 - Traduz enums técnicos para label PT (`in_transit`→"Em trânsito") mantendo o cru em `_internal`
 - Distingue vazio (`empty:true`) de erro técnico (`transient:true`)
 - Preserva identificadores opacos (`cart_id`/`phash`/`customer_id`) byte a byte
-- **Imagens: incluir validação de formato.** A NexTags só entrega JPEG/PNG nos canais. CDNs (Shopify, VTEX, Nuvemshop, Cloudinary) servem WebP por padrão e quebram WhatsApp/Instagram. Estratégias detalhadas: `references/image_validation.md`. No mínimo, anexar campo `image_format_hint` na resposta do slim baseado em heurística de extensão (`likely_jpeg_or_png` / `forbidden_format` / `unknown_validate_before_send`); preferível incluir uma tool `validate_image_url` que faz HEAD HTTP e devolve Content-Type. Sempre avisar o usuário se a API fonte serve WebP — pra que o prompt do agente seja calibrado pra omitir imagem na dúvida.
+- **Imagens: validar formato E tamanho.** A NexTags só entrega JPEG/PNG nos canais, e a **Meta bloqueia acima de 5 MB (imagem) e 15 MB (vídeo)** — 1 MB a mais e a mensagem não sai, sem erro visível. PNG 16-bit é rejeitado mesmo pequeno. Conversão é na URL (parâmetro do CDN ou proxy Cloudinary `f_jpg,q_auto`), não no n8n: os bytes nunca passam pelo workflow. CDNs (Shopify, VTEX, Nuvemshop, Cloudinary) servem WebP por padrão e quebram WhatsApp/Instagram. Estratégias detalhadas: `references/image_validation.md`. No mínimo, anexar campo `image_format_hint` na resposta do slim baseado em heurística de extensão (`likely_jpeg_or_png` / `forbidden_format` / `unknown_validate_before_send`); preferível incluir uma tool `validate_image_url` que faz HEAD HTTP e devolve Content-Type. Sempre avisar o usuário se a API fonte serve WebP — pra que o prompt do agente seja calibrado pra omitir imagem na dúvida.
 
 **Nunca use `optimize_response` do n8n** — entrega JSON cru via MCP Streamable HTTP (quirk #18) e quando funciona, corta com heurísticas genéricas que não conhecem o contexto do atendimento (lição DOLPS). Use sempre Code node manual.
 
@@ -248,10 +403,17 @@ Lista clara dos nós que ficaram pendentes de credencial (vem da resposta da API
 
 ### Fase 7 — Entrega
 
-Salva relatório em `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md` com:
+Salva relatório em `Z:\WALKERS\<cliente>\relatorio-mcp.md` — caminho **confirmado**: é onde
+estão os 75 relatórios de maio a setembro/2026. Fallback se `Z:\` não existir na máquina do
+operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`. Conteúdo:
 - URL do MCP exposto (`https://nextags.app.br/mcp/<slug>`)
 - IDs dos workflows criados
 - Credencial(is) que o usuário precisa criar/vincular
+- **"PASSOS PRA COLOCAR EM PÉ"** — runbook numerado, separado do "como testar": criar
+  credencial → vincular nos N nodes (listar quais) → smoke test → ativar → configurar webhook
+  externo → preencher placeholders. É a seção que o operador segue na mão; sem ela o relatório
+  descreve o que existe mas não diz o que fazer a seguir (formato recorrente no corpus:
+  AnaGrow, Amo Calçados, Hiven, Alto Giro)
 - Como testar (curl no endpoint, ou via Smoke Test workflow)
 - **Metadados de governança pro prompt-creator** (por tool):
   - `classe` semântica (leitura/catalogo/transacional/logistica-FdV/cadastro/auxiliar)
@@ -259,7 +421,19 @@ Salva relatório em `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`
   - mapa de tradução de enums aplicado no slim
   - pipeline de encadeamento (saída→entrada) com chaves opacas a copiar literal
   - frases de AUSÊNCIA de capacidade (ex: "não há tool de cotação de frete")
-  - boilerplate "nunca exponha o nome técnico da tool"
+  - boilerplate "nunca exponha o nome técnico da tool" (dentro da description E no relatório)
+- **CUFs e tags criados/necessários** (nomes canônicos — `campos_canonicos.md` §3, §4, §7):
+  - Quais CUFs já existiam na conta vs. quais foram criados agora (com tipo: Texto,
+    Seleção única, etc.)
+  - Se algum CUF necessário ainda falta criar (ex.: `setor_agente`, `motivo_transferencia`)
+    e ficou pendente de decisão do dono
+  - Tags necessárias (transacional, prioridade) e se já existem na conta
+- **Tools expostas + como conferir:**
+  - Lista de tools com nome técnico, `classe` semântica e se é leitura ou escrita (com gate
+    aplicado, se houver)
+  - Como conferir no painel NexTags e via API: `GET /agents/mcp` (ver
+    `../nextags-webhook-builder/references/api_nextags.md`) pra confirmar que a NexTags
+    enxerga o MCP; `curl` direto no endpoint do MCP pra confirmar handshake
 - Próximos passos sugeridos:
   - **Se cliente também precisa de prompt:** "use `nextags-prompt-creator` em seguida — passa nome da loja, site, descrição do negócio"
   - **Se infra é pra plugar num prompt existente:** "URL do MCP acima — configura na NexTags como conector"
@@ -358,17 +532,20 @@ Roda 2x sobre o mesmo cliente com mesmo brief = mesmo resultado. Use `search_wor
 nextags-mcp-builder/
 ├── SKILL.md                              ← este arquivo
 ├── references/
-│   ├── arquitetura_padrao.md             ← 3 padrões (key/OAuth/híbrido)
-│   ├── quirks_n8n.md                     ← bugs documentados do n8n+NexTags
+│   ├── campos_canonicos.md               ← fonte de verdade do método (cópia idêntica em 4 skills — não editar aqui)
+│   ├── arquitetura_padrao.md             ← 4 padrões (key/OAuth/híbrido/GitHub-como-banco) + Data Tables de estado
+│   ├── quirks_n8n.md                     ← bugs documentados do n8n+NexTags (35 quirks)
 │   ├── auth_patterns.md                  ← 5 tipos de auth → mapeamento n8n
 │   ├── api_discovery.md                  ← descoberta de API a partir de doc
-│   ├── tool_descriptions_guide.md        ← descrições perfeitas pra LLM
+│   ├── tool_descriptions_guide.md        ← descrições perfeitas pra LLM + regras de domínio repetidas em produção
 │   ├── slim_response_patterns.md         ← heurísticas de slim por entidade
-│   ├── webhook_transactional_pattern.md  ← 🆕 padrão produção (dedup + retry + helpers)
-│   ├── link_envio_pattern.md             ← 🆕 UTM obrigatório em TODOS os links
-│   ├── handoff_pattern.md                ← 🆕 transferências IA↔IA / IA↔humano (flows dedicados + resumo_pipeline)
-│   ├── model_config_checklist.md         ← 🆕 config canônica de modelo (Sonnet/temp 2/verbosity média)
-│   ├── no_hardcode_with_tools.md         ← 🆕 NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
+│   ├── webhook_transactional_pattern.md  ← ⚠️ HISTÓRICO — padrão vigente é `nextags-webhook-builder`
+│   ├── link_envio_pattern.md             ← UTM obrigatório em TODOS os links
+│   ├── handoff_pattern.md                ← roteamento canônico (roteador único + revalidador) e handoff IA→humano, pro n8n
+│   ├── mcp_github_repo_pattern.md        ← 🆕 GitHub como banco (cliente sem ERP/API) — padrão Poé
+│   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/temp 2/verbosity média)
+│   ├── no_hardcode_with_tools.md         ← NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
+│   ├── image_validation.md               ← JPEG/PNG só; limites da Meta (5 MB imagem, 15 MB vídeo) e como converter
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢
@@ -378,8 +555,13 @@ nextags-mcp-builder/
 │       ├── bling.md      🟢
 │       ├── shopify.md    🟢
 │       ├── yampi.md      🟢
+│       ├── bw.md         🟢  ← pedido/cliente; responde 200 até em erro
 │       ├── yever.md      🟡
-│       └── rd_station_crm.md  🟡
+│       ├── rd_station_crm.md  🟡
+│       ├── appmax.md     🟢
+│       ├── troquecommerce.md  🟡
+│       ├── zoppy.md      🟢
+│       └── zoppy_docs_oficial.md      ← doc oficial da Zoppy (apoio ao zoppy.md, sem status próprio)
 ├── assets/
 │   ├── mcp_v2_template.ts                ← SDK do MCP Trigger v2
 │   ├── backend_template.ts               ← SDK de 1 backend dedicado
@@ -393,5 +575,6 @@ nextags-mcp-builder/
 
 - **`nextags-prompt-creator`** — gera o prompt do agente a partir de briefing + scraping. Inclui `prompt_template.md` (com flow_ids, persona, modos) e `stress_test_battery_template.md`
 - **`nextags-prompt-fixer`** — audita o prompt criado contra regras absolutas NexTags
+- **`nextags-webhook-builder`** — padrão vigente pra webhooks/disparos transacionais (pedido pago/enviado/entregue, carrinho abandonado). Use em vez de `references/webhook_transactional_pattern.md` (histórico) desta skill
 
-Pipeline completo pra cliente novo: **mcp-builder → prompt-creator → prompt-fixer**.
+Pipeline completo pra cliente novo: **mcp-builder → webhook-builder (se houver transacional) → prompt-creator → prompt-fixer**.

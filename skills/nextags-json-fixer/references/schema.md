@@ -118,6 +118,10 @@ em pelo menos um canal:
 
 - ✅ Permitidos: `.jpg`, `.jpeg`, `.png` (Content-Type `image/jpeg` ou `image/png`).
 - ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
+- ❌ Além do formato, a **Meta bloqueia por tamanho**: imagem acima de **5 MB** e vídeo acima
+  de **15 MB** não são enviados. 1 MB a mais já basta — e não aparece erro para o cliente.
+- ❌ PNG com **16 bits por canal** é rejeitado mesmo abaixo de 5 MB (o CDN da Shopify entrega
+  assim por padrão).
 
 **Cuidado com CDN.** Muito site/e-commerce serve a mesma URL `.jpg`
 respondendo com `Content-Type: image/webp`. A URL parece OK, mas o

@@ -13,10 +13,14 @@ Uso:
   - <page_id>: o valor de ?p=<id> na URL do webchat (ex.: a URL
     https://app.nextagsai.com.br/webchat/?p=2527130  ->  page_id = 2527130).
   - Cada mensagem extra e enviada EM SEQUENCIA na MESMA conversa (1 contato novo).
-  - Para testar cenarios ISOLADOS (resetar contexto/CUF de roteamento como agente_setor),
-    rode o script varias vezes: cada execucao cria um contato novo (createUser).
+  - Para testar cenarios ISOLADOS (resetar contexto/CUFs de roteamento como setor_agente e
+    tipo_setor), rode o script varias vezes: cada execucao cria um contato novo (createUser).
+    Cada contato novo tem setor_agente vazio -> o roteador classifica de novo.
 
 Saida: imprime "BOT[text]/[image]/[card]: ..." para cada resposta recebida.
+
+Nota: mensagens "gibberish" podem cair no revalidador (tipo_setor humano|bot) e serem
+arquivadas/bloqueadas. Use mensagens humanas e contextualizadas.
 """
 import sys, json, ssl, time, io
 import urllib.request, urllib.parse
