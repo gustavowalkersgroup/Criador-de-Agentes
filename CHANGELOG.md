@@ -209,6 +209,25 @@ deixa de existir.
 
 ### Definido pelo dono (2026-09-03)
 
+Com os prompts reais de roteador e revalidador e o código do passo "Filtro JSON" em mãos:
+
+- **Terceira palavra do roteador é `analisar_humano_bot`** — confirmado no prompt em
+  produção. `ignorar` continua aceito pelo `else` como legado, mas não se escreve mais.
+- **Regra 24 (nova, bloqueante): título de botão cabe em 20 caracteres.** O reparador de
+  JSON do fluxo troca qualquer `title` maior por `"Comprar agora"`, sem erro e sem log —
+  num agente de SAC o cliente vê "Comprar agora" numa conversa de devolução. O analisador
+  passou a bloquear (`button_misuse`), com 3 testes. Antes isso era só um bullet de estilo
+  ("CTA ≤ 20 caracteres") sem mecanismo nem enforcement.
+- **JSON irrecuperável vira silêncio, não erro.** O reparador devolve `{"messages":[]}` e o
+  fluxo segue como se tivesse dado certo — documentado em `campos_canonicos.md` §1.2 como
+  a razão de as regras de JSON serem bloqueantes.
+- **Roteador com exemplos literais de mensagem**, não categorias abstratas, e o sinal de
+  SAC que faltava: cliente que só manda um dado (nº do pedido, CPF, CNPJ, comprovante, PIX)
+  sem escrever pergunta.
+- **Numeração duplicada em `regras_absolutas.md` do fixer** (dois `## 16.`, dois `## 17.`)
+  desfeita — "Ver Regra 16" apontava para duas regras diferentes. Viraram #25 e #26.
+
+
 Três das cinco perguntas desta rodada foram fechadas e já valem como canônico
 (`campos_canonicos.md` §9):
 

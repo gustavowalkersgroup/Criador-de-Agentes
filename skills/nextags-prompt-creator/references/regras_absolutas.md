@@ -381,3 +381,33 @@ proibido gerar changelog, versão, pendências, TODO ou justificativas de
 decisão dentro do prompt (isso vai só no relatório do creator) — a
 whitelist vale só para essa 1 linha curta (≤200 caracteres), nunca para um
 parágrafo disfarçado com o mesmo prefixo.
+
+---
+
+## 24. Título de botão: máximo 20 caracteres
+
+**Regra:** todo `title` de botão em template `button` cabe em **20 caracteres**.
+Acima disso o passo "Filtro JSON" do fluxo de entrada — o reparador de JSON que
+roda entre o agente e o envio — **substitui o título por `"Comprar agora"`**, sem
+erro, sem log e sem nada que apareça no painel.
+
+**Por que é bloqueante e não estilo:** o cliente recebe um botão com o texto errado
+e ninguém fica sabendo. Num agente de SAC o efeito é grotesco — `"Acompanhar meu
+pedido"` (21 caracteres) chega como `"Comprar agora"` embaixo de uma mensagem sobre
+devolução. O analisador (`analyze_prompt.py`, check `button_misuse`) bloqueia acima
+de 20.
+
+**Alcance:** a troca só pega `payload.buttons` (template `button`). Botão dentro de
+`payload.elements[].buttons` (carrossel) **não** passa por ela — mas título curto
+continua sendo a regra, porque o botão longo é truncado na tela do WhatsApp de
+qualquer jeito.
+
+```json
+{"type":"web_url","url":"https://…","title":"Rastrear pedido"}
+```
+
+`"Rastrear pedido"` = 15. `"Acompanhar meu pedido"` = 21 → vira `"Comprar agora"`.
+
+> 🔧 NOTA PARA EDITORES: 20 caracteres é limite do fluxo, não preferência de estilo.
+
+(evidência: código do passo "Filtro JSON" em produção, enviado pelo dono em 2026-09-03)

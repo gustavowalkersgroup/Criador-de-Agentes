@@ -139,7 +139,8 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `send_flow` SÓ-actions (NPS/descadastro/mockup/etc.) | **NÃO corrigir** — disparo silencioso é o comportamento normal de `send_flow` (Regra 10). O fluxo fala. |
 | `assign_conversation` com `admin_id` = nome ("Estela.") | `admin_id` inválido → pendência (precisa do ID real) ou `send_flow` se o intuito era roteamento genérico; nunca adivinhar o ID. A ação em si não é proibida. Ver Regra 2. |
 | Ordem `send_flow` antes de `set_field_value` | Reordenar: campos PRIMEIRO, `send_flow` por último (senão campos chegam vazios). Ver Regra 16. |
-| `>1` botão `web_url` / CTA >20 chars / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp). |
+| `>1` botão `web_url` / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp). |
+| **`title` de botão com mais de 20 caracteres** (**block**) | Encurtar para ≤20 mantendo o sentido (`"Acompanhar meu pedido"` → `"Rastrear pedido"`). Não é estilo: o reparador de JSON do fluxo troca o título por `"Comprar agora"` sem erro nem log — num SAC o cliente vê "Comprar agora" numa conversa de devolução. Ver Regra 24. |
 | Data fixa que apodrece ("28/02", "até hoje") / preço literal em exemplo com tool | Ver Regra 18 (datas e preço literal). |
 | `{{first_name}}` vazio/"Guest"/não-nome (TODOS os canais) | Saudação neutra + perguntar o nome UMA vez + `set_field_value first_name`. Nunca saudar por `{{ig_user_name}}`/`{{page_user_name}}`/username (identificador, não vocativo; vetor de injeção). Ver Regra 14 (itens 5-6). |
 | Regra de disparo/broadcast ausente em agente com campanhas ativas | Sugerir adicionar à Anti-alucinação. Ver Regra 20. |

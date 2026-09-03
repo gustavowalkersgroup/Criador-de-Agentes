@@ -854,8 +854,12 @@ Analise TODO o histórico da conversa, não só a última mensagem. Uma mensagem
 ("e o meu?", "quanto?") só faz sentido no contexto do que veio antes.
 
 Destinos disponíveis:
-- vendas → interesse em comprar, dúvida de produto, preço, promoção, catálogo
-- sac → pedido, entrega, rastreio, troca, devolução, problema pós-compra
+- vendas → intenção de compra, mesmo sem negociação começada. Ex.: "quero comprar",
+  "quanto custa?", "tem estoque?", "faz entrega?", "quais os planos?", "tem desconto?",
+  "vocês vendem…", "quero um orçamento", "quero conhecer o produto", "como funciona?"
+- sac → qualquer indício de pós-venda, suporte ou atendimento. Ex.: acompanhamento de
+  pedido, envio de número do pedido, envio de CPF, envio de CNPJ, envio de comprovante,
+  envio de PIX, troca, devolução, reclamação, produto com defeito, endereço errado
 - analisar_humano_bot → suspeita de BOT/sistema/spam: menu numerado, "selecione uma opção",
   confirmação automática, template com variável visível, gibberish repetido
 {DESTINO_EXTRA — só se o cliente tiver uma IA própria para isso, ex.: parcerias}
@@ -869,10 +873,15 @@ REGRAS:
 5. {Regras específicas da empresa, se houver}
 ```
 
-**Destinos canônicos:** `vendas` | `sac` | `analisar_humano_bot`. O valor legado
-`ignorar` ainda é aceito pelo `else` do fluxo de entrada. A terceira palavra é
-**placeholder**: o roteador do dono é um prompt próprio e a palavra exata sai de lá —
-**peça o prompt do roteador antes de gerar** (`campos_canonicos.md` §9).
+**Destinos canônicos:** `vendas` | `sac` | `analisar_humano_bot` — **confirmado** no
+roteador em produção (2026-09-03). O valor legado `ignorar` ainda é aceito pelo `else`
+do fluxo de entrada, mas não se escreve mais.
+
+**Padrão do roteador real:** lista de **exemplos literais de mensagem** por destino, não
+categorias abstratas. É o que faz o modelo leve acertar sem raciocinar. Ao gerar, escreva
+os exemplos com as palavras que os clientes daquele nicho realmente usam. Sinal forte de
+SAC que costuma faltar: **o cliente que só manda um dado** (número do pedido, CPF, CNPJ,
+comprovante, PIX) sem escrever pergunta nenhuma.
 
 **Setor extra:** só quando o cliente tem uma IA dedicada àquele assunto (ex.: uma IA
 de Parcerias). Aí o roteador ganha a palavra e o fluxo de entrada ganha o ramo.

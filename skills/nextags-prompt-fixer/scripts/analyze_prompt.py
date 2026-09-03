@@ -329,6 +329,11 @@ def find_actions_in_text(text: str) -> dict:
     return {"advisory": advisory, "nonexistent": nonexistent}
 
 
+# Limite de título de botão: o passo "Filtro JSON" do fluxo (reparador de JSON)
+# troca qualquer title com mais de 20 caracteres por "Comprar agora", sem erro.
+TITULO_BOTAO_MAX = 20
+
+
 def walk_json(obj, path: str = "$"):
     yield path, obj
     if isinstance(obj, dict):
@@ -342,7 +347,9 @@ def walk_json(obj, path: str = "$"):
 def check_buttons_misuse(parsed) -> list[dict]:
     """Valida botões. web_url precisa de url; postback precisa de payload
     (postback é PERMITIDO — decisão do cliente). Também avisa quando há mais
-    de 1 botão web_url no mesmo template (restrição do WhatsApp p/ link)."""
+    de 1 botão web_url no mesmo template (restrição do WhatsApp p/ link) e
+    bloqueia título com mais de 20 caracteres: o reparador de JSON do fluxo
+    troca esse título por 'Comprar agora' sem avisar ninguém."""
     issues = []
     for path, node in walk_json(parsed):
         if isinstance(node, dict) and node.get("template_type") == "button":
@@ -359,6 +366,17 @@ def check_buttons_misuse(parsed) -> list[dict]:
             for idx, btn in enumerate(buttons):
                 if not isinstance(btn, dict):
                     continue
+                title = btn.get("title")
+                if isinstance(title, str) and len(title) > TITULO_BOTAO_MAX:
+                    issues.append({
+                        "path": f"{path}.buttons[{idx}]",
+                        "problem": (
+                            f"título de botão com {len(title)} caracteres (limite {TITULO_BOTAO_MAX}) — "
+                            "o reparador de JSON do fluxo substitui SILENCIOSAMENTE por 'Comprar agora'"
+                        ),
+                        "severity": "block",
+                        "title": title,
+                    })
                 btn_type = btn.get("type")
                 if btn_type == "web_url":
                     web_url_count += 1

@@ -194,12 +194,15 @@ fluxo ao clicar, são PERMITIDOS — ver Regra 17 — e não exigem `url`.)
   por mensagem**, mas a IA **raramente** usa (o padrão é texto + `send_flow`,
   ou 1 botão `web_url`). Não bloquear quando aparecer.
 - **CTA ≤ 20 caracteres** ("Comprar Agora", "Finalizar Pedido", "Quero o meu").
+  Não é preferência de estilo: acima de 20 o reparador de JSON do fluxo troca o
+  título por "Comprar agora" sem avisar. Regra 24 explica o mecanismo.
 - **Campo `text` no payload é OBRIGATÓRIO** (descrição/preço). Sem `text` =
   card inválido.
 - **Botão de carrinho aponta pro CHECKOUT, nunca pra URL de produto**
   (Duda-vendas: "no carrinho, botão sempre pro checkout").
 - **Fechamento com 3 chaves `}}}`** no bloco de botão é o erro de sintaxe
-  mais comum (Duda-vendas: "dois `}}` = JSON inválido").
+  mais comum (Duda-vendas: "dois `}}` = JSON inválido"). O reparador do fluxo
+  tem um remendo só para isso — sinal de quanto o erro se repete.
 
 **Como corrigir:** se houver >1 botão `web_url` → manter o primeiro, virar
 texto o resto. Se houver >3 botões `postback` → manter 3, virar texto o resto.
@@ -750,7 +753,7 @@ ESPECÍFICO do projeto vem depois.
 
 ---
 
-## 16. Campo `type` dentro de `payload` (erro mais comum em attachments)
+## 25. Campo `type` dentro de `payload` (erro mais comum em attachments)
 
 **Regra:** em qualquer `attachment`, o campo `type` fica **FORA** de
 `payload`, no mesmo nível dele. A plataforma NexTags ignora o `type`
@@ -782,7 +785,7 @@ nada. É uma transformação puramente estrutural.
 
 ---
 
-## 17. Formato de imagem proibido (`.webp`, `.avif`, `.svg`, `.gif`)
+## 26. Formato de imagem proibido (`.webp`, `.avif`, `.svg`, `.gif`)
 
 **Regra:** a plataforma NexTags entrega imagens nos canais (WhatsApp,
 Instagram, Messenger) e **só aceita JPEG e PNG**. Imagens em outros
@@ -1136,3 +1139,33 @@ este tipo de prompt. Documente no relatório como "exceção aplicada
 - Revalidador: a regra de ouro "na dúvida → `humano`" está presente; a fonte
   é o histórico ESTENDIDO (`{{chat_history_details_large}}`, 200 mensagens),
   não só a última mensagem recebida.
+
+---
+
+## 24. Título de botão: máximo 20 caracteres
+
+**Regra:** todo `title` de botão em template `button` cabe em **20 caracteres**.
+Acima disso o passo "Filtro JSON" do fluxo de entrada — o reparador de JSON que
+roda entre o agente e o envio — **substitui o título por `"Comprar agora"`**, sem
+erro, sem log e sem nada que apareça no painel.
+
+**Por que é bloqueante e não estilo:** o cliente recebe um botão com o texto errado
+e ninguém fica sabendo. Num agente de SAC o efeito é grotesco — `"Acompanhar meu
+pedido"` (21 caracteres) chega como `"Comprar agora"` embaixo de uma mensagem sobre
+devolução. O analisador (`analyze_prompt.py`, check `button_misuse`) bloqueia acima
+de 20.
+
+**Alcance:** a troca só pega `payload.buttons` (template `button`). Botão dentro de
+`payload.elements[].buttons` (carrossel) **não** passa por ela — mas título curto
+continua sendo a regra, porque o botão longo é truncado na tela do WhatsApp de
+qualquer jeito.
+
+```json
+{"type":"web_url","url":"https://…","title":"Rastrear pedido"}
+```
+
+`"Rastrear pedido"` = 15. `"Acompanhar meu pedido"` = 21 → vira `"Comprar agora"`.
+
+> 🔧 NOTA PARA EDITORES: 20 caracteres é limite do fluxo, não preferência de estilo.
+
+(evidência: código do passo "Filtro JSON" em produção, enviado pelo dono em 2026-09-03)

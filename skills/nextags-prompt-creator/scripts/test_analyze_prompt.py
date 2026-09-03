@@ -86,6 +86,40 @@ def test_two_web_url_buttons_warns():
     assert any(d.get("severity") == "warn" for d in it["details"])
 
 
+# ---- Limite de 20 caracteres no título do botão -----------------------
+# O passo "Filtro JSON" do fluxo (reparador de JSON) troca title > 20 chars
+# por "Comprar agora" sem sinalizar — num bot de SAC isso é absurdo.
+
+def test_button_title_20_chars_ok():
+    content = ('{"messages":[{"message":{"attachment":{"type":"template","payload":'
+               '{"template_type":"button","text":"x","buttons":'
+               '[{"type":"web_url","url":"http://a","title":"Rastrear meu pedido"}]}}}}]}\n')
+    f = ap.analyze(content)
+    it = _issue(f, "button_misuse")
+    assert it is None or not any("caracteres" in d.get("problem", "") for d in it["details"])
+
+
+def test_button_title_over_20_chars_blocks():
+    content = ('{"messages":[{"message":{"attachment":{"type":"template","payload":'
+               '{"template_type":"button","text":"x","buttons":'
+               '[{"type":"web_url","url":"http://a","title":"Acompanhar meu pedido agora"}]}}}}]}\n')
+    f = ap.analyze(content)
+    it = _issue(f, "button_misuse")
+    assert it is not None
+    d = [x for x in it["details"] if "caracteres" in x.get("problem", "")]
+    assert d and d[0]["severity"] == "block"
+    assert "Comprar agora" in d[0]["problem"]
+
+
+def test_button_title_over_20_chars_in_postback_blocks():
+    content = ('{"messages":[{"message":{"attachment":{"type":"template","payload":'
+               '{"template_type":"button","text":"x","buttons":'
+               '[{"type":"postback","payload":"123","title":"Falar com um atendente humano"}]}}}}]}\n')
+    f = ap.analyze(content)
+    it = _issue(f, "button_misuse")
+    assert any("caracteres" in d.get("problem", "") for d in it["details"])
+
+
 # ---- REVERSÃO 3: WA-markup OK, markdown-padrão vaza -------------------
 
 def test_whatsapp_markup_not_flagged():

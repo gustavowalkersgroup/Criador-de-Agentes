@@ -159,10 +159,9 @@ Regras que valem para todo projeto multi-agente:
   (ver "Campos canônicos da conta" abaixo).
 - **Mídia é sinal de humano:** imagem, áudio, vídeo ou arquivo → o roteador encaminha
   para um setor, nunca para `analisar_humano_bot`.
-- **Terceira palavra:** `analisar_humano_bot` é **placeholder**. O roteador do dono é um
-  prompt próprio e a palavra exata sai de lá — **peça o prompt do roteador antes de gerar**
-  e registre a pendência no relatório. O legado `ignorar` continua aceito pelo `else`
-  (`campos_canonicos.md` §9).
+- **Terceira palavra:** `analisar_humano_bot` — confirmado no roteador em produção. O
+  legado `ignorar` ainda é aceito pelo `else` do fluxo, mas não se escreve mais
+  (`campos_canonicos.md` §1 e §9).
 - **Setor extra** (ex.: `parcerias`) só quando o cliente tem uma IA dedicada àquele
   assunto. Padrão mínimo = `vendas` + `sac`.
 - **`resposta_ia` é do FLUXO**, não do prompt: o passo "Filtro JSON" extrai a resposta

@@ -49,15 +49,26 @@ Início (toda mensagem)
 | **O roteador é o único que grava `setor_agente`** | Roda em TODA mensagem lendo o histórico da conversa. Saída texto puro, 1 palavra, minúsculas. Modelo leve (GPT-4.1 nano ou equivalente), temperatura 0. |
 | **O revalidador é o único que grava `tipo_setor`** | 2ª camada, só roda no `else`. Fonte `{{chat_history_details_large}}` (200 últimas mensagens com remetente). Saída `humano` \| `bot`. |
 | **Nenhuma IA transfere para outra IA** | Agentes (Vendas, SAC, extras) NUNCA gravam `setor_agente` nem `tipo_setor` e NUNCA disparam fluxo que "troca de IA". A única transferência que a IA faz é para HUMANO, via §2. |
-| **`resposta_ia` é do FLUXO** | Gravado pelo passo "Filtro JSON" (Executar código JS), nunca pelo prompt. O papel do filtro é **evitar vazamento**: impedir que JSON cru, markdown ou raciocínio da IA cheguem ao cliente. O prompt não menciona esse campo — a IA devolve o JSON canônico NexTags, o filtro extrai o texto e a mensagem sai por `{{resposta_ia}}`. |
+| **`resposta_ia` é do FLUXO** | Gravado pelo passo "Filtro JSON" (Executar código JS), nunca pelo prompt. É um **reparador de JSON** que existe para evitar vazamento — que JSON cru, markdown ou raciocínio da IA cheguem ao cliente. Ele tolera cerca ```json, texto fora das chaves, chave desbalanceada e vírgula sobrando; o JSON reparado sai por `{{resposta_ia}}`. O prompt não menciona esse campo. Duas consequências para o prompt em §1.2. |
 | **Ramo bot** | Arquivar conversa (tira da IA) → aguardar 1 hora → bloquear contato. O follow-up de 1h é cancelado se o contato responder antes. |
 | **Setores extras** | Cliente com IA própria de Parcerias: o roteador ganha a palavra extra (`parcerias`) e a condição ganha o ramo. Padrão mínimo = `vendas` + `sac`. |
 
 ⚠️ O roteador NUNCA responde `analisar_humano_bot` para quem mandou imagem, áudio, arquivo ou
 qualquer sinal humano. Na dúvida, roteia para um setor.
 
-⚠️ O valor legado `ignorar` é aceito pelo `else` do fluxo, mas o canônico novo é
-`analisar_humano_bot` — **placeholder**: o roteador do dono é um prompt próprio e a palavra exata sai de lá (§9).
+⚠️ O valor legado `ignorar` é aceito pelo `else` do fluxo; o canônico é `analisar_humano_bot`
+— **confirmado** no prompt do roteador em produção (2026-09-03).
+
+### 1.2 O que o "Filtro JSON" impõe ao prompt
+
+O reparador roda depois do agente e é generoso: cerca ```json, texto antes/depois das chaves,
+chave fechada a menos e vírgula sobrando ele conserta sozinho. Duas coisas, porém, mudam o que
+o prompt pode emitir:
+
+| Comportamento | Efeito no prompt |
+|---|---|
+| **Título de botão com mais de 20 caracteres é trocado por `"Comprar agora"`** — sem erro, sem log. | Todo `title` de botão precisa caber em **20 caracteres**. Num agente de SAC o efeito é grotesco: `"Acompanhar meu pedido"` (21) vira `"Comprar agora"` na frente do cliente. O analisador bloqueia acima de 20. Só alcança `payload.buttons` (template `button`); botão de carrossel (`payload.elements[].buttons`) não passa por essa troca. |
+| **JSON irrecuperável vira `{"messages":[]}`** e o fluxo segue como se tivesse dado certo. | JSON inválido **não aparece como erro em lugar nenhum — aparece como silêncio** para o cliente. É por isso que as regras de JSON do prompt são bloqueantes, não estilo. |
 
 ### 1.1 Regra de ouro do revalidador
 
@@ -492,17 +503,16 @@ deixa de ser contexto de handoff IA↔IA e passa a ser o resumo que vai para o c
   A IA grava lá; nenhum fluxo lê o CUF `Nome cliente`.
 - **Enum de `status_pedido`** (transacional): `aprovado`, `enviado`, `entregue`, `cancelado`,
   `pronto_retirada`, `pix_gerado`, `pix_expirado`. Fechado — é o enum canônico (§5).
-- **O que é o passo "Filtro JSON":** um nó de código **JavaScript** cujo papel é **evitar
-  vazamento** — impedir que JSON cru, markdown ou raciocínio da IA cheguem ao cliente.
-  Confirma o desenho descrito aqui: o prompt devolve o JSON canônico NexTags, o filtro
-  extrai o texto e grava `resposta_ia`, e o prompt **nunca** menciona esse campo.
+- **O que é o passo "Filtro JSON":** um nó de código **JavaScript** que **repara** o JSON da
+  IA e grava o resultado em `resposta_ia`, para evitar vazamento de JSON cru, markdown ou
+  raciocínio. O prompt **nunca** menciona esse campo. Comportamento e as duas regras que
+  ele impõe ao prompt: §1.2.
+- **Terceira palavra do roteador é `analisar_humano_bot`** — confirmado no prompt do
+  roteador em produção. `ignorar` continua aceito pelo `else` como legado.
 
 ### Ainda aberto — NÃO chutar
 
-1. **Roteador:** o dono vai mandar o **prompt** do roteador; a terceira palavra sai de lá.
-   Até chegar, `analisar_humano_bot` é placeholder — **confirme antes de gerar o fluxo**,
-   e registre a pendência no relatório.
-2. **Caminho do relatório MCP por cliente** (`Z:\WALKERS\<cliente>\`) — o dono vai passar.
+1. **Caminho do relatório MCP por cliente** (`Z:\WALKERS\<cliente>\`) — o dono vai passar.
 
 Enquanto não houver resposta, as skills usam o placeholder acima e **marcam a pendência no
 relatório**; nenhuma skill decide por conta própria.
