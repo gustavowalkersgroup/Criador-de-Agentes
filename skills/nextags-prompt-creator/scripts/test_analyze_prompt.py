@@ -456,6 +456,36 @@ def test_analyzer_copies_in_sync():
     assert a == b, "as 2 cópias de analyze_prompt.py divergiram — re-sincronize (cp creator → fixer)"
 
 
+# ---- Sincronia das 2 cópias de cufs_nextags.md (creator == fixer) ----------
+
+def test_cufs_nextags_copies_in_sync():
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    a_path = os.path.join(here, "..", "references", "cufs_nextags.md")
+    b_path = os.path.join(here, "..", "..", "nextags-prompt-fixer", "references", "cufs_nextags.md")
+    a = open(a_path, encoding="utf-8").read()
+    b = open(b_path, encoding="utf-8").read()
+    assert a == b, "as 2 cópias de cufs_nextags.md divergiram — re-sincronize (cp creator → fixer)"
+
+
+# ---- Sincronia das 4 cópias de campos_canonicos.md -------------------------
+# (creator == fixer == mcp-builder == webhook-builder)
+
+def test_campos_canonicos_copies_in_sync():
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    source_path = os.path.join(here, "..", "references", "campos_canonicos.md")
+    source = open(source_path, encoding="utf-8").read()
+    other_skills = ["nextags-prompt-fixer", "nextags-mcp-builder", "nextags-webhook-builder"]
+    for skill in other_skills:
+        other_path = os.path.join(here, "..", "..", skill, "references", "campos_canonicos.md")
+        other = open(other_path, encoding="utf-8").read()
+        assert source == other, (
+            f"campos_canonicos.md de {skill} divergiu do nextags-prompt-creator "
+            "— re-sincronize (edite a cópia do creator e copie para as outras 3)"
+        )
+
+
 # ---- invalid_json: não flagar linha interna de array válido (achado no smoke e2e) ----
 
 def test_multiline_actions_no_false_invalid_json():

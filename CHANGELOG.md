@@ -5,31 +5,225 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
+## [1.5.0] - 2026-09-03
+
+Rodada de **padronização canônica** das 6 skills, a partir de decisões formais do dono do
+projeto: a arquitetura real de roteador+revalidador em produção, o
+handoff IA→humano dirigido por 3 CUFs e UM fluxo de pipeline (substitui o modelo de
+flow-rotativo da rodada anterior, ainda não lançada), uma referência de campos canônicos
+compartilhada entre 4 skills, e as lições da leitura de 21 workflows n8n recentes (Cantarola,
+Nordmann, Degan, Poé, Meiskin, Alto Giro, Otogama, AliveMed, Privilège) mais dois documentos
+do dono (API Gateway Proxy, API NexTags). **Contém uma mudança de ruptura**: o enum de
+`motivo_transferencia` introduzido (ainda não lançado) na 1.4.0 é substituído — `sac_geral`
+deixa de existir.
 
 ### Adicionado
 
-**Padrão canônico de handoff nas skills de prompt** — `resumo_pipeline`, `motivo_transferencia`
-e `setor_agente` estavam documentados só na `nextags-mcp-builder` (infra). A
-`nextags-prompt-creator`, que ESCREVE os prompts, não os conhecia — e por isso gerava N
-placeholders de flow e nome de campo ad hoc por cliente.
+**Referência compartilhada `campos_canonicos.md`** (nova — cópia idêntica em
+`nextags-prompt-creator`, `nextags-prompt-fixer`, `nextags-mcp-builder` e
+`nextags-webhook-builder`)
+- Fonte de verdade única do método: arquitetura roteador/revalidador, handoff IA→humano,
+  campos padrão da conta modelo (quem grava o quê), etiquetas (tags) por grupo, CUFs
+  transacionais, ponteiros para `gateway_proxy_nextags.md`/`api_nextags.md`, telefone fixo,
+  formato de notas para editores e §9 com as perguntas em aberto do dono. Novo teste
+  `test_campos_canonicos_copies_in_sync` (em `test_analyze_prompt.py`) trava as 4 cópias
+  idênticas — a suíte de sincronia agora cobre 3 famílias de arquivo (`analyze_prompt.py`,
+  `cufs_nextags.md`, `campos_canonicos.md`).
 
-- `cufs_nextags.md` (prompt-creator **e** prompt-fixer): nova seção "CUFs de ESCRITA
-  canônicos do método", separando as duas camadas de handoff (IA↔IA via `setor_agente`
-  escrito pelo FLOW; IA→fila humana via `motivo_transferencia` escrito pela IA), o enum
-  canônico (`vendas`/`rastreio`/`devolucao`/`troca`/`duvidas` + `else` = SAC geral), a
-  regra de desambiguação `troca` vs `devolucao`, e o modo de falha por **campo stale**.
-- `prompt_skeleton.md`: a seção de transferência passa a ensinar **um** flow rotativo com
-  destino por CUF, em vez de `{ID_DO_FLUXO_TRANSFERENCIA}` + `<FLOW_SAC>` + `<FLOW_ATRASO>`.
-- `perguntas_obrigatorias.md` (2.2): pergunta UM flow_id rotativo e os valores do enum,
-  em vez de um flow por motivo.
-- `handoff_pattern.md` (mcp-builder): bloco no topo distinguindo as duas camadas. O
-  antipadrão "1 router genérico por CUF" vale para IA↔IA (onde o campo é relido a cada
-  mensagem e fecha o ciclo — bug do Veuske); para fila humana o rotativo é o padrão, com
-  `else` obrigatoriamente numa fila humana.
+**Arquitetura canônica roteador/revalidador** (transversal — creator, fixer, mcp-builder)
+- Documentado o fluxo de entrada real em produção: ROTEADOR ("Classificador Inteligente", 1
+  palavra, GPT-4.1 nano, temperatura 0) grava `setor_agente` (`vendas|sac|analisar_humano_bot`
+  — legado `ignorar` aceito no `else`), rodando a cada mensagem sobre o histórico inteiro; no
+  ramo `analisar_humano_bot`, REVALIDADOR (2ª camada, lê `{{chat_history_details_large}}`,
+  últimas 200 mensagens) grava `tipo_setor` (`humano|bot`) com regra de ouro "na dúvida →
+  humano" (assimetria de risco); ramo `bot` arquiva a conversa, tira da IA, aguarda 1h
+  (cancelado se o contato responder antes) e bloqueia o contato. Texto integral do prompt do
+  revalidador incorporado verbatim (evidência: doc "PROMPT — REVALIDADOR (HUMANO x BOT)",
+  Drive, 2026-07-21) como §8G do skeleton do creator e como referência de auditoria do fixer.
+  Regra explícita: nenhum Agente (Vendas/SAC/extra) grava `setor_agente` ou `tipo_setor` —
+  são campos exclusivos do roteador e do revalidador.
 
-Origem: projeto Joias Degan (02/09/2026), onde 66 ocorrências de 3 placeholders foram
-colapsadas em 1 flow rotativo + CUF.
+**Trio `motivo_transferencia`/`prioridade_pipeline`/`resumo_pipeline` + UM fluxo de pipeline**
+- Substitui o modelo de flow-por-destino/flow-rotativo (branch `feat/handoff-canonico`) por
+  UM único `<ID_DO_FLUXO_PIPELINE>` — quem escolhe a fila é o VALOR de `motivo_transferencia`,
+  filtrado dentro do próprio fluxo (não mais N flow_ids no prompt). Enum canônico por setor:
+  Parcerias (`ugc|colaboracao|influencer|revenda|atacado`), Comercial (`vendas|carrinho`),
+  SAC (`rastreio|devolucao|troca|duvida` — `duvida` é o catch-all, mesmo destino do `else`).
+  `prioridade_pipeline` (`baixa|media|alta`) com critério padrão por gravidade (jurídico/
+  prejuízo financeiro/prazo vencido → `alta`). `resumo_pipeline` (texto, 2-4 frases, sem
+  markdown, com 4 partes obrigatórias: quem é e dados que passou; o problema na palavra do
+  cliente; o que a IA já tentou; por que escalou) com exemplo verbatim. Documentado o modo de
+  falha "campo STALE": os 3 campos persistem no contato — transferir sem gravá-los usa o
+  valor do atendimento anterior e o card cai na fila/prioridade errada em silêncio.
+
+**Bloco `📣 AVISOS ATIVOS` + notas para editores**
+- Formato fixo com marcadores `=== INÍCIO DOS AVISOS ===`/`=== FIM DOS AVISOS ===`, gerado
+  sempre pelo creator (mesmo vazio) e checado pelo analyzer (`avisos_ativos_presente`).
+  Marcador `> 🔧 NOTA PARA EDITORES:` (1 linha, ~200 caracteres) para humanos ou outras LLMs
+  em pontos de edição frequente: tabela de `motivo_transferencia`, tabela de `flow_ids`,
+  tabela de tools, bloco `DADOS DESTA CONVERSA`, base de conhecimento — whitelisted no check
+  de meta-documentação proibida (changelog/versão/pendência/TODO continuam bloqueados).
+
+**Bloco `## DADOS DESTA CONVERSA` + regra do nome canônica em todos os canais**
+- Gerado sempre logo após IDENTIDADE/AVISOS, com os CUFs de leitura interpolados
+  literalmente (`{{first_name}}`, `{{phone}}`, `{{email}}`, `{{current_user_time}}` + campos
+  de pedido quando SAC/transacional). Regra do nome generalizada para TODOS os canais (antes
+  cobria só o caso "Guest" do webchat, como sugestão opcional): `{{first_name}}` vazio,
+  literalmente `"Guest"` ou que não parece nome de pessoa → saudação neutra + pergunta o nome
+  UMA vez + `{"action":"set_field_value","field_name":"first_name","value":"<nome>"}`; não
+  repete a pergunta se a pessoa não responder.
+
+**Analyzer — 7 checks novos + suíte de testes** (`nextags-prompt-creator` e
+`nextags-prompt-fixer`, cópias idênticas de `analyze_prompt.py`)
+- `check_avisos_ativos` (bloco ausente → warn, obrigatório no modo creator); whitelist do
+  marcador de nota de editor dentro de `check_forbidden_meta_sections`;
+  `check_routing_field_writes` (**block** — a IA nunca grava `setor_agente`/`tipo_setor`);
+  `check_motivo_transferencia_enum` (warn se valor fora do enum canônico por setor);
+  `check_prioridade_pipeline_enum` (**block** se fora de `baixa|media|alta` — é campo
+  "Seleção única" e a plataforma rejeita valor fora da lista); `check_handoff_trio` (warn se
+  um `send_flow` de pipeline aparece sem o trio completo); `check_send_flow_action_order`
+  (warn se `send_flow` vem antes de algum `set_field_value` no mesmo array). Suíte
+  `test_analyze_prompt.py` (creator) passou de 29 para **53 testes** — 53/53 verde nesta
+  entrega — cobrindo cada check novo além das sincronias já existentes.
+
+**`nextags-webhook-builder` — referências e asset novos**
+- `references/gateway_proxy_nextags.md`: Gateway Proxy NexTags
+  (`https://api.nextags.com.br/v1/gateway/stores/:store_id/<path_limpo>`, header
+  `Authorization: Bearer nxt_live_...`, escopo `proxy:passthrough`) para Tray/Nuvemshop/
+  Yampi-Dooki/Bagy sem credencial nativa — de-para de path por plataforma, tabela de erros
+  (401/403/429/501). Evidência de produção: Cantarola Backend Buscar Produtos.
+- `references/api_nextags.md`: inventário de endpoints da API NexTags
+  (`https://app.nextagsai.com.br/api/`, header `X-ACCESS-TOKEN`) usados pelas skills —
+  `custom_fields`/`tags` (GET/POST/by name), `flows` (`GET /accounts/flows` para validar
+  `flow_id` real antes de disparar), `contacts`, `pipelines`, `/agents/mcp`, tipos de CUF
+  (0 Text … 7 Multi Select).
+- `assets/setup_cufs_canonicos.js`: template de workflow n8n de setup idempotente de CUFs
+  por API (`GET /accounts/custom_fields` → diff → dry-run → `POST /accounts/custom_fields`),
+  inspirado no workflow real da Degan — dry-run obrigatório porque a API **não tem DELETE**
+  (nome errado fica na conta para sempre) e o token é por conta (token errado retorna 200 e
+  cria campos na conta errada, caso Wazzu/Hebreus Doze).
+- `references/antipadroes.md` §16-22 (leitura de 21 workflows n8n recentes, 2026-09-03):
+  dedup gravado antes/independente do sucesso do POST (Nordmann Meling Pedidos v2 e Carrinho
+  v1 — 51 clientes que jamais seriam notificados), roteamento de estágio por texto em vez de
+  id (Degan BW `rroCGCrCnb9R1U5s`: "Em Entrega" id 8 casava com `/entreg/` e bloqueou o id 9
+  real), telefone fixo, `flow_id` placeholder "funcional" (`11111111111`), workflow
+  `active:true` com sticky dizendo "pendente", skip silencioso sem `_motivo`, `/api/users`
+  como variante legada de `/api/contacts`.
+
+**`nextags-mcp-builder` — regras de n8n e MCP via GitHub**
+- Regras inegociáveis novas: n8n sempre via API/MCP do n8n, **nunca navegador**
+  (`search_workflows → validate_workflow → create_workflow_from_code/update_workflow →
+  publish_workflow`); sticky note obrigatório em todo workflow, com modelo canônico (ESTADO
+  EM dd/mm / CREDENCIAIS / PENDENTE-NÃO ATIVAR antes de… / ARMADILHAS com evidência / DE ONDE
+  VEIO a lista de campos, evidência Degan `Wt3SsrCxQ2zwwnOo`); Data Table de dedup/estado +
+  trio heartbeat+watchdog+error workflow para automação agendada crítica (evidência Otogama —
+  worker morto sem `startedAt`, nenhum alerta interno disparou).
+- Nova seção "Como expor as tools para a NexTags enxergar": MCP Server Trigger **v2**
+  (Streamable HTTP) em `/mcp/<slug>`; tools sempre `httpRequestTool` v4.4/4.5 com
+  `$fromAI(...)` por parâmetro (nunca `toolHttpRequest`+`placeholderDefinitions`, que
+  colapsa o schema exposto num único campo `{input}` — evidência Poé `lk0lpDShxXFGia7D`);
+  backend chamado por URL **interna** `http://n8n:5678/webhook/...` (a pública dá *connection
+  refused* de dentro do próprio n8n); `availableInMCP: true`; conferir em `GET /agents/mcp`.
+- Gate de escrita: tools que ESCREVEM (criar pedido, alterar cadastro) exigem escopo
+  **read-only para SAC**, escrita só na IA de Vendas (com aprovação humana quando o domínio
+  exigir) e teste com **contato interno** antes de ligar a tool na base real (evidência:
+  requisitos SAP N2, Solentes N2 — "testar com 1 contato antes dos 344 da onda 1").
+- `references/mcp_github_repo_pattern.md` (novo): MCP com repositório GitHub como banco para
+  cliente sem ERP/API (padrão Poé Mídias) — catálogo lido via jsDelivr (**nunca**
+  `raw.githubusercontent`, que serve `.mp4` como `application/octet-stream` e o WhatsApp
+  rejeita o vídeo); atualizar catálogo/preço/mídia é commit no repo — nada muda no n8n nem
+  no prompt.
+
+**`nextags-webchat-tester` — seção "O que TESTA e o que NÃO testa"**
+- Nova seção explícita: TESTA prompt/persona, roteamento (`setor_agente`), render de
+  card/imagem, transferência fantasma e tool calling via MCP; NÃO testa fluxos n8n que
+  dependem de telefone (transacionais, disparos, `send_flow` por API para um número — o
+  contato de webchat não tem número) nem serve para validar telefone fixo como contato de
+  teste (nunca recebe `send_flow`/mensagem via API).
+
+### Alterado
+
+**Enum de `motivo_transferencia` — substitui o da rodada anterior (ainda não lançada)**
+- `sac_geral` **deixa de existir**; o catch-all agora é `duvida` (singular), mesmo destino do
+  `else`. Entram os valores de Parcerias (`ugc`, `colaboracao`, `influencer`, `revenda`,
+  `atacado`) e `carrinho` em Comercial. Regra de desambiguação: quer outra peça → `troca`;
+  quer o dinheiro → `devolucao`; cancelar antes de receber → `duvida`.
+- Nova **Regra 21** em `regras_absolutas.md` (fixer) com o mapeamento legado→canônico ao
+  auditar prompt existente: `duvidas`→`duvida`, `assunto_ticket`/`resumo_lead`/`sac_resumo`→
+  `resumo_pipeline`, `sac_prioridade`→`prioridade_pipeline`, `sac_categoria`→
+  `motivo_transferencia`. Nova **Regra 22** formaliza o bloco AVISOS ATIVOS e as notas de
+  editor. Adendo **Regra 20b** (sugestão, não bloqueante): handoff sem fricção — nunca
+  empurrar o cliente para outro número, agente não se reapresenta após handoff (evidência
+  Cantarola/Nivaldo).
+- `perguntas_obrigatorias.md` §2.2 reescrita: pergunta UM `flow_id` de pipeline (não mais
+  "rotativo" com N flow_ids) + confirma os valores do enum por setor; nova §2.2b (horário de
+  atendimento + SLA do card) e §2.2c (quais CUFs a IA deve ler).
+
+**`nextags-mcp-builder`: `handoff_pattern.md` reescrito**
+- O padrão de "flows dedicados por destino" (1.4.0) é substituído pelo modelo roteador
+  único + revalidador + trio de handoff. A versão anterior (flows dedicados IA↔IA, padrão
+  Veuske) passa a "histórico/legado: por que abandonamos". Quirk do router que reseta
+  `setor_agente` continua válido como explicação do bug de loop, renumerado de #24 para #27.
+
+**`nextags-mcp-builder`: `webhook_transactional_pattern.md` marcado como histórico**
+- O padrão vigente de transacional (CUFs snake_case canônicos + `origem_pedido`) agora mora
+  em `nextags-webhook-builder`. Este arquivo (CamelCase + sufixo de origem, sem a regra de
+  dedup-após-sucesso) ganha banner apontando para o padrão vigente — não copiar mais em
+  projeto novo.
+
+**`nextags-webhook-builder`: naming canônico de CUF (`padrao_transacional.md` §4.3)**
+- CUFs passam de "por origem" (`NumeroPedidoBling`, `StatusPedidoYMP`) ou ad hoc para
+  snake_case único (`numero_pedido`, `status_pedido`, …) + `origem_pedido` como
+  discriminador de plataforma. Matriz de legado documentada (Nordmann NUV, Degan BW,
+  AliveMed YMP, Meiskin, Alto Giro, WL) — regra dura: **não renomear** em cliente já rodando
+  (o flow lê o nome antigo em silêncio), projeto novo é canônico sem exceção.
+- Dedup: chave por **remessa** (`fulfillment_id`) quando há envio parcial (Alto Giro);
+  comparação de **estágio anterior × novo** em vez de "existe linha" (evita bloquear os
+  estágios seguintes do mesmo pedido — `rroCGCrCnb9R1U5s`); `rowNotExists` documentado como
+  alternativa nativa a `get`+IF manual quando só importa a existência da linha.
+
+**`nextags-webchat-tester`: lição do caso Veuske corrigida**
+- A conclusão anterior ("webchat pode não disparar MCP; nunca conclua a partir dele apenas")
+  estava incompleta: o incidente de 2026-06-11 foi **config de modelo** (temperature alta +
+  modelo mini), não limitação do canal. MCP/tool calling **é válido no webchat**; o alerta
+  agora é "revise temperature/modelo/prompt antes de culpar o MCP, e valide no WhatsApp real
+  só se persistir". Terminologia de CUF corrigida em todo o arquivo e no script
+  (`agente_setor` → `setor_agente`, nome real do campo gravado pelo roteador — `agente_setor`
+  nunca existiu na plataforma), com nova menção a `tipo_setor` (revalidador).
+
+**Relatório de entrega do `nextags-mcp-builder`**
+- Caminho padrão passa de `C:\Users\User\Documents\WALKERS\<cliente>\` para
+  `Z:\WALKERS\<cliente>\` (fallback mantido) — **marcado "confirmar com o dono"** (não
+  validado neste ambiente). Nova seção obrigatória "CUFs e tags criados/necessários" com os
+  nomes canônicos, e "Tools expostas + como conferir" (`GET /agents/mcp`).
+
+### Corrigido
+
+- **`relatorio_template.md` do `nextags-prompt-creator` era cópia literal do relatório do
+  `nextags-prompt-fixer`** — falava em "Relatório de Correção", "versão original/corrigida"
+  e seções de diff antes/depois, sem sentido para quem GERA um prompt do zero. Reescrito:
+  "Relatório de Criação", "O que foi entregue", "Pendências críticas" (placeholders de
+  flow), "Decisões: briefing × site", "LISTA DE FLUXOS E CAMPOS A CRIAR".
+- **Numeração duplicada em `quirks_n8n.md`** (dois `## 24.` e dois `## 25.`) corrigida —
+  sequência única #1 a #35 (os 7 quirks novos entram como #29-#35).
+
+### A confirmar com o dono
+
+Perguntas registradas em `campos_canonicos.md` §9 — **não resolvidas por chute**, ficam
+marcadas nas skills como pendência:
+
+- Terceira palavra do roteador: `analisar_humano_bot` é o canônico (fluxo mais recente em
+  produção); `ignorar` fica como legado aceito no `else`.
+- `Nome cliente` (CUF de conta, legado) × `first_name` (nativo): a IA passa a gravar sempre
+  em `first_name` — confirmar se `Nome cliente` ainda é lido por algum fluxo existente.
+- Nomes exatos do enum de `status_pedido` transacional (`aprovado|enviado|entregue|
+  cancelado|pronto_retirada|pix_gerado|pix_expirado`).
+- Padrão "Filtro JSON → resposta_ia": confirmar se o prompt sempre devolve o JSON canônico
+  NexTags (assumido nesta rodada) ou se o filtro espera outro formato em algum cliente.
+- Caminho do relatório MCP (`Z:\WALKERS\<cliente>\`) — ambiente de trabalho não permitiu
+  validar o caminho real.
+- Prompts-modelo mais recentes de vendas/SAC/roteador/Instagram em `Z:\WALKERS\` não foram
+  acessíveis neste ambiente; esta rodada usou os fluxos n8n e os docs do Drive como fonte.
 
 ---
 
@@ -259,6 +453,7 @@ end-to-end. **Todas as mudanças são aditivas / não-quebra.**
 - Instalador (`install.ps1` / `install.sh`) e correção do erro de PowerShell com
   stderr do git.
 
+[1.5.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.5.0
 [1.3.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.3.0
 [1.2.0]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.2.0
 [1.1.1]: https://github.com/gustavowalkersgroup/Criador-de-Agentes/releases/tag/v1.1.1

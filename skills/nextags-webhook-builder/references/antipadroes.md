@@ -1,6 +1,8 @@
 # Antipadrões de webhook transacional NexTags — catálogo de erros reais
 
 > Todos observados em produção ou nas conversas. Cada um custou tempo. Evite-os no setup.
+> §1-§15 vêm da auditoria de 2026-07; **§16-§22 vêm da leitura de 21 workflows n8n recentes
+> (2026-09-03)** e trazem os incidentes mais caros do corpus — cada um cita workflow + id.
 
 ## 1. Texto direto em vez de `send_flow` (o pior)
 
@@ -79,3 +81,63 @@ Colar `&utm_source=...` num link que ainda não tem `?` gera URL quebrada (bug r
 ## 15. Número de pedido calculado e descartado
 
 Boca Rosa calcula `numero_pedido` no Code node e o node seguinte nunca usa — o CUF nunca é setado. Verifique que o valor computado realmente entra no `actions[]`.
+
+## 16. Dedup gravado antes (ou independente) do sucesso do POST
+
+**O pior antipadrão do corpus n8n.** Se o node de dedup roda em paralelo ou antes da confirmação do `POST /api/contacts`, uma falha transitória (401, instabilidade, token placeholder) marca o cliente como "já notificado" **para sempre**. Corrigir o bug depois não resolve: os clientes marcados continuam mudos, e a tabela precisa ser recriada limpa.
+
+| Caso real | O que aconteceu |
+|---|---|
+| **Nordmann Meling Pedidos v2** (`ln7ZTWGwTyV2KVRQ`) | Dedup gravava mesmo com a chamada falhando (401 do token placeholder). Ao colocar o token real, os clientes **jamais** seriam notificados. Corrigido na v3. |
+| **Nordmann Meling Carrinho v1** (`bvR8NeB5e4BdOzyD`) | 1ª execução agendada rodou com token placeholder: 51 notificações falharam (401), dedup gravado do mesmo jeito. 51 clientes reais nunca receberiam. Corrigido + tabela recriada. |
+
+Correto: `Notificar NexTags (onError: continueErrorOutput)` → `IF ok?` → **só no ramo `true`** grava a Data Table; ramo `false` é NoOp que não marca nada.
+
+## 17. Roteamento de estágio por texto de status
+
+Rotear pago/enviado/entregue por regex sobre a descrição do status. A descrição é **texto livre que o lojista edita no painel**.
+
+Caso real (Degan BW, `rroCGCrCnb9R1U5s`): **"Em Entrega" (id 8) casava com `/entreg/`** → mensagem de "entregue" prematura **e** dedup gravando "entregue", o que **bloqueou a notificação real do id 9**. Um bug produziu dois erros.
+
+Correto: rotear por `id` do status. Fallback por texto só quando o payload não traz id, e mesmo assim com word-boundary (`\bentregue\b`), nunca substring. E auditar drift: se o cliente reconfigura os status no painel, o roteamento por id fica errado em silêncio (sonda Degan `sL14eAen2XAuAn6h` confere os ids do painel contra os da API).
+
+## 18. Disparar para telefone FIXO
+
+A NexTags **não entrega** `send_flow`/mensagem para número fixo via API: ao entrar na plataforma o número ganha o `9` extra e vira inválido (evidência: dono do projeto 2026-09-03; Alto Giro/ChatRace adiciona o 9 cegamente). Não existe "tentar mesmo assim" — o disparo some sem erro visível e o contato pode ser criado corrompido.
+
+Correto: guard `ehTelefoneFixo()` (DDD + local de 8 dígitos começando em 2-5) antes do disparo → `skip(item, 'telefone_fixo')`, mais a contagem de descartes no relatório. Vale também para teste: fixo não serve como contato de teste, e webchat não tem telefone nenhum.
+
+## 19. Placeholder de `flow_id` "funcional"
+
+Deixar um id que **parece** válido (`11111111111`, `COLE_O_FLOW_ID`) enquanto o real não existe: o disparo vira no-op silencioso ou vai para o flow errado (Dolps v1 nas 4 branches; Viens).
+
+Correto — o fail-safe deliberado do time: `flow_id = 0` (ou string vazia) **com guard**:
+
+```js
+const flow = FLOW_BY_STAGE[stage];
+if (!flow) return skip(base, 'flow_id_ausente:' + stage);
+```
+
+O estágio simplesmente não dispara até alguém preencher, e o sticky lista o que falta em `NÃO ATIVAR antes de…`. Evidência: Degan BW (`flow_pago/enviado/entregue: 0`), Degan Carrinho (`flow_carrinho: 0`, `url_loja: ""` — *"melhor não mandar nada do que mandar link quebrado"*).
+
+## 20. Workflow ativo com sticky/descrição dizendo "pendente"
+
+`active: true` no n8n enquanto a sticky ou a descrição diz "Auth pendente" / "PENDENTE DE VALIDAÇÃO" / "STORE_ID a preencher". Gera falso senso de prontidão: quem audita lê "ativo" e não confere; quem lê a nota acha que está desligado.
+
+Caso real: `qRIs9L07G5auvhRM` — descrição diz "Auth pendente", workflow está `active: true`, e o node já tem um bearer preenchido (inconsistência a checar manualmente). Em auditoria, **flagre a contradição** em vez de escolher em qual dos dois acreditar: ou completa o pendente e limpa a nota, ou despublica.
+
+## 21. Skip silencioso, sem `_motivo`
+
+`if (!phone) return [];` descarta o item sem deixar rastro. Depois ninguém sabe por que 40% dos pedidos não viraram mensagem.
+
+Correto (padrão mais maduro do corpus, Degan Carrinho Polling), já pronto em `assets/_helpers.js`:
+
+```js
+function skip(item, motivo){ return [{ json: Object.assign({}, item || {}, { _skip: true, _motivo: motivo }) }]; }
+```
+
+Motivos canônicos: `sem_telefone`, `telefone_invalido`, `telefone_fixo`, `flow_id_ausente:<stage>`, `estagio_desconhecido:<id>`, `fora_da_janela`, `ja_convertido`, `dedup`. Regra fina: erro **global** (credencial, rota) → `throw` (tem que aparecer — *"silêncio aqui é indebugável"*, Degan); erro **pontual** de 1 item dentro de um loop → `skip` com motivo, para não derrubar os demais.
+
+## 22. `/api/users` em projeto novo
+
+O endpoint canônico de disparo é `POST /api/contacts` (8 clientes do corpus). `/api/users` aparece **só** no AliveMed Dispatcher, sem explicação na sticky — variante legada. Em projeto novo, usar `/api/contacts`; em cliente existente que já usa `/api/users`, não migrar sem combinar (mesma regra do CUF legado). Ver `api_nextags.md` §0.

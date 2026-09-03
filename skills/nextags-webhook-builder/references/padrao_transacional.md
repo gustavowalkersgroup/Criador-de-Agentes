@@ -1,7 +1,9 @@
 # Padrão Real de Webhooks Transacionais NexTags
 
 > **Validado por auditoria** de 29 fluxos de produção legíveis no n8n (de um universo de 159 workflows transacionais em 101 clientes) + mineração de 13 projetos de conversa (45 episódios, 9 incidentes de `send_flow` vs texto).
-> Data: 2026-07-16. Toda regra aqui carrega evidência (cliente/workflow) na [Matriz de evidências](#matriz-de-evidências). O que é recomendação sem lastro em produção está marcado **[SEM EVIDÊNCIA DIRETA]**.
+> Data: 2026-07-16. **Revisão 2026-09-03:** leitura completa de 21 workflows n8n recentes (Cantarola, Nordmann, Degan, Poé, Meiskin, Alto Giro, WL, Otogama, AliveMed, Privilège) trouxe §3.5 (dedup só após sucesso), §3.6 (estágio por id), §4.3 (naming canônico) e o rate limit real de §7.
+> Toda regra aqui carrega evidência (cliente/workflow) na [Matriz de evidências](#matriz-de-evidências). O que é recomendação sem lastro em produção está marcado **[SEM EVIDÊNCIA DIRETA]**.
+> Os nomes de campo e tag são os de `references/campos_canonicos.md` — este arquivo aponta para lá, não duplica a tabela.
 
 Transacional = **disparo proativo** ao cliente quando um evento de pedido/carrinho acontece (pago, enviado, entregue, pronto p/ retirada, carrinho abandonado). Não confundir com backend de atendimento sob demanda (o cliente pergunta "cadê meu pedido") — isso é território da `nextags-mcp-builder`.
 
@@ -70,7 +72,12 @@ Data Table `<Cliente> <Plataforma> Orders State`:
 ### 3.2 Variantes validadas de chave
 
 - **Chave composta** (quando o número pode repetir ou a plataforma manda status no mesmo evento): Veuske (`nPedido + idPedido`), Dolps (`orderId|lastChange`), Mayuí (`order_id|evento`), BB (`store_id|order_id|status`), Exclusiva (`order:{id}:{status}` p/ pedido, `cart:{checkout_id}` p/ carrinho).
-- **Dedup por TAG de controle** (semântica "notificar 1x na vida"): Alto Giro usa a tag `ag-entregue-notif` em vez de Data Table no fluxo Entregue. Válido. 
+- **Chave por REMESSA (`fulfillment_id`), não por pedido**, quando a plataforma tem envio parcial: um pedido pode gerar várias fulfillments e cada uma merece seu aviso de "enviado". Evidência: Alto Giro Notif Enviado, tabela `w1KeVwUnJGdwpidU`, chave `fulfillment_id` (não `order_id`).
+- **Chave composta por ETAPA dentro do mesmo pedido**, quando há régua/funil: Meiskin funil PIX (`FsnnAiE2LADC91aZ`) guarda `order_id` + colunas booleanas `etapa_30_enviada` / `etapa_65_enviada` / `etapa_120_enviada` — permite reenviar em vários momentos sem duplicar.
+- **Dedup por TAG de controle** (semântica "notificar 1x na vida"): Alto Giro usa a tag `ag-entregue-notif` em vez de Data Table no fluxo Entregue. Válido.
+- **`rowNotExists`** (operação nativa do node Data Table) quando só importa se a linha existe, em vez de `get` + IF manual. Evidência: Alto Giro, node "Dedup Gate":
+  `{"resource":"row","operation":"rowNotExists","dataTableId":"w1KeVwUnJGdwpidU","matchType":"anyCondition","filters":{"conditions":[{"keyName":"fulfillment_id","condition":"eq","keyValue":"={{ $json.fulfillment_id }}"}]}}`
+  Os dois padrões (`get`+IF e `rowNotExists`) coexistem no corpus; use `rowNotExists` quando não precisa **ler** o conteúdo da linha anterior.
 
 ### 3.3 Quando é obrigatório vs dispensável
 
@@ -81,6 +88,48 @@ Data Table `<Cliente> <Plataforma> Orders State`:
 
 - **Viens:** dedup feito com objeto **em memória** `sd.seen = {[order_id]:true}`, sobrescrito a cada execução → **não persiste**, dedup quebrado. Sempre Data Table, nunca variável in-memory. [Certeza]
 
+### 3.5 O dedup só grava DEPOIS do sucesso do POST na NexTags
+
+**A regra mais importante de todo o corpus.** O node que grava o dedup (Data Table upsert/insert) só pode rodar **depois** de confirmar que o `POST /api/contacts` teve sucesso — nunca em paralelo, nunca antes.
+
+**Por quê:** se o dedup grava independente do resultado, uma falha transitória (token placeholder, 401, instabilidade) marca o cliente como "já notificado" **para sempre**. O cliente real nunca recebe a mensagem, nem depois do bug corrigido — e o sintoma não aparece em lugar nenhum, porque tudo "rodou".
+
+**Implementação padrão** (Nordmann Pedidos, Nordmann Carrinho, Meiskin PIX Expirado):
+
+```
+Notificar NexTags (httpRequest, onError: continueErrorOutput)
+   → Notificação OK? (IF: {{ $json.error ? 'erro' : 'ok' }} == 'ok')
+        ├─ true  → Salvar Estado (dataTable upsert)     ← só aqui grava dedup
+        └─ false → Falhou (não salva dedup) (noOp)      ← segue sem gravar
+```
+
+**Evidência — dois incidentes documentados nos próprios workflows:**
+
+| Workflow | O que aconteceu |
+|---|---|
+| Nordmann Meling Webhook Pedidos v3 (`ln7ZTWGwTyV2KVRQ`) | "Na v2, o dedup gravava mesmo com a chamada falhando (401 do token placeholder) — isso significava que, ao colocar o token real, os clientes JAMAIS seriam notificados." |
+| Nordmann Meling Carrinho v2 (`bvR8NeB5e4BdOzyD`) | "Na v1, a 1ª execução automática rodou com token placeholder, todas as 51 notificações falharam (401) mas o dedup foi gravado do mesmo jeito — esses 51 clientes reais JAMAIS seriam notificados ao colocar o token real. Corrigido + tabela de dedup recriada limpa." |
+
+⚠️ Consequência operacional: quando esse bug já rodou, **corrigir o fluxo não basta** — a tabela de dedup precisa ser recriada/limpa, senão os clientes marcados continuam mudos.
+
+### 3.6 Estágio por ID de status, nunca por texto
+
+Quando a API do cliente expõe status como objeto `{id, descricao}`, o roteamento de estágio (pago/enviado/entregue) usa **`id`**. A `descricao` é texto livre editável no painel do lojista.
+
+**Evidência** — Degan BW (`rroCGCrCnb9R1U5s`), comentário no Code node "Decidir":
+
+```js
+// Roteamento por ID do status. A descricao e texto livre que a loja edita no painel:
+// "Em Entrega" (id 8) casava com /entreg/ e virava "entregue" -> mensagem errada E o dedup
+// gravava "entregue", bloqueando o Entregue real (id 9). Por isso ID, nao texto.
+```
+
+Note o efeito duplo: além da mensagem errada, o dedup gravou o estágio errado e **bloqueou a notificação certa**. Regras derivadas:
+
+- Fallback por texto **só** quando o payload não traz `id`, e mesmo assim com word-boundary (`\bentregue\b`), nunca substring.
+- **Audite drift de configuração:** a sonda Degan (`sL14eAen2XAuAn6h`) confere os IDs de status lidos manualmente no painel contra o que a API devolve e reporta divergência explícita — sem isso, o cliente reconfigura um status e o roteamento por ID fica errado em silêncio.
+- Compare o **estágio anterior salvo × o novo** (`stored.status === stage`), não "existe linha": o mesmo pedido passa por Pago → Enviado → Entregue, e dedup binário bloquearia os estágios seguintes (`rroCGCrCnb9R1U5s`).
+
 ---
 
 ## 4. Número de pedido & concatenação multi-plataforma
@@ -89,10 +138,10 @@ Data Table `<Cliente> <Plataforma> Orders State`:
 
 ### 4.1 Regra validada (vale pra todos)
 
-**Separe `order_id` de `order_number`:**
-- `order_id` = ID **interno** da plataforma → usado **só** na chave de dedup. Globalmente único por loja.
-- `order_number` = número **visível ao cliente** → usado **só** na CUF de exibição (`NumeroPedidoYMP` etc.).
-- **Nunca** use `order_number` como chave de dedup (pode repetir). Veuske resolve com chave composta `nPedido + idPedido` — o ID interno desambigua.
+**Separe `order_id` de `numero_pedido`:**
+- `order_id` = ID **interno** da plataforma → usado **só** na chave de dedup. Globalmente único por loja. Nunca vira CUF.
+- `numero_pedido` = número **visível ao cliente** (sem `#`) → usado **só** na CUF de exibição.
+- **Nunca** use o número visível como chave de dedup (pode repetir). Veuske resolve com chave composta `nPedido + idPedido` — o ID interno desambigua.
 
 Normalização comum: remover `#` do `order.name` do Shopify (Casa Marquez, Alto Giro, Mania); Divinnah corta em `.` (`#1234.1` → `1234`).
 
@@ -103,10 +152,56 @@ Só **2 casos reais** auditados — e eles definem o padrão:
 - **HIVEN** (Bling + Yampi + Shopify): o workflow Bling grava em **CUFs separados por origem** (`numero_pedido_bling`, `pedido_id_bling`); o workflow Yampi/Shopify tem um node **"Detectar e Normalizar"** que lê de Yampi **OU** Shopify (pelos headers/body) e grava em **campos genéricos** com discriminador de plataforma.
 - **Amo Calçados** (Bling + Loja Integrada): **Data Tables de dedup separadas por plataforma** — cada origem tem seu próprio namespace de `order_id`/`pedido_id`.
 
-**Recomendação consolidada para multi-plataforma:**
+**Recomendação consolidada para multi-plataforma (canônico atual):**
 1. **Data Table de dedup separada por plataforma** (sempre — evidência Amo). [Certeza]
-2. CUF: ou **por origem** (`NumeroPedidoBling`, `NumeroPedidoShopify` — evidência HIVEN), ou **genérica + CUF `OrigemPedido`** discriminador (evidência HIVEN).
+2. **CUFs canônicos únicos** (`numero_pedido`, `status_pedido`, …) **+ `origem_pedido`** como discriminador. A variante "CUF por origem" (`NumeroPedidoBling`, `NumeroPedidoShopify` — HIVEN) é o padrão **legado**: continua funcionando onde já roda, mas não se cria mais (§4.3).
 3. Prefixo no número (ex.: `SHP-1234`/`YMP-5678`) é uma opção limpa **[SEM EVIDÊNCIA DIRETA]** — nenhum cliente auditado usa; se adotar, é greenfield.
+
+### 4.3 Naming canônico de CUF — snake_case sem sufixo de plataforma
+
+**Regra atual (SPEC §4):** o nome do campo é o mesmo em QUALQUER integração, em `snake_case`,
+minúsculas, sem acento e **sem sufixo de plataforma**. A plataforma vai no campo `origem_pedido`.
+Tabela completa (conteúdo e obrigatoriedade por evento) em `references/campos_canonicos.md` §5 —
+não duplicar aqui.
+
+```
+numero_pedido  status_pedido  data_pedido  valor_pedido  qtd_itens_pedido  produtos_pedido
+rastreio_codigo  rastreio_url  rastreio_transportadora  previsao_entrega  nota_fiscal
+link_pagamento  origem_pedido
+produtos_carrinho  valor_carrinho  qtd_itens_carrinho  link_carrinho
+```
+
+**Por que mudamos** (não foi gosto): o corpus real não tem convenção única. Sufixo de 2-3 letras da
+origem (`NUV` Nuvemshop, `BW` BW Commerce, `YMP` Yampi) aparece quando o cliente tem mais de um
+canal, some quando só tem um, e **o casing é inconsistente dentro do mesmo workflow** —
+`StatusPedidoYMP` (PascalCase) convive com `produtosyampi` (lowercase) no AliveMed Dispatcher.
+Isso é inconsistência real do corpus, não convenção a copiar (corpus de 21 workflows n8n em produção). Consequências
+práticas: colisão ao entrar uma 2ª plataforma, prompt que precisa listar N nomes para ler o mesmo
+dado, e CUF criado com typo que **não pode ser apagado** (a API não tem DELETE).
+
+**Matriz do legado (histórico — o que existe em produção hoje):**
+
+| Workflow | Sufixo | `field_name` legados | Canônico correspondente |
+|---|---|---|---|
+| Nordmann Meling Webhook Pedidos | NUV | `StatusPedidoNUV`, `NumeroPedidoNUV`, `ValorPedidoNUV`, `ProdutosPedidoNUV`, `RastreioPedidoNUV`, `LinkRastreioNUV` | `status_pedido`, `numero_pedido`, `valor_pedido`, `produtos_pedido`, `rastreio_codigo`, `rastreio_url` + `origem_pedido: nuvemshop` |
+| Nordmann Meling Carrinho | NUV | `StatusPedidoNUV` (fixo `"Carrinho abandonado"`), `ProdutosCarrinhoNUV`, `ValorCarrinhoNUV`, `LinkCarrinhoNUV` | `status_pedido`, `produtos_carrinho`, `valor_carrinho`, `link_carrinho` |
+| Degan BW Status de Pedido | BW | `StatusPedidoBW`, `StatusDescricaoBW`, `NumeroPedidoBW`, `DataPedidoBW`, `ValorPedidoBW`, `QtdItensPedidoBW`, `RastreioPedidoBW`, `PrevisaoEntregaBW`, `NotaFiscalBW` | `status_pedido`, `numero_pedido`, `data_pedido`, `valor_pedido`, `qtd_itens_pedido`, `rastreio_codigo`, `previsao_entrega`, `nota_fiscal` + `origem_pedido: bw` |
+| Degan BW Carrinho (polling) | BW | `StatusPedidoBW` (fixo `"Carrinho"`), `ProdutosCarrinhoBW`, `ValorCarrinhoBW`, `QtdItensCarrinhoBW`, `LinkCarrinhoBW` | `produtos_carrinho`, `valor_carrinho`, `qtd_itens_carrinho`, `link_carrinho` |
+| AliveMed Dispatcher PIX | YMP | `StatusPedidoYMP`, `NumeroPedidoYMP`, `ProdutosPedidoYMP`, `TotalPedidoYMP`, `ChavePixYMP` | `status_pedido`, `numero_pedido`, `produtos_pedido`, `valor_pedido`, `link_pagamento` + `origem_pedido: yampi` |
+| AliveMed Dispatcher Carrinho | YMP | `StatusPedidoYMP` (fixo `"Carrinho"`), `produtosyampi`, `linkcarrinhoyampi` | `produtos_carrinho`, `link_carrinho` |
+| Meiskin PIX Expirado | — | `carrinho_itens`, `carrinho_qtd_itens`, `carrinho_total`, `carrinho_link`, `pix_pago` | `produtos_carrinho`, `qtd_itens_carrinho`, `valor_carrinho`, `link_carrinho` |
+| Alto Giro Notif Pedido Enviado | — | `numero_pedido`, `valor_pedido`, `data_pedido`, `codigo_rastreio`, `link_rastreio`, `transportadora` | já quase canônico: renomeia só `codigo_rastreio`→`rastreio_codigo`, `link_rastreio`→`rastreio_url`, `transportadora`→`rastreio_transportadora` |
+| WL The Ladies / Seu Acompanhamento | — | `Last_Order_Product`, `order_url_2`, `order_paid_at` | `produtos_pedido`, `rastreio_url`, `data_pedido` |
+
+⚠️ **Regra dura: em cliente rodando, NÃO renomear.** O flow do NexTags lê o nome antigo; renomear o
+CUF sem tocar no flow quebra a mensagem em silêncio (o disparo retorna sucesso e não faz nada).
+Em auditoria: registrar como legado no relatório, migrar só em janela combinada, campo e flow na
+mesma mudança. **Projeto novo = canônico, sem exceção.**
+
+⚠️ Tags do transacional também são canônicas: `transacional` + `Pedido Aprovado` / `Pedido Enviado` /
+`Pedido Entregue` (`campos_canonicos.md` §4). O corpus legado usa nomes ad-hoc (`PIX Expirado` na
+Meiskin, `pedido-enviado` no Alto Giro, `COMPRADOR` na WL) — mesma regra: não renomear em cliente
+rodando, não criar novos assim.
 
 ---
 
@@ -117,16 +212,22 @@ Só **2 casos reais** auditados — e eles definem o padrão:
 **Um único `POST /api/contacts`** com `actions[]` consolidando tudo (Alto Giro substituiu 3 chamadas separadas por 1):
 
 ```
+phone / first_name / last_name / email  →  no ROOT do body (campos nativos, nunca CUF)
 actions: [
-  { action:'set_field_value', field_name:'StatusPedidoYMP', value:'Enviado' },
-  { action:'set_field_value', field_name:'RastreioPedidoYMP', value:'<code>' },
-  { action:'add_tag', tag_name:'pedido-enviado' },
+  { action:'set_field_value', field_name:'status_pedido',   value:'enviado' },
+  { action:'set_field_value', field_name:'numero_pedido',   value:'11488' },
+  { action:'set_field_value', field_name:'rastreio_codigo', value:'<codigo>' },
+  { action:'set_field_value', field_name:'rastreio_url',    value:'<url_com_utm>' },
+  { action:'set_field_value', field_name:'origem_pedido',   value:'nuvemshop' },
+  { action:'add_tag',   tag_name:'transacional' },
+  { action:'add_tag',   tag_name:'Pedido Enviado' },
   { action:'send_flow', flow_id: <FLOW_ID_ENVIADO> }
 ]
 ```
 
-- **`set_field_value` SEMPRE antes de `send_flow`** no mesmo array — senão os CUFs chegam **vazios** no destino. (DOLPS "Regra 16", regra confirmada e repetida.) [Certeza]
+- **Ordem fixa: `set_field_value`… → `add_tag`… → `send_flow` por último.** Em 100% do corpus, sem exceção. Fora de ordem, os CUFs chegam **vazios** no destino. (DOLPS "Regra 16".) [Certeza]
 - `send_flow` é **o** mecanismo de disparo proativo. É o flow pré-montado no NexTags que renderiza a mensagem — o n8n **não** monta texto.
+- Nomes canônicos, não do cliente (§4.3). `flow_id` aparece como number e como string em workflows diferentes; a API aceita ambos, mas **fixe um tipo por projeto**.
 
 ### 5.2 ANTIPADRÃO Nº1 — mandar TEXTO em vez de `send_flow`
 
@@ -152,8 +253,35 @@ Casos reais que custaram tempo:
 
 ## 6. Normalização de payload
 
-- **Telefone BR** (`formatarTelefone`): adiciona/remove o `9` corretamente por DDD. ⚠️ O ChatRace/NexTags **adiciona `9` cegamente a fixos**, corrompendo o ID do contato (fixo `551930971505` vira `5519930971505`) — normalizar **antes** de enviar. (Alto Giro)
-- **`verificarDado(valor, 'Não informado')`**: NexTags rejeita `null`/`undefined` no payload. Todo campo que vira CUF passa por isso.
+### 6.1 Telefone — snippet único, validação final, e FIXO não recebe
+
+O corpus tem **pelo menos 4 implementações independentes** da mesma normalização BR (Nordmann `fone()`, Degan `fone()`, Meiskin `formatarTelefone`, WL Shopify, AliveMed `formatarTelefone`), replicadas por Code node com pequenas divergências. **Consolidado num snippet só:** `assets/_helpers.js`.
+
+Lógica: extrai dígitos, garante prefixo `55`, separa DDD e decide o `9` do local:
+
+```js
+if (dddN >= 11 && dddN <= 29) {
+  if (/^[2345]/.test(local)) {                                        // 2-5 => FIXO
+    if (local.length === 9 && local[0] === '9') local = local.slice(1); // remove 9 indevido
+    local = local.slice(-8);
+  } else if (local.length === 8) {
+    local = '9' + local;                                              // celular sem 9 => adiciona
+  }
+} else {                                                              // DDD fora de 11-29
+  if (local.length === 9 && local[0] === '9') local = local.slice(1);
+  local = local.slice(-8);
+}
+```
+
+**Validação final obrigatória** (padrão AliveMed, a implementação mais defensiva do corpus): `/^55\d{10,11}$/`. Não bateu → `skip(item, 'telefone_invalido')`, nunca mandar o que sobrou.
+
+⚠️ **Número FIXO não recebe `send_flow`/mensagem via API.** Ao entrar na plataforma o número ganha o 9 extra e vira inválido — a NexTags/ChatRace adiciona o `9` cegamente a fixo, corrompendo o ID do contato (fixo `55DD3XXXXXXX` vira `55DD93XXXXXXX`, que não existe). Evidência: dono do projeto (2026-09-03) + Alto Giro/ChatRace.
+
+Regra: guard **antes** do disparo, `ehTelefoneFixo()` = DDD + local de 8 dígitos começando em 2-5 → `skip(item, 'telefone_fixo')`, e a contagem de descartes vai no relatório. Nunca "tentar mesmo assim". Vale também para o `nextags-webchat-tester`: fixo não serve como contato de teste (e webchat não tem telefone nenhum).
+
+### 6.2 Demais normalizações
+
+- **`verificarDado(valor, 'Não informado')`**: NexTags rejeita `null`/`undefined` no payload. Todo campo que vira CUF passa por isso. ⚠️ E nenhum CUF que alimenta variável de template do WhatsApp pode ir vazio: erro Meta `#131008` **derruba o template inteiro**, não só o campo (Meiskin, Code "Preparar PIX").
 - **`separarNomeSobrenome`**: `/api/contacts` espera `first_name` + `last_name` separados.
 - **Concatenação de itens** do pedido numa string legível (`Produto (Qtd: 2, R$ X)`).
 - ⚠️ **Query string em link/CUF**: nunca concatenar `&utm_...` sem checar se já existe `?` (bug real quebrou `link_checkout_abandono` na Mayuí). Ver `link_envio_pattern.md` da mcp-builder — **UTM é obrigatório** em todo link.
@@ -169,7 +297,9 @@ waitBetweenTries: 5000     // 5s
 onError: continueErrorOutput   // não trava a chain nem perde o INSERT de dedup
 ```
 - **n8n httpRequest v4.4:** usar `specifyBody:'json'` + `jsonBody`. `jsonParameters`/`bodyParametersJson` **não serializa** → gera falso `"Invalid phone number"` no POST /contacts. (Alto Giro) [Certeza]
-- **Anti-429:** NexTags e Martz têm rate limit (~60/min na Martz). Zencial detecta `error.code==429` e re-tenta; em loops de enriquecimento, usar `batchSize 1` + intervalo ~500ms. Nunca rodar backfill sem throttle.
+- **Anti-429:** o rate limit da **API NexTags é ~100 req/60s** (evidência: Privilège `b9IJblHOEurFgj6o`, *"ajustar N e batchInterval do HTTP Request pra respeitar rate limit real da API NexTags (100 req/60s — ver workflow EXPORTAR CONVERSAS v5)"*). Martz ~60/min. Zencial detecta `error.code==429` e re-tenta; em loops de enriquecimento, `batchSize 1` + intervalo ~500ms. Nunca rodar backfill sem throttle.
+- **Disparo em lote → "pesca-e-marca"** em vez de loop rápido: cron de baixa frequência (Privilège usa `*/3 8-19 * * *`), `limit: 1`, `orderBy id ASC`, filtro `enviado != true`, marca a linha antes do próximo tick. Nasceu de marcação de SPAM pela Meta em broadcast nativo. ⚠️ Desativar o workflow quando a fila esvaziar, senão roda vazio para sempre. ⚠️ Escalar volume **muda a arquitetura** (limit=N + `splitInBatches` + update em lote), não é editar o cron.
+- **Trio de resiliência para cron crítico** (padrão Otogama): `settings.errorWorkflow` (pega falha que rodou pelo menos um node) **+** Data Table de heartbeat escrita pelo próprio fluxo **+** um Watchdog em cron separado que lê o heartbeat e alerta pela **ausência**. O Error Trigger não pega o caso "o worker do n8n morreu antes de qualquer node" (execução com `startedAt: null`) — só o watchdog externo vê. Alerta em transição de estado (ok→fora, fora→ok), nunca a cada tick, e toda falha terminal de fila de retry precisa de canal humano ("desistir precisa doer em alguém").
 - **Guards antes do disparo:** telefone presente/válido (Neurofood, Mayuí, Exclusiva, Casa Marquez, Veuske). Para carrinho: idade (1-48h) + conversão (checar se não virou pedido) + dedup (Alto Giro espera 1h e confere conversão).
 - **RED FLAGS de resiliência:** sem `retryOnFail` (Alto Giro, Amo, Privilège, HIVEN, Iorane, Boca Rosa, Bem Beleza); sem guard de telefone (Iorane, Bem Beleza, Wazzu, Vitabe, BB); `optional chaining` incompleto que derruba o Code node (Cantarola: `data?.invoice.number`).
 
@@ -177,7 +307,10 @@ onError: continueErrorOutput   // não trava a chain nem perde o INSERT de dedup
 
 ## 8. Segurança & token
 
-- **Token NexTags:** `X-ACCESS-TOKEN` **hardcoded em texto puro** no header do HTTP Request é a convenção quase universal (27 de 29). Fica na instância privada do n8n (não vaza no git da skill). Só Uniformizeei e Verdanda usam credential do n8n. Aceitável pela convenção Walkers, mas **credential é mais seguro** — preferir onde der. [Provável]
+- **Endpoint canônico é `POST /api/contacts`.** `/api/users` aparece só no AliveMed Dispatcher, sem explicação na sticky — variante **legada**, não usar em projeto novo. (corpus de 21 workflows n8n em produção)
+- **Token NexTags:** `X-ACCESS-TOKEN` **hardcoded em texto puro** no header do HTTP Request é a convenção quase universal (27 de 29). Fica na instância privada do n8n (não vaza no git da skill). Só Uniformizeei e Verdanda usam credential do n8n. Aceitável pela convenção Walkers, mas **credential nomeada é mais segura** — permite rotação sem editar N nodes; preferir onde der. [Provável]
+- **Token é por conta.** Token errado retorna `200` e escreve na conta errada, sem erro visível (Wazzu com token da Hebreus Doze). Rodar `GET /accounts/me` antes de qualquer setup e anotar o nome da conta no sticky.
+- **Nada de credencial em arquivo da skill nem em sticky:** placeholders `<NEXTAGS_ACCESS_TOKEN>`, `<NEXTAGS_GATEWAY_TOKEN>`, `<TELEFONE>`, `<IP_N8N>`, `<FLOW_ID_...>`.
 - **HMAC:** validar assinatura no webhook de entrada **onde a plataforma assina** — Bling (Amo, HIVEN), Martz, SuaAgenda. Responder 200 rápido e validar HMAC antes de processar.
 - **CUFs tipo TEXTO:** CUF criado como tipo **NÚMERO** faz `set_field_value` **descartar o valor silenciosamente** (sem erro). Todo CUF setado via `/api/contacts` deve ser **TEXTO** no NexTags. (Mayuí) [Certeza]
 - **Variável de template vazia = flow quebrado:** WhatsApp `#131008` derruba o template inteiro se **qualquer** CUF interpolado estiver vazio. Garanta 100% das variáveis preenchidas antes do `send_flow` (ou tenha variante neutra). (Mayuí)
@@ -197,22 +330,44 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 
 ## 10. Checklist de revisão (antes de ativar)
 
+**Arquitetura**
+- [ ] Workflow criado/atualizado **por API/MCP do n8n**, nunca por navegador: `search_workflows` → `validate_workflow` → `create_workflow_from_code`/`update_workflow` → `publish_workflow`
 - [ ] Roteamento escolhido pela **forma de emissão** da plataforma (§1), não por gosto
 - [ ] Gatilho correto por plataforma (§2) — webhook onde existe, polling onde não existe
+- [ ] Estágio roteado por **id de status** (§3.6); fallback por texto só sem id, com word-boundary
 - [ ] Switch por `status.alias`, nunca por `body.event`
-- [ ] Dedup via **Data Table** (nunca in-memory) com `order_id` interno como chave; status_compare pra evitar replay
-- [ ] `order_id` (dedup) separado de `order_number` (CUF de exibição)
-- [ ] Multi-plataforma: Data Tables separadas por origem + CUF por origem ou discriminador
-- [ ] Disparo atômico: 1 `POST /api/contacts` com `actions[]`, **`set_field_value` antes de `send_flow`**
-- [ ] `send_flow` (nunca texto direto); `flow_id` real e validado E2E (não placeholder)
-- [ ] `formatarTelefone` + `verificarDado` + `separarNomeSobrenome` no Code node
-- [ ] HTTP: `retryOnFail:true` + `waitBetweenTries:5000` + `onError:continueErrorOutput` + `specifyBody:'json'`
-- [ ] Anti-429 em polling/backfill; guard de telefone (e idade/conversão em carrinho)
-- [ ] HMAC validado onde a plataforma assina (Bling/Martz)
-- [ ] CUFs tipo **TEXTO**; todas as variáveis do template preenchidas
+- [ ] Sem credencial nativa da loja? Gateway Proxy conferido (`gateway_proxy_nextags.md`): `storeId` certo, escopo `proxy:passthrough`
+
+**Dedup**
+- [ ] Dedup via **Data Table** (nunca in-memory), chave `order_id` interno — ou `fulfillment_id` se houver envio parcial
+- [ ] Compara **estágio anterior × novo**, não "existe linha"
+- [ ] **Dedup gravado SÓ no ramo de sucesso** do POST na NexTags (§3.5)
+- [ ] `order_id` (dedup) separado de `numero_pedido` (CUF de exibição, sem `#`)
+- [ ] Multi-plataforma: Data Tables separadas por origem + `origem_pedido` como discriminador
+
+**Campos e disparo**
+- [ ] `field_name` **canônicos** em snake_case, sem sufixo de plataforma (`campos_canonicos.md` §5); legado do cliente **não renomeado**
+- [ ] Tags canônicas: `transacional` + `Pedido Aprovado`/`Pedido Enviado`/`Pedido Entregue`
+- [ ] CUFs criados na conta antes de ativar (setup idempotente, `assets/setup_cufs_canonicos.js`); todos tipo **TEXTO** (`type: 0`)
+- [ ] `GET /accounts/me` confirma a conta do token; `GET /accounts/flows` confirma que cada `flow_id` existe
+- [ ] Disparo atômico: 1 `POST /api/contacts` com `actions[]` na ordem `set_field_value` → `add_tag` → `send_flow`
+- [ ] `send_flow` (nunca texto direto); `flow_id` real e validado E2E — ou `0` + guard + `NÃO ATIVAR antes de…` no sticky
+- [ ] Todas as variáveis do template preenchidas (var vazia = `#131008` derruba o flow)
 - [ ] UTM em todo link (`link_envio_pattern.md`)
-- [ ] Clonou de outro cliente? Trocou token + Data Table + field_names + flow_id
-- [ ] Naming: nome do cliente em todos os workflows; CUF CamelCase+sufixo de origem
+
+**Guards e resiliência**
+- [ ] `formatarTelefone` + validação `/^55\d{10,11}$/` + `ehTelefoneFixo` (fixo **não** dispara) + `verificarDado` + `separarNomeSobrenome`
+- [ ] Todo skip carrega `_motivo`; erro global → `throw`, erro pontual em loop → `skip`
+- [ ] HTTP: `retryOnFail:true` + `waitBetweenTries:5000` + `onError:continueErrorOutput` + `specifyBody:'json'`
+- [ ] Anti-429 (NexTags ~100 req/60s); guards de idade/conversão em carrinho
+- [ ] HMAC validado onde a plataforma assina (Bling/Martz)
+- [ ] Cron crítico: `errorWorkflow` + heartbeat + watchdog
+
+**Entrega**
+- [ ] Sticky note pelo modelo canônico (título, endpoint, ESTADO EM dd/mm, CREDENCIAIS, NÃO ATIVAR antes de…, ARMADILHAS com evidência, DE ONDE VEIO a lista de campos, decisões negativas)
+- [ ] Sticky/descrição **não** diz "pronto/ativo" se ainda há placeholder no código
+- [ ] Clonou de outro cliente? Trocou token + `storeId` + Data Table + `field_name` + `flow_id` + nomes de node
+- [ ] Naming: nome do cliente em todos os workflows e na Data Table
 
 ---
 
@@ -229,6 +384,23 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 | Chave composta de dedup | Veuske (`nPedido+idPedido`), Dolps (`orderId\|lastChange`), Mayuí (`order_id\|evento`), BB, Exclusiva |
 | Dedup por tag | Alto Giro (`ag-entregue-notif`) |
 | Dedup in-memory quebrado (RED FLAG) | Viens (`sd.seen`) |
+| **Dedup só grava após sucesso do POST** | Nordmann v3 (`ln7ZTWGwTyV2KVRQ`), Nordmann Carrinho v2 (`bvR8NeB5e4BdOzyD`, 51 clientes), Meiskin PIX Expirado |
+| **Estágio por id de status, não por texto** | Degan BW (`rroCGCrCnb9R1U5s`: "Em Entrega" id 8 casava com `/entreg/`) |
+| Compara estágio anterior × novo | Degan BW (`stored.status === stage`) |
+| Chave por `fulfillment_id` (envio parcial) | Alto Giro (`w1KeVwUnJGdwpidU`) |
+| Chave composta por etapa de funil | Meiskin (`FsnnAiE2LADC91aZ`, `etapa_30/65/120_enviada`) |
+| `rowNotExists` como dedup gate | Alto Giro (node "Dedup Gate") |
+| Naming legado CamelCase + sufixo (casing inconsistente) | Nordmann (NUV), Degan (BW), AliveMed (`StatusPedidoYMP` × `produtosyampi` no mesmo workflow) |
+| `flow_id = 0` como fail-safe deliberado | Degan BW (`flow_pago/enviado/entregue: 0`), Degan Carrinho (`flow_carrinho: 0`) |
+| Skip com `_motivo` (padrão maduro) | Degan Carrinho Polling (`skip(motivo)`), Meiskin |
+| Sticky "pronto" com placeholder no código | `qRIs9L07G5auvhRM` (`active:true`, descrição diz "Auth pendente") |
+| Rate limit NexTags ~100 req/60s | Privilège (`b9IJblHOEurFgj6o`) |
+| Broadcast "pesca-e-marca" (anti-SPAM Meta) | Privilège (cron `*/3 8-19 * * *`, `limit: 1`) |
+| Heartbeat + watchdog + errorWorkflow | Otogama (`Gtxxg7YTbApcT4tE`, `W7cuLshLtted1VPz`, `AYlX3rF3ZeLePrqn`) |
+| Gateway Proxy NexTags em produção | Cantarola Backend (`…/v1/gateway/stores/{storeId}/products`) |
+| Telefone fixo não recebe (9 extra) | dono do projeto 2026-09-03; Alto Giro/ChatRace |
+| Validação final `/^55\d{10,11}$/` | AliveMed (`formatarTelefone`, a mais defensiva do corpus) |
+| `/api/users` como variante legada | AliveMed Dispatcher (único do corpus; resto usa `/api/contacts`) |
 | `order_id` interno ≠ `order_number` exibido | Veuske, Neurofood, Mania, Divinnah, Cabelos Rainha |
 | Multi-plataforma: CUF por origem / genérico+discriminador | HIVEN (Bling separado; Yampi/Shopify normalizado) |
 | Multi-plataforma: Data Table dedup por origem | Amo Calçados (Bling + Loja Integrada) |
@@ -254,3 +426,6 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 1. **Prefixo de número multi-plataforma** (`SHP-`/`YMP-`) não existe em produção — adotar como padrão greenfield? [SEM EVIDÊNCIA DIRETA]
 2. **Token via credential vs hardcoded** — migrar a convenção pra credential do n8n? (mais seguro, mais fricção de auto-vínculo — ver quirk Veuske na mcp-builder).
 3. **72 clientes `unreadable`** — habilitar `availableInMCP` neles pra completar a auditoria numa 2ª rodada?
+4. **Enum de `status_pedido`** (`aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado`) — **confirmar com o dono** (`campos_canonicos.md` §9.3).
+5. **Tipo de `flow_id`** (number ou string): a API aceita os dois no corpus, não há decisão oficial — **confirmar com o dono** qual fixar.
+6. **`/api/users` (AliveMed)** — é equivalente a `/api/contacts` ou outra API? Sem explicação na sticky; tratado como legado até o dono confirmar. [SEM EVIDÊNCIA DIRETA]

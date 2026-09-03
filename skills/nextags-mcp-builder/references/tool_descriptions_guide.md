@@ -258,6 +258,36 @@ Os nomes técnicos das tools são INTERNOS. O relatório de entrega inclui:
 *"Nunca exponha o nome técnico da tool ao cliente. Fale como humano: 'já tô
 buscando isso', 'deixa eu ver aqui'."*
 
+**Coloque a frase também DENTRO da `toolDescription`** (não só no relatório):
+*"Nunca cite o nome desta ferramenta para a pessoa."* **[SEM EVIDÊNCIA DIRETA]** — nenhuma
+tool do corpus de 21 workflows lidos (Poé incluído) usa essa frase
+literalmente; é recomendação por analogia às outras regras de não expor nome técnico (ver
+"Boilerplate de naming" acima), não um padrão observado em produção. A descrição é o que o
+modelo lê antes de decidir o que responder; repetir ali reduz vazamento de nome técnico em
+runtime.
+
+## Regras de domínio que se repetem em produção (adicionar à descrição sempre que se aplicar)
+
+Estas frases aparecem quase literalmente em tool descriptions de clientes diferentes
+(evidência: corpus de 21 workflows n8n em produção) — sinal de template interno do time. Inclua a que se
+aplicar ao domínio da tool, com a redação do cliente se ele tiver uma mais específica:
+
+| Regra | Quando incluir | Evidência |
+|---|---|---|
+| "Nunca cite preço/estoque de memória — sempre re-consulte" | qualquer tool de catálogo/estoque | Cantarola: *"NUNCA cite preço de memória."* |
+| "Nunca diga a quantidade EXATA em estoque — só disponível/indisponível" | tool que retorna estoque numérico | Degan, repetido em 3 tools |
+| "Nunca conclua atraso de entrega por conta própria — você não sabe o prazo prometido a essa pessoa" | tool de rastreio/status de pedido | Degan MCP, repetido 2x |
+| "Nunca prometa reembolso, troca, reposição ou data de entrega" | qualquer tool de SAC/pós-venda | padrão geral (Degan, Solentes Net "o agente não decide lente") |
+| "Foto só se a extensão for .jpg/.jpeg/.png — outro formato quebra a entrega. Na dúvida, mande só texto" | tool que retorna URL de imagem | Degan |
+| "Envelope SEMPRE 200, mesmo em erro — leia `erros[]`/`erro`/`error_code` antes de concluir qualquer coisa" | API que não usa status HTTP pra sinalizar erro (ex.: BW Commerce) | Degan MCP, ver `quirks_n8n.md` Quirk #33 — sem essa frase na description, o agente confunde falha de credencial com "pedido não existe" |
+| "Canal atacado não deve ter o total citado como valor final — pode ser renegociado manualmente" | tool de preço/pedido quando o cliente tem canal atacado | Cantarola, 2 tools |
+| "Não pergunte diretamente se a pessoa é atacado — leia o campo/etiqueta e infira por perguntas naturais" | tool/prompt que lê perfil de cliente | Cantarola |
+
+Nenhuma dessas é obrigatória em toda tool — aplique a que for pertinente ao domínio da API
+que a tool consulta. Quando a API tiver um envelope "sempre-200" ou equivalente
+específico, explique o mecanismo exato (não só "leia o erro") — é o que faz o agente
+diferenciar corretamente vazio-legítimo de falha técnica.
+
 ---
 
 ## Notas de funcionamento da API (no prompt do agente)

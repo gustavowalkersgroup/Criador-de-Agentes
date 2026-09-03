@@ -108,7 +108,7 @@ Princípios:
   comportamento do agente (não só a estrutura do JSON), vira pendência.
 - **Não invente valores.** Se faltar um `flow_id`, uma URL, ou texto que
   não está no prompt, deixe placeholder explícito (ex.:
-  `<ID_DO_FLUXO_DE_TRANSFERENCIA>`) e liste no relatório.
+  `<ID_DO_FLUXO_PIPELINE>`) e liste no relatório.
 - **Exemplos negativos são intocáveis.** Quando o autor mostra um JSON
   precedido de "❌ ERRADO" ou "🚫 NUNCA", esse bloco é didático. O analisador
   já marca esses como `is_negative_example: true` — não corrija.
@@ -230,9 +230,11 @@ de cortar algo que o dono considera essencial.
 nextags-prompt-fixer/
 ├── SKILL.md                              (este arquivo)
 ├── scripts/
-│   └── analyze_prompt.py                 análise determinística
+│   └── analyze_prompt.py                 análise determinística (cópia idêntica: creator/fixer)
 ├── references/
-│   └── regras_absolutas.md               regras + padrões de fix
+│   ├── regras_absolutas.md               regras + padrões de fix
+│   ├── campos_canonicos.md               fonte de verdade do método (cópia idêntica em 4 skills — não editar aqui)
+│   └── cufs_nextags.md                   CUFs nativos da plataforma (cópia idêntica: creator/fixer)
 └── assets/
     └── relatorio_template.md             template do relatório
 ```

@@ -99,15 +99,22 @@ genérico; nunca tentar adivinhar o ID do admin.
  "actions":[{"action":"transfer_conversation_to","value":"human"}]}
 ```
 
-**Depois:**
+**Depois (trio de handoff antes do send_flow — Regra 21):**
 ```json
 {"messages":[{"message":{"text":"Vou te transferir."}}],
- "actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DE_TRANSFERENCIA>"}]}
+ "actions":[
+   {"action":"set_field_value","field_name":"motivo_transferencia","value":"<enum>"},
+   {"action":"set_field_value","field_name":"prioridade_pipeline","value":"<baixa|media|alta>"},
+   {"action":"set_field_value","field_name":"resumo_pipeline","value":"<2-4 frases>"},
+   {"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}
+ ]}
 ```
 
 ⚠️ Se o `flow_id` correto não estiver definido no prompt, **mantenha o
-placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no relatório:
-"⚠️ Definir o ID do fluxo de transferência antes de subir em produção."
+placeholder** `<ID_DO_FLUXO_PIPELINE>` e adicione no relatório: "⚠️ Definir o
+ID do fluxo de pipeline antes de subir em produção." O trio
+`motivo_transferencia`/`prioridade_pipeline`/`resumo_pipeline` é obrigatório
+antes deste `send_flow` — ver Regra 21.
 
 ---
 
@@ -132,9 +139,10 @@ ou chamadas com parênteses `Nome()`.
 
 **Como corrigir:**
 - Transferência (`connect_user_to_human`, `transferir_suporte/atendimento`)
-  → `send_flow` + `<ID_DO_FLUXO_DE_TRANSFERENCIA>` (placeholder se o ID não
-  está no prompt). Uma `messages` de transição é opcional por UX (ver
-  Regra 10) — o `send_flow` dispara com ou sem ela.
+  → trio de handoff (`motivo_transferencia`/`prioridade_pipeline`/
+  `resumo_pipeline`, Regra 21) + `send_flow` com `<ID_DO_FLUXO_PIPELINE>`
+  (placeholder se o ID não está no prompt). Uma `messages` de transição é
+  opcional por UX (ver Regra 10) — o `send_flow` dispara com ou sem ela.
 - Função de dado legada (`buscar_pedido`, `Rotativo()`) → marcar PENDÊNCIA:
   precisa virar tool/MCP real; não é ação de JSON. Não inventar substituto.
 
@@ -423,11 +431,16 @@ qualquer), a ordem fixa é `motivo_transferencia` → `prioridade_pipeline` →
 critério de prioridade e conteúdo do resumo: Regra 21 e
 `references/campos_canonicos.md` §2.
 
-**Handoff com contexto (preservar se já existir; não inventar se não):**
+**Handoff com contexto (preservar a PRÁTICA; migrar o NOME do campo):**
 prompts-ouro gravam um briefing pro humano via `set_field_value` ANTES de
-transferir (Flora: `assunto_ticket`; Nex: `nex_resumo`). Se o prompt já faz
-isso, NUNCA remover — é padrão-ouro. Se não faz, NÃO inventar conteúdo de
-campo (vira pendência opcional, não correção).
+transferir (evidência histórica: Flora usava `assunto_ticket`, Nex usava
+`nex_resumo`). A PRÁTICA em si — sempre resumir o caso antes de transferir —
+é padrão-ouro e NUNCA se remove. O NOME do campo, porém, é legado: ao
+auditar, migre `assunto_ticket`/`nex_resumo`/`resumo_lead`/`sac_resumo` para
+o canônico `resumo_pipeline` (Regra 21), preservando o CONTEÚDO do resumo já
+escrito. Se o prompt não grava briefing nenhum antes de transferir, NÃO
+invente conteúdo de campo (vira pendência opcional, não correção) — mas o
+NOME do campo a usar, se vier a existir, já é `resumo_pipeline`.
 
 **Silêncio total pós-handoff (preservar):** ~13/25 instruem o agente a não
 responder nada após o `send_flow` de transferência ("mesmo que a cliente

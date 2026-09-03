@@ -1,5 +1,13 @@
 # Padrão de Webhook Transacional (produção)
 
+> ⚠️ **HISTÓRICO** — o padrão vigente pra webhooks transacionais novos está na skill
+> `nextags-webhook-builder` (naming canônico snake_case + `origem_pedido`; dedup APÓS
+> sucesso do POST, nunca antes — ver `campos_canonicos.md` §5 e Quirk #32 desta skill). Use
+> `nextags-webhook-builder` para qualquer transacional novo (pedido pago/enviado/entregue,
+> carrinho abandonado). Este arquivo fica como registro do padrão anterior (Rafa/Veuske) e
+> não deve ser copiado em projeto novo — os pontos ainda válidos (retry+onError,
+> `formatarTelefone`, dedup via Data Table) já foram herdados e refinados na skill vigente.
+
 > **Referência:** Rafa @Walkers (refatoração do Veuske, 2026-05-28)
 > Use este padrão pra TODOS os webhooks transacionais novos (Yampi, Shopify, etc.)
 
@@ -114,7 +122,7 @@ function formatarTelefone(rawNumber) {
 **Por que tão detalhado?**
 - DDD 11-29 (capitais grandes): celulares OBRIGATORIAMENTE com 9 prefix; fixos NUNCA com 9. Confundir = mensagem não entrega.
 - DDD 30-99 (interior): alguns ainda usam 8 dígitos sem o 9 prefix. Adicionar 9 = mensagem não entrega.
-- Yampi às vezes manda `5519930971505`, às vezes `(19) 99905-8323`, às vezes só `19930971505`. Normalizador unifica.
+- Yampi às vezes manda `5519930000000`, às vezes `(19) 99000-0000`, às vezes só `19930000000`. Normalizador unifica.
 
 ### `verificarDado(valor, padrao)` — default safe
 

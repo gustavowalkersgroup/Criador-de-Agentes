@@ -66,16 +66,23 @@ apontando para o fluxo de transferência do projeto.
  "actions":[{"action":"transfer_conversation_to","value":"human"}]}
 ```
 
-**Depois (preferir send_flow quando há flow):**
+**Depois (preferir send_flow quando há flow — trio de handoff antes, Regra 21):**
 ```json
 {"messages":[{"message":{"text":"Vou te transferir."}}],
- "actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DE_TRANSFERENCIA>"}]}
+ "actions":[
+   {"action":"set_field_value","field_name":"motivo_transferencia","value":"<enum>"},
+   {"action":"set_field_value","field_name":"prioridade_pipeline","value":"<baixa|media|alta>"},
+   {"action":"set_field_value","field_name":"resumo_pipeline","value":"<2-4 frases>"},
+   {"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}
+ ]}
 ```
 
 ⚠️ Se NÃO há flow de transferência configurado, `transfer_conversation_to` é
 fallback legítimo — mantenha. Se o `flow_id` correto não estiver definido no
-prompt, **mantenha o placeholder** `<ID_DO_FLUXO_DE_TRANSFERENCIA>` e adicione no
-relatório: "⚠️ Definir o ID do fluxo de transferência antes de subir em produção."
+prompt, **mantenha o placeholder** `<ID_DO_FLUXO_PIPELINE>` e adicione no
+relatório: "⚠️ Definir o ID do fluxo de pipeline antes de subir em produção."
+O trio `motivo_transferencia`/`prioridade_pipeline`/`resumo_pipeline` é
+obrigatório antes de todo `send_flow` de transferência — ver Regra 21.
 
 ---
 

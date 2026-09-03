@@ -23,10 +23,10 @@ faça uma segunda rodada após a primeira ser respondida.
 Sugestão de divisão por rodadas:
 
 - **Rodada 1 — Persona e tom:** tom de voz, público-alvo, canais.
-- **Rodada 2 — Tools e fluxos:** uso de MCP, IDs de fluxos, fluxo de
-  transferência humana.
-- **Rodada 3 — Conteúdo:** mídias, restrições comerciais, tratamento de
-  reclamações.
+- **Rodada 2 — Tools e fluxos:** uso de MCP, `flow_id` do pipeline + enum de
+  `motivo_transferencia`, fluxos que o cliente já tem para delegar.
+- **Rodada 3 — Operação e conteúdo:** horário de atendimento + SLA, CUFs que a IA
+  deve ler, mídias, restrições comerciais, tratamento de reclamações.
 
 Pule rodadas cujas respostas já estejam no briefing.
 
@@ -70,15 +70,18 @@ options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
 e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
 há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
 
-**Se SAC:** quais MOTIVOS de contato atende (rastreio/troca/devolução/avaria/...)?
-há flow_id por motivo ou um geral? qual a tool/sistema que é fonte de verdade de
-ENVIO (≠ e-commerce)? há fluxo de NPS pós-atendimento (flow_id)?
+**Se SAC:** quais MOTIVOS de contato atende? O padrão canônico do SAC é
+`rastreio` / `devolucao` / `troca` / `duvida` (catch-all) — confirme se serve ou se
+falta algum. Qual a tool/sistema que é fonte de verdade de ENVIO (≠ e-commerce)?
+Há fluxo de NPS pós-atendimento (`flow_id`)?
 
-**Se COMERCIAL/SDR:** quais campos do CRM capturar via set_field_value (pipeline,
-resumo, faturamento)? horário de expediente?
+**Se COMERCIAL/SDR:** quais campos do CRM capturar via `set_field_value` além do
+trio de handoff (pipeline, faturamento, origem)? Horário de expediente?
 
-**Todos:** há horário de atendimento humano (expediente)? respostas fixas para
-casos sensíveis (atacado, parceria, vagas)?
+**Todos:** respostas fixas para casos sensíveis (atacado, parceria, vagas)?
+A saída para humano é sempre disponível — confirme que não existe regra de "só
+transfere em horário comercial" (se existir, o agente escala mesmo assim e o fluxo
+avisa o horário; nunca empurra o cliente para outro número).
 
 ---
 
@@ -93,22 +96,63 @@ options: ["Sim — vou listar quais", "Não usa tools",
 Se "Sim", pergunta aberta: "Liste as tools disponíveis e o que cada uma faz
 (nome + 1-2 linhas descrevendo input/output)."
 
-### 2.2 ID do fluxo de transferência humana (UM só)
-Pergunta aberta: "Qual o `flow_id` do fluxo rotativo de transferência para humano?
-É um só — o destino por fila é decidido pelo CUF `motivo_transferencia`, que o
-próprio fluxo filtra."
+### 2.2 ID do fluxo de PIPELINE (UM só, para todo handoff humano)
+Pergunta aberta: "Qual o `flow_id` do fluxo de **pipeline** (transferência para
+humano)? É um só — a fila é decidida pelo CUF `motivo_transferencia`, que o próprio
+fluxo filtra."
 
-Pergunte também, na mesma rodada: "O fluxo filtra os valores padrão
-(`vendas` / `rastreio` / `devolucao` / `troca` / `duvidas`, com `else` no SAC geral),
-ou vocês usam outros?"
+Pergunte também, na mesma rodada:
 
-⚠️ **Não peça um flow_id por motivo.** O padrão canônico é UM flow rotativo; pedir
-vários gera prompt com N placeholders e depois exige refatoração (caso real: Joias
-Degan, 66 ocorrências de 3 placeholders trocadas depois). Ver `cufs_nextags.md`.
+1. "O fluxo filtra os valores canônicos por setor — parcerias
+   (`ugc` / `colaboracao` / `influencer` / `revenda` / `atacado`), comercial
+   (`vendas` / `carrinho`) e SAC (`rastreio` / `devolucao` / `troca` / `duvida`,
+   com `else` caindo no SAC) — ou vocês usam outros valores?"
+2. "O fluxo lê `prioridade_pipeline` (`baixa` / `media` / `alta`) para definir a
+   prioridade do card? E `resumo_pipeline` vai para o comentário/descrição do card?"
+3. "Tem algum **setor extra** com IA própria (ex.: uma IA de Parcerias)? Se sim, o
+   roteador ganha essa palavra e o fluxo de entrada ganha o ramo."
+4. "Precisa de algum valor **extra** no enum (ex.: `garantia` num painel de SAC
+   próprio)? Por padrão `garantia` cai em `duvida`" (evidência: Cantarola usa
+   `garantia` no pipeline de varejo — Demanda ClickUp Cantarola).
 
-⚠️ Se o humano não souber o id agora: **mantenha `<ID_DO_FLUXO_ROTATIVO>`** e liste
+⚠️ **Não peça um flow_id por motivo.** O padrão canônico é UM fluxo de pipeline;
+pedir vários gera prompt com N placeholders e depois exige refatoração (caso real:
+Joias Degan, 66 ocorrências de 3 placeholders trocadas depois). Ver
+`references/campos_canonicos.md` §2.
+
+⚠️ Se o humano não souber o id agora: **mantenha `<ID_DO_FLUXO_PIPELINE>`** e liste
 como pendência crítica. Se ele não souber os valores do enum, use os canônicos —
-errar um valor degrada para o `else` (fila genérica), não perde o cliente.
+errar um valor degrada para o `else` (fila de SAC), não perde o cliente.
+
+⚠️ Valide o id antes de escrever no prompt: `GET /accounts/flows`. A NexTags
+retorna `success:true` em `/send/{flow_id}` até para id inexistente (evidência:
+Alto Giro) — id errado falha em silêncio.
+
+### 2.2b Horário de atendimento humano e SLA
+Pergunta aberta: "Qual o **horário do atendimento humano**? (vira o CUF
+`horario_atendimento`, que o fluxo de pipeline interpola nas mensagens de espera —
+ex.: 'Segunda a sexta-feira, das 8h às 18h'.) E qual o **SLA** para o time responder
+um card novo? O padrão do fluxo é `data_vencimento` = agora + 2h."
+
+⚠️ Sem essa resposta, use o padrão (2h) e registre no relatório. O texto do horário
+é do cliente — não invente.
+
+### 2.2c Quais CUFs da conta a IA deve LER
+Pergunta aberta: "Quais campos personalizados da conta a IA precisa **ler** para
+decidir? A IA só enxerga o campo se ele estiver escrito no prompt como `{{campo}}` —
+campo preenchido no contato sem a tag no prompt é invisível para ela."
+
+Exemplos canônicos para sugerir (só inclua o que a conta realmente tem):
+
+| Situação | Campos a ler |
+|---|---|
+| Todo agente | `{{first_name}}`, `{{phone}}`, `{{email}}`, `{{current_user_time}}` |
+| SAC com transacional | `{{numero_pedido}}`, `{{status_pedido}}`, `{{rastreio_codigo}}`, `{{rastreio_url}}`, `{{previsao_entrega}}`, `{{origem_pedido}}` |
+| Carrinho abandonado | `{{produtos_carrinho}}`, `{{valor_carrinho}}`, `{{link_carrinho}}` |
+| Espera / fila | `{{horario_atendimento}}` |
+
+⚠️ Não inclua campo "por precaução": cada `{{campo}}` extra entra no contexto em
+TODO turno, inclusive vazio ou com valor velho (stale). Ver `cufs_nextags.md`.
 
 ### 2.3 Outros fluxos específicos?
 Pergunta aberta: "Há outros fluxos da NexTags que o agente deve disparar
@@ -162,8 +206,12 @@ Antes de chamar `analyze_prompt.py`, confirme com o humano:
 - ✅ Site escaneado (homepage + páginas-chave)
 - ✅ Inconsistências entre briefing e site reportadas
 - ✅ Todas as 3 rodadas de perguntas respondidas (ou marcadas como pendência)
-- ✅ Pelo menos um `flow_id` de transferência humana fornecido (ou explicitamente
-  marcado como pendência crítica)
+- ✅ `flow_id` do fluxo de PIPELINE fornecido e validado em `GET /accounts/flows`
+  (ou `<ID_DO_FLUXO_PIPELINE>` explicitamente marcado como pendência crítica)
+- ✅ Enum de `motivo_transferencia` confirmado (canônico ou com as exceções do
+  cliente registradas)
+- ✅ Lista dos `{{campos}}` que a IA vai LER definida (bloco DADOS DESTA CONVERSA)
+- ✅ Horário de atendimento humano e SLA capturados (ou padrão 2h registrado)
 
 Só então prossiga para a geração + auditoria.
 

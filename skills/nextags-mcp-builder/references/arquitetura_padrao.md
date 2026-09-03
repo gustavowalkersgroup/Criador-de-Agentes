@@ -78,6 +78,23 @@ Workflow auxiliar: Smoke Test (manual, diagnóstico)
 
 Veja `quirks_n8n.md` pra detalhes.
 
+### Caso D — GitHub como banco (cliente sem ERP/API)
+
+Cliente sem ERP/sistema com API, catálogo de mídias/FAQ/preços razoavelmente estável.
+
+**Arquitetura:**
+
+```
+MCP Trigger v2
+   └─ tool (httpRequestTool + $fromAI) → Backend (webhook, URL INTERNA http://n8n:5678/...)
+                                            → HTTP GET jsDelivr (catalogo.json no GitHub)
+                                            → Code node: filtra + slim + ação explícita
+```
+
+Nunca ler via `raw.githubusercontent.com` (MIME errado quebra mídia no WhatsApp — Quirk
+#29). Trocar mídia/preço/FAQ = commit no repo, nada muda no n8n. Detalhe completo:
+`references/mcp_github_repo_pattern.md`.
+
 ### Caso C — Híbrido multi-API
 
 Cliente tem várias APIs (ex: Tray pra catálogo + Martz pra pedidos). Combine A e B no mesmo MCP.
@@ -96,6 +113,47 @@ Cron de Refresh + Reset Manual + Smoke Test só pro lado Tray.
 ```
 
 Cada API tem credencial separada. Data table só pras com refresh. Tools no MCP misturam tipos.
+
+## Padrão "tool → backend interno via webhook" (quando usar em vez de tool direto)
+
+Duas formas de ligar a tool MCP ao dado real:
+
+1. **Tool → API do cliente direto** (`httpRequestTool` com `$fromAI` chamando a API do
+   parceiro sem intermediário) — mais simples, é o default dos Casos A/B/C acima.
+2. **Tool → backend interno via webhook** (`httpRequestTool` chamando
+   `http://n8n:5678/webhook/<path>` — **URL interna**, nunca a pública `nextags.app.br`,
+   que dá connection refused de dentro do próprio n8n — Quirk #31): um workflow backend
+   separado processa a chamada real (à API do cliente, ao GitHub-como-banco, a outro
+   sistema). Separa o "contrato com a IA" (tool description, validação, slim) da camada de
+   integração — permite trocar o backend sem tocar no MCP.
+
+Use o padrão 2 quando: (a) o backend precisa de lógica não-trivial (Caso D, filtro de
+catálogo); (b) múltiplas tools chamam a mesma origem e você quer centralizar o slim/parse;
+(c) o dado não vem de uma API HTTP simples (ex.: leitura de Data Table, agregação de mais
+de uma fonte).
+
+## Sticky note obrigatório em todo workflow
+
+Todo workflow criado por essa skill leva uma sticky note no topo do canvas. Modelo
+canônico e exemplo real: `SKILL.md` §"Sticky note explicativo". Não é opcional — é a
+documentação que sobrevive à sessão, e "ativo mas sem sticky" é a mesma classe de bug que
+"ativo com placeholder não preenchido".
+
+## Convenção de Data Tables de estado/dedup/heartbeat
+
+- **Dedup/estado** (replay, polling, fila): 1 Data Table por cliente+plataforma, nome
+  `<Cliente> <Plataforma> Orders State` (ou `... Carrinho Dedup`). Grava **depois** do
+  sucesso do POST na NexTags, nunca antes (Quirk #32). Compara estágio anterior × novo, não
+  "existe linha" — ver `webhook_transactional_pattern.md` (histórico) e a skill
+  `nextags-webhook-builder` para o padrão vigente.
+- **Heartbeat** (automação agendada crítica): Data Table separada gravando "cheguei até
+  aqui" a cada execução do D-0/D-1. Um Watchdog (cron que lê a tabela e compara contra a
+  lista esperada) + um Error Workflow (`settings.errorWorkflow`) formam o par
+  complementar — o Error Workflow não pega falha de infra ANTES do primeiro node rodar;
+  só o Watchdog detecta ausência. Padrão de referência: Otogama Watchdog
+  (`Gtxxg7YTbApcT4tE`) + Otogama Error Handler (`W7cuLshLtted1VPz`). Recomendar os DOIS
+  juntos pra qualquer automação agendada crítica (lembretes, confirmações, transacionais em
+  cron), não só um `errorWorkflow` isolado.
 
 ## Decisão 2: granularidade das tools
 
