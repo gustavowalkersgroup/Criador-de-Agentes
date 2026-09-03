@@ -796,6 +796,10 @@ formatos quebram a entrega em pelo menos um canal.
 
 - ✅ Permitidos: `.jpg`, `.jpeg`, `.png` (Content-Type `image/jpeg` ou `image/png`).
 - ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
+- ❌ Além do formato, a **Meta bloqueia por tamanho**: imagem acima de **5 MB** e vídeo acima
+  de **15 MB** não são enviados. 1 MB a mais já basta — e não aparece erro para o cliente.
+- ❌ PNG com **16 bits por canal** é rejeitado mesmo abaixo de 5 MB (o CDN da Shopify entrega
+  assim por padrão).
 
 **Detecção do script:** `analyze_prompt.py` reporta
 `forbidden_image_formats_count` quando encontra URLs em
@@ -1118,7 +1122,7 @@ sendo meta-doc e sai do prompt (migrar pro relatório).
 ## 23. Exceção: prompts de Roteador e Revalidador (saída de 1 palavra)
 
 **Regra:** um prompt de Roteador (grava `setor_agente` =
-`vendas`\|`sac`\|`analisar_humano_bot`) ou de Revalidador (grava `tipo_setor`
+`vendas`\|`sac`\|`ignorar`) ou de Revalidador (grava `tipo_setor`
 = `humano`\|`bot`) tem natureza DIFERENTE de um prompt de agente: a saída
 esperada é **UMA PALAVRA** em texto puro, sem JSON, sem tools, sem
 transferência (`references/campos_canonicos.md` §1, §1.1; SPEC §5.5,
@@ -1148,7 +1152,7 @@ este tipo de prompt. Documente no relatório como "exceção aplicada
 
 **O que SIM verificar num roteador/revalidador:**
 - A saída é mesmo texto puro de 1 palavra (nunca JSON).
-- Roteador: nunca responde `analisar_humano_bot` para quem mandou mídia
+- Roteador: nunca responde `ignorar` para quem mandou mídia
   (imagem/áudio/arquivo) ou qualquer sinal humano — na dúvida, roteia para
   um setor real, nunca para a análise humano×bot.
 - Revalidador: a regra de ouro "na dúvida → `humano`" está presente; a fonte

@@ -111,7 +111,7 @@ FLUXO, espelhando `prioridade_pipeline`.
 
 | Prompt | Formato | Modelo sugerido |
 |---|---|---|
-| ROTEADOR | 1 palavra (`vendas` \| `sac` \| `analisar_humano_bot`), texto puro, sem JSON/tools | leve (GPT-4.1 nano ou equivalente), temperatura 0 |
+| ROTEADOR | 1 palavra (`vendas` \| `sac` \| `ignorar`), texto puro, sem JSON/tools | leve (GPT-4.1 nano ou equivalente), temperatura 0 |
 | REVALIDADOR | 1 palavra (`humano` \| `bot`), texto puro, sem JSON/tools | leve, temperatura 0 |
 | AGENTE(S) | JSON canônico NexTags, AVISOS ATIVOS, DADOS DESTA CONVERSA, transferência completa | {modelo do projeto} |
 

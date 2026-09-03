@@ -335,7 +335,7 @@ A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase 
 **Modelo canônico atual** (substitui o padrão de flows dedicados por destino):
 
 - **UM roteador único** roda a cada mensagem e é o ÚNICO que grava `setor_agente`
-  (`vendas` \| `sac` \| `analisar_humano_bot`). Um **revalidador** (2ª camada, só no
+  (`vendas` \| `sac` \| `ignorar`). Um **revalidador** (2ª camada, só no
   `else`) grava `tipo_setor` (`humano` \| `bot`).
 - **Nenhuma IA transfere para outra IA.** A IA só transfere pra HUMANO, gravando o trio
   `motivo_transferencia` + `prioridade_pipeline` + `resumo_pipeline` e disparando **UM**
@@ -387,7 +387,7 @@ Aplica Code node de slim em CADA backend (ver `references/slim_response_patterns
 - Traduz enums técnicos para label PT (`in_transit`→"Em trânsito") mantendo o cru em `_internal`
 - Distingue vazio (`empty:true`) de erro técnico (`transient:true`)
 - Preserva identificadores opacos (`cart_id`/`phash`/`customer_id`) byte a byte
-- **Imagens: incluir validação de formato.** A NexTags só entrega JPEG/PNG nos canais. CDNs (Shopify, VTEX, Nuvemshop, Cloudinary) servem WebP por padrão e quebram WhatsApp/Instagram. Estratégias detalhadas: `references/image_validation.md`. No mínimo, anexar campo `image_format_hint` na resposta do slim baseado em heurística de extensão (`likely_jpeg_or_png` / `forbidden_format` / `unknown_validate_before_send`); preferível incluir uma tool `validate_image_url` que faz HEAD HTTP e devolve Content-Type. Sempre avisar o usuário se a API fonte serve WebP — pra que o prompt do agente seja calibrado pra omitir imagem na dúvida.
+- **Imagens: validar formato E tamanho.** A NexTags só entrega JPEG/PNG nos canais, e a **Meta bloqueia acima de 5 MB (imagem) e 15 MB (vídeo)** — 1 MB a mais e a mensagem não sai, sem erro visível. PNG 16-bit é rejeitado mesmo pequeno. Conversão é na URL (parâmetro do CDN ou proxy Cloudinary `f_jpg,q_auto`), não no n8n: os bytes nunca passam pelo workflow. CDNs (Shopify, VTEX, Nuvemshop, Cloudinary) servem WebP por padrão e quebram WhatsApp/Instagram. Estratégias detalhadas: `references/image_validation.md`. No mínimo, anexar campo `image_format_hint` na resposta do slim baseado em heurística de extensão (`likely_jpeg_or_png` / `forbidden_format` / `unknown_validate_before_send`); preferível incluir uma tool `validate_image_url` que faz HEAD HTTP e devolve Content-Type. Sempre avisar o usuário se a API fonte serve WebP — pra que o prompt do agente seja calibrado pra omitir imagem na dúvida.
 
 **Nunca use `optimize_response` do n8n** — entrega JSON cru via MCP Streamable HTTP (quirk #18) e quando funciona, corta com heurísticas genéricas que não conhecem o contexto do atendimento (lição DOLPS). Use sempre Code node manual.
 
@@ -545,7 +545,7 @@ nextags-mcp-builder/
 │   ├── mcp_github_repo_pattern.md        ← 🆕 GitHub como banco (cliente sem ERP/API) — padrão Poé
 │   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/temp 2/verbosity média)
 │   ├── no_hardcode_with_tools.md         ← NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
-│   ├── image_validation.md               ← só JPEG/PNG chega nos canais; WebP/AVIF/SVG/GIF quebram a entrega
+│   ├── image_validation.md               ← JPEG/PNG só; limites da Meta (5 MB imagem, 15 MB vídeo) e como converter
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
 │       ├── vtex.md       🟢

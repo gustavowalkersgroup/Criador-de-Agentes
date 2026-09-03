@@ -18,7 +18,7 @@
 ```
 Início (toda mensagem)
   └─ 00 ROTEADOR — "Gerar texto" (modelo leve, temp 0), saída = 1 palavra
-       grava setor_agente = vendas | sac | analisar_humano_bot
+       grava setor_agente = vendas | sac | ignorar
        └─ Condição "setor_agente contém …":
             ├─ vendas → Agente Vendas → Filtro JSON (Executar código JS) → grava resposta_ia
             │                                                            → envia {{resposta_ia}}

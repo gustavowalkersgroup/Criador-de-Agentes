@@ -26,7 +26,7 @@
 ```
 Início (toda mensagem)
   └─ 00 ROTEADOR / "Classificador Inteligente" (passo "Gerar texto" da OpenAI, saída = 1 palavra)
-       grava setor_agente = vendas | sac | analisar_humano_bot
+       grava setor_agente = vendas | sac | ignorar
        └─ Condição "setor_agente contém …":
             ├─ vendas → Agente Vendas (Gerar texto) → Filtro JSON (Executar código JS)
             │            → grava resposta_ia → passo "Resposta IA vendas" envia {{resposta_ia}}
@@ -53,11 +53,11 @@ Início (toda mensagem)
 | **Ramo bot** | Arquivar conversa (tira da IA) → aguardar 1 hora → bloquear contato. O follow-up de 1h é cancelado se o contato responder antes. |
 | **Setores extras** | Cliente com IA própria de Parcerias: o roteador ganha a palavra extra (`parcerias`) e a condição ganha o ramo. Padrão mínimo = `vendas` + `sac`. |
 
-⚠️ O roteador NUNCA responde `analisar_humano_bot` para quem mandou imagem, áudio, arquivo ou
+⚠️ O roteador NUNCA responde `ignorar` para quem mandou imagem, áudio, arquivo ou
 qualquer sinal humano. Na dúvida, roteia para um setor.
 
-⚠️ O valor legado `ignorar` é aceito pelo `else` do fluxo; o canônico é `analisar_humano_bot`
-— **confirmado** no prompt do roteador em produção (2026-09-03).
+⚠️ São **três palavras, sempre**: `vendas`, `sac`, `ignorar` (+ setor extra quando o cliente
+tem IA dedicada E o ramo existe no fluxo). `ignorar` é o canônico — confirmado pelo dono.
 
 ### 1.2 O que o "Filtro JSON" impõe ao prompt
 
@@ -215,7 +215,7 @@ Por isso, ao gerar ou auditar o prompt:
 
 | Campo | Tipo | Quem grava | Papel / valores |
 |---|---|---|---|
-| `setor_agente` | Texto | **Roteador** (nunca IA) | `vendas` \| `sac` \| `analisar_humano_bot` (+ setor extra se houver IA extra). Legado: `ignorar`. |
+| `setor_agente` | Texto | **Roteador** (nunca IA) | `vendas` \| `sac` \| `ignorar` (+ setor extra se houver IA extra E ramo no fluxo). |
 | `tipo_setor` | Seleção única | **Revalidador** (nunca IA) | `humano` \| `bot` |
 | `motivo_transferencia` | Texto | **IA**, antes de todo `send_flow` de pipeline | enum §2.1. A descrição oficial na conta ("Resumo que vai pra pipeline") está desatualizada: o campo é o MOTIVO/enum. |
 | `prioridade_pipeline` | Seleção única | **IA**, antes de todo `send_flow` | `baixa` \| `media` \| `alta` |
@@ -467,7 +467,7 @@ O relatório do creator entrega isso como **"LISTA DE FLUXOS E CAMPOS A CRIAR"**
 |---|---|---|
 | `duvidas` | `duvida` | singular, sem plural |
 | `sac_geral` | `duvida` | o catch-all agora é `duvida`, mesmo destino do `else` |
-| `ignorar` (roteador) | `analisar_humano_bot` | `ignorar` ainda é aceito pelo `else` do fluxo, mas não se escreve mais |
+| `ignorar` (roteador) | `ignorar` | variante vista em um prompt; o canônico é `ignorar` |
 | `agente_setor` | `setor_agente` | nome invertido em docs antigas |
 | `StatusPedidoYMP` | `status_pedido` + `origem_pedido: yampi` | CamelCase + sufixo de plataforma |
 | `RastreioNS` / `RastreioPedidoYMP` | `rastreio_url` (e `rastreio_codigo`) | separar código de URL |
@@ -522,8 +522,8 @@ deixa de ser contexto de handoff IA↔IA e passa a ser o resumo que vai para o c
   IA e grava o resultado em `resposta_ia`, para evitar vazamento de JSON cru, markdown ou
   raciocínio. O prompt **nunca** menciona esse campo. Comportamento e as duas regras que
   ele impõe ao prompt: §1.2.
-- **Terceira palavra do roteador é `analisar_humano_bot`** — confirmado no prompt do
-  roteador em produção. `ignorar` continua aceito pelo `else` como legado.
+- **O roteador tem três palavras: `vendas`, `sac`, `ignorar`** (+ setor extra quando há IA
+  dedicada e ramo no fluxo). `ignorar` é o canônico.
 
 ### Ainda aberto — NÃO chutar
 

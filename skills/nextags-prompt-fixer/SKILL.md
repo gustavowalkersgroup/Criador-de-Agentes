@@ -32,14 +32,18 @@ fallback legítimo quando não há fluxo de transferência, e `assign_conversati
 é caso especial raro (atendente específico). São camadas complementares, sem
 conflito. Ver Regra 2 em `regras_absolutas.md`.
 
-**Relação com `references/campos_canonicos.md`.** É a fonte de verdade única
-do método (compartilhada com `nextags-prompt-creator`, `nextags-mcp-builder`
-e `nextags-webhook-builder`) para quem escreve cada campo, o enum de
-`motivo_transferencia`, os critérios de `prioridade_pipeline`/`resumo_pipeline`
-e a arquitetura de Roteador/Revalidador. Esta skill audita CONTRA esse
-documento — `regras_absolutas.md` (Regras 21-23) e `cufs_nextags.md` trazem só
-o resumo operacional de auditoria; o detalhe (tabelas, critérios, exemplos,
-legado) vive em `campos_canonicos.md`.
+**Relação com `references/campos_canonicos.md`.** É a fonte de verdade única do método,
+compartilhada com `nextags-prompt-creator`, `nextags-mcp-builder` e
+`nextags-webhook-builder` — **as três skills que CRIAM coisa nova, que é onde o canônico
+manda**. Aqui a leitura é diferente: esta skill **audita** prompt de cliente que já roda, e o
+canônico serve para **comparar e registrar**, nunca para reescrever nome de campo (a infra do
+cliente está montada sobre os nomes atuais — ver §8 de lá).
+
+O que o fixer usa de fato: §2 (enum de `motivo_transferencia`, critérios de
+`prioridade_pipeline` e `resumo_pipeline`), §3 (quem escreve cada campo) e §8 (equivalências
+de legado, para registrar no relatório). O §7, "checklist de conta nova", é de criação — não
+se aplica a auditoria. `regras_absolutas.md` (Regras 21-23) e `cufs_nextags.md` trazem o
+resumo operacional; o detalhe vive em `campos_canonicos.md`.
 
 **Exceção Roteador/Revalidador.** Um prompt que só classifica em UMA PALAVRA
 (`setor_agente` ou `tipo_setor`) não é um "agente" no sentido das regras
