@@ -125,8 +125,8 @@ Instagram/Messenger entregam o nome de EXIBIÇÃO do perfil. A validação é a 
 nos quatro canais: parece primeiro nome de pessoa? Se não, saudação neutra +
 pergunta + `set_field_value first_name`.
 
-⚠️ A IA grava o nome em `first_name` (campo NATIVO), nunca no CUF `Nome cliente`
-da conta — esse é de fluxo/legado (`campos_canonicos.md` §3).
+⚠️ O nome do cliente é **sempre** `{{first_name}}` (campo NATIVO). O CUF `Nome cliente`
+não é usado por nenhum fluxo (confirmado pelo dono) — ignore se aparecer na conta.
 
 ---
 
@@ -870,9 +870,9 @@ REGRAS:
 ```
 
 **Destinos canônicos:** `vendas` | `sac` | `analisar_humano_bot`. O valor legado
-`ignorar` ainda é aceito pelo `else` do fluxo de entrada, mas o canônico novo é
-`analisar_humano_bot` — é o que está no fluxo mais recente em produção.
-⚠️ confirmar com o dono (`campos_canonicos.md` §9.1).
+`ignorar` ainda é aceito pelo `else` do fluxo de entrada. A terceira palavra é
+**placeholder**: o roteador do dono é um prompt próprio e a palavra exata sai de lá —
+**peça o prompt do roteador antes de gerar** (`campos_canonicos.md` §9).
 
 **Setor extra:** só quando o cliente tem uma IA dedicada àquele assunto (ex.: uma IA
 de Parcerias). Aí o roteador ganha a palavra e o fluxo de entrada ganha o ramo.

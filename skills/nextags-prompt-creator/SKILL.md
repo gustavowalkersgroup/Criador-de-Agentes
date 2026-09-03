@@ -159,8 +159,10 @@ Regras que valem para todo projeto multi-agente:
   (ver "Campos canônicos da conta" abaixo).
 - **Mídia é sinal de humano:** imagem, áudio, vídeo ou arquivo → o roteador encaminha
   para um setor, nunca para `analisar_humano_bot`.
-- **Terceira palavra:** o canônico é `analisar_humano_bot`. O valor legado `ignorar`
-  ainda é aceito pelo `else` do fluxo. ⚠️ confirmar com o dono (`campos_canonicos.md` §9.1).
+- **Terceira palavra:** `analisar_humano_bot` é **placeholder**. O roteador do dono é um
+  prompt próprio e a palavra exata sai de lá — **peça o prompt do roteador antes de gerar**
+  e registre a pendência no relatório. O legado `ignorar` continua aceito pelo `else`
+  (`campos_canonicos.md` §9).
 - **Setor extra** (ex.: `parcerias`) só quando o cliente tem uma IA dedicada àquele
   assunto. Padrão mínimo = `vendas` + `sac`.
 - **`resposta_ia` é do FLUXO**, não do prompt: o passo "Filtro JSON" extrai a resposta
@@ -423,8 +425,8 @@ real. Se estiver **vazio**, for **"Guest"**, ou for frase, nome de empresa, expr
 3. Grave: `{"actions":[{"action":"set_field_value","field_name":"first_name","value":"<nome>"}]}`
 4. **Não repita a pergunta** se a pessoa não responder — siga o atendimento.
 
-⚠️ A IA grava o nome em `first_name` (campo NATIVO). O CUF `Nome cliente` da conta é
-de fluxo/legado — a IA não escreve nele (`campos_canonicos.md` §3).
+⚠️ O nome do cliente é **sempre** `{{first_name}}` (campo NATIVO). O CUF `Nome cliente`
+não é usado por nenhum fluxo (confirmado pelo dono) — `campos_canonicos.md` §3 e §9.
 
 | Canal | De onde vem o valor | Cuidado específico |
 |---|---|---|

@@ -207,19 +207,25 @@ deixa de existir.
 - **Numeração duplicada em `quirks_n8n.md`** (dois `## 24.` e dois `## 25.`) corrigida —
   sequência única #1 a #35 (os 7 quirks novos entram como #29-#35).
 
+### Definido pelo dono (2026-09-03)
+
+Três das cinco perguntas desta rodada foram fechadas e já valem como canônico
+(`campos_canonicos.md` §9):
+
+- **`Nome cliente` não é usado.** O nome do cliente é sempre `{{first_name}}` (nativo);
+  nenhum fluxo lê aquele CUF. As skills deixam de tratá-lo como legado ativo.
+- **Enum de `status_pedido`** fechado: `aprovado|enviado|entregue|cancelado|
+  pronto_retirada|pix_gerado|pix_expirado`.
+- **"Filtro JSON" é um nó de código JavaScript** cujo papel é evitar vazamento — impedir
+  que JSON cru, markdown ou raciocínio da IA cheguem ao cliente. Confirma o desenho
+  adotado: o prompt devolve o JSON canônico, o filtro extrai o texto e grava `resposta_ia`.
+
 ### A confirmar com o dono
 
-Perguntas registradas em `campos_canonicos.md` §9 — **não resolvidas por chute**, ficam
-marcadas nas skills como pendência:
+Continuam abertas, **não resolvidas por chute**, marcadas nas skills como pendência:
 
-- Terceira palavra do roteador: `analisar_humano_bot` é o canônico (fluxo mais recente em
-  produção); `ignorar` fica como legado aceito no `else`.
-- `Nome cliente` (CUF de conta, legado) × `first_name` (nativo): a IA passa a gravar sempre
-  em `first_name` — confirmar se `Nome cliente` ainda é lido por algum fluxo existente.
-- Nomes exatos do enum de `status_pedido` transacional (`aprovado|enviado|entregue|
-  cancelado|pronto_retirada|pix_gerado|pix_expirado`).
-- Padrão "Filtro JSON → resposta_ia": confirmar se o prompt sempre devolve o JSON canônico
-  NexTags (assumido nesta rodada) ou se o filtro espera outro formato em algum cliente.
+- **Roteador:** o dono vai enviar o prompt do roteador; a terceira palavra sai de lá.
+  `analisar_humano_bot` segue como placeholder até isso chegar.
 - Caminho do relatório MCP (`Z:\WALKERS\<cliente>\`) — ambiente de trabalho não permitiu
   validar o caminho real.
 - Prompts-modelo mais recentes de vendas/SAC/roteador/Instagram em `Z:\WALKERS\` não foram

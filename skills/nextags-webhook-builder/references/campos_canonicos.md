@@ -49,7 +49,7 @@ Início (toda mensagem)
 | **O roteador é o único que grava `setor_agente`** | Roda em TODA mensagem lendo o histórico da conversa. Saída texto puro, 1 palavra, minúsculas. Modelo leve (GPT-4.1 nano ou equivalente), temperatura 0. |
 | **O revalidador é o único que grava `tipo_setor`** | 2ª camada, só roda no `else`. Fonte `{{chat_history_details_large}}` (200 últimas mensagens com remetente). Saída `humano` \| `bot`. |
 | **Nenhuma IA transfere para outra IA** | Agentes (Vendas, SAC, extras) NUNCA gravam `setor_agente` nem `tipo_setor` e NUNCA disparam fluxo que "troca de IA". A única transferência que a IA faz é para HUMANO, via §2. |
-| **`resposta_ia` é do FLUXO** | Gravado pelo passo "Filtro JSON" (Executar código JS), nunca pelo prompt. O prompt não menciona esse campo: a IA devolve o JSON canônico NexTags, o filtro extrai/normaliza e a mensagem sai por `{{resposta_ia}}`. |
+| **`resposta_ia` é do FLUXO** | Gravado pelo passo "Filtro JSON" (Executar código JS), nunca pelo prompt. O papel do filtro é **evitar vazamento**: impedir que JSON cru, markdown ou raciocínio da IA cheguem ao cliente. O prompt não menciona esse campo — a IA devolve o JSON canônico NexTags, o filtro extrai o texto e a mensagem sai por `{{resposta_ia}}`. |
 | **Ramo bot** | Arquivar conversa (tira da IA) → aguardar 1 hora → bloquear contato. O follow-up de 1h é cancelado se o contato responder antes. |
 | **Setores extras** | Cliente com IA própria de Parcerias: o roteador ganha a palavra extra (`parcerias`) e a condição ganha o ramo. Padrão mínimo = `vendas` + `sac`. |
 
@@ -57,7 +57,7 @@ Início (toda mensagem)
 qualquer sinal humano. Na dúvida, roteia para um setor.
 
 ⚠️ O valor legado `ignorar` é aceito pelo `else` do fluxo, mas o canônico novo é
-`analisar_humano_bot` — é o que está no fluxo mais recente em produção. ⚠️ confirmar com o dono (§9.1).
+`analisar_humano_bot` — **placeholder**: o roteador do dono é um prompt próprio e a palavra exata sai de lá (§9).
 
 ### 1.1 Regra de ouro do revalidador
 
@@ -210,7 +210,7 @@ Por isso, ao gerar ou auditar o prompt:
 | `Data_atual` | Data e hora | **Fluxo** | data corrente (uso interno de fluxo) |
 | `horario_atendimento` | Texto | **Fluxo** (texto definido pelo cliente) | ex.: "Segunda a sexta-feira, das 8h às 18h"; interpolado nas mensagens de espera |
 | `ultimo_atendimento` | Texto | **Fluxo** | salva `{{assigned_admin_name}}` |
-| `Nome cliente` | Texto | **Fluxo / legado** | campo de conta para nome. **A IA grava nome em `first_name`** (nativo), não aqui. ⚠️ confirmar com o dono (§9.2) |
+| `Nome cliente` | Texto | **não usar** | **não é usado por nenhum fluxo** (confirmado pelo dono, 2026-09-03). O nome do cliente é **sempre** `{{first_name}}` (nativo) — é lá que a IA grava. Se o campo aparecer na conta, ignore. |
 | `nota_nps` | Número | **Fluxo de NPS** | nota 0-10 |
 | `comentario_nps` | Texto | **Fluxo de NPS** | comentário |
 | `sugestao` | Texto | **Fluxo de NPS** | sugestão de melhoria |
@@ -262,7 +262,7 @@ real na conta, não normalizar).
 | CUF | Conteúdo | Obrigatório em |
 |---|---|---|
 | `numero_pedido` | número VISÍVEL ao cliente (sem `#`); nunca o id interno | pedido |
-| `status_pedido` | `aprovado` \| `enviado` \| `entregue` \| `cancelado` \| `pronto_retirada` \| `pix_expirado` \| `pix_gerado` ⚠️ confirmar com o dono (§9.3) | pedido |
+| `status_pedido` | `aprovado` \| `enviado` \| `entregue` \| `cancelado` \| `pronto_retirada` \| `pix_expirado` \| `pix_gerado` | pedido |
 | `data_pedido` | data legível dd/mm/aaaa | pedido |
 | `valor_pedido` | `"379.00"` (ponto decimal, sem R$) | pedido |
 | `qtd_itens_pedido` | inteiro como texto | pedido |
@@ -451,7 +451,7 @@ O relatório do creator entrega isso como **"LISTA DE FLUXOS E CAMPOS A CRIAR"**
 |---|---|---|
 | `duvidas` | `duvida` | singular, sem plural |
 | `sac_geral` | `duvida` | o catch-all agora é `duvida`, mesmo destino do `else` |
-| `ignorar` (roteador) | `analisar_humano_bot` | `ignorar` ainda é aceito pelo `else` do fluxo ⚠️ §9.1 |
+| `ignorar` (roteador) | `analisar_humano_bot` (placeholder) | `ignorar` ainda é aceito pelo `else` do fluxo; palavra final vem do prompt do roteador (§9) |
 | `agente_setor` | `setor_agente` | nome invertido em docs antigas |
 | `StatusPedidoYMP` | `status_pedido` + `origem_pedido: yampi` | CamelCase + sufixo de plataforma |
 | `RastreioNS` / `RastreioPedidoYMP` | `rastreio_url` (e `rastreio_codigo`) | separar código de URL |
@@ -484,17 +484,25 @@ deixa de ser contexto de handoff IA↔IA e passa a ser o resumo que vai para o c
 
 ---
 
-## 9. ⚠️ Perguntas abertas — confirmar com o dono (NÃO chutar)
+## 9. Definições do dono — o que está fechado e o que falta
 
-1. **Terceira palavra do roteador:** canônico `analisar_humano_bot` (fluxo mais recente) com
-   `ignorar` aceito como legado — confirmar.
-2. **`Nome cliente` (CUF da conta) x `first_name` (nativo):** a IA grava em `first_name`;
-   `Nome cliente` fica só para fluxos que já o usam — confirmar se ainda é usado.
-3. **Enum de `status_pedido` transacional**
-   (`aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado`) — confirmar nomes.
-4. **Padrão "Filtro JSON → `resposta_ia`":** o prompt continua devolvendo o JSON canônico
-   NexTags e o filtro extrai? Ou o filtro espera outro formato? **Assumido: JSON canônico.**
-5. **Caminho do relatório MCP:** `Z:\WALKERS\<cliente>\` — confirmar.
+### Confirmado (2026-09-03)
 
-Enquanto não houver resposta, as skills usam o assumido acima e **marcam a pendência no
+- **`Nome cliente` não é usado.** O nome do cliente é **sempre** `{{first_name}}` (nativo).
+  A IA grava lá; nenhum fluxo lê o CUF `Nome cliente`.
+- **Enum de `status_pedido`** (transacional): `aprovado`, `enviado`, `entregue`, `cancelado`,
+  `pronto_retirada`, `pix_gerado`, `pix_expirado`. Fechado — é o enum canônico (§5).
+- **O que é o passo "Filtro JSON":** um nó de código **JavaScript** cujo papel é **evitar
+  vazamento** — impedir que JSON cru, markdown ou raciocínio da IA cheguem ao cliente.
+  Confirma o desenho descrito aqui: o prompt devolve o JSON canônico NexTags, o filtro
+  extrai o texto e grava `resposta_ia`, e o prompt **nunca** menciona esse campo.
+
+### Ainda aberto — NÃO chutar
+
+1. **Roteador:** o dono vai mandar o **prompt** do roteador; a terceira palavra sai de lá.
+   Até chegar, `analisar_humano_bot` é placeholder — **confirme antes de gerar o fluxo**,
+   e registre a pendência no relatório.
+2. **Caminho do relatório MCP por cliente** (`Z:\WALKERS\<cliente>\`) — o dono vai passar.
+
+Enquanto não houver resposta, as skills usam o placeholder acima e **marcam a pendência no
 relatório**; nenhuma skill decide por conta própria.

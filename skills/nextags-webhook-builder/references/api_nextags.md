@@ -287,10 +287,11 @@ ordenados pela última atualização do campo.
 
 ## 4. Perguntas em aberto
 
-1. Enum de `status_pedido`
-   (`aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado`) — **confirmar
-   com o dono** (`campos_canonicos.md` §9.3).
-2. `flow_id` como number ou string: a API aceita os dois no corpus; não há decisão oficial.
+> Fechado pelo dono em 2026-09-03: o enum de `status_pedido` é
+> `aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado`
+> (`campos_canonicos.md` §5 e §9). Não é mais pergunta.
+
+1. `flow_id` como number ou string: a API aceita os dois no corpus; não há decisão oficial.
    **Confirmar com o dono** qual fixar como padrão.
-3. Por que o AliveMed usa `/api/users` em vez de `/api/contacts` — sem explicação na sticky.
+2. Por que o AliveMed usa `/api/users` em vez de `/api/contacts` — sem explicação na sticky.
    Tratado como legado até o dono confirmar. [SEM EVIDÊNCIA DIRETA]

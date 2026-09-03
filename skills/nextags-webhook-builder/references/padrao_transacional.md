@@ -426,6 +426,6 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 1. **Prefixo de número multi-plataforma** (`SHP-`/`YMP-`) não existe em produção — adotar como padrão greenfield? [SEM EVIDÊNCIA DIRETA]
 2. **Token via credential vs hardcoded** — migrar a convenção pra credential do n8n? (mais seguro, mais fricção de auto-vínculo — ver quirk Veuske na mcp-builder).
 3. **72 clientes `unreadable`** — habilitar `availableInMCP` neles pra completar a auditoria numa 2ª rodada?
-4. **Enum de `status_pedido`** (`aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado`) — **confirmar com o dono** (`campos_canonicos.md` §9.3).
+4. ~~**Enum de `status_pedido`**~~ — **fechado pelo dono em 2026-09-03**: `aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado` é o enum canônico (`campos_canonicos.md` §5 e §9).
 5. **Tipo de `flow_id`** (number ou string): a API aceita os dois no corpus, não há decisão oficial — **confirmar com o dono** qual fixar.
 6. **`/api/users` (AliveMed)** — é equivalente a `/api/contacts` ou outra API? Sem explicação na sticky; tratado como legado até o dono confirmar. [SEM EVIDÊNCIA DIRETA]
