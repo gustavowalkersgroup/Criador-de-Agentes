@@ -8,6 +8,13 @@ type: tool
 
 Fabrica a **infraestrutura MCP** completa no n8n pra um cliente novo da NexTags. Recebe uns poucos inputs e entrega workflows ativos prontos pra serem consumidos por qualquer agente.
 
+## 🚨 O MCP mora no n8n — não se constrói servidor à parte
+
+Não proponha (nem aceite briefing pedindo) servidor MCP standalone em Node/Express/TypeScript
+com `server.tool()` e Zod. Todo MCP desta operação é n8n: MCP Server Trigger v2 + tools +
+backends. Já houve rascunho pedindo servidor externo "seguindo o padrão da Mayuí" quando o MCP
+real da Mayuí é 100% n8n — o rascunho tinha entendido errado a própria referência que citava.
+
 ## 🚨 Regra inegociável — pasta no n8n antes de qualquer workflow
 
 **Antes de criar qualquer workflow, confirmar a pasta do cliente no n8n.**
@@ -157,26 +164,29 @@ Doutrina consolidada de como uma tool sai do n8n e chega visível/chamável pela
    com `tools/call` devolvendo dado real. Em projeto novo use `httpRequestTool`, que funciona
    nas duas situações; só considere `toolWorkflow` depois de um smoke test por `curl` naquela
    instância — nunca por dedução.
-3. **Backend (quando houver):** a tool chama o backend pela **URL interna**
+3. **`neverError: true` em toda tool** (`options.response.response.neverError`): sem ele
+   qualquer 4xx vira `NodeOperationError` técnico em vez de corpo de resposta que a IA
+   consegue ler e explicar ao cliente (evidência: Hiven).
+4. **Backend (quando houver):** a tool chama o backend pela **URL interna**
    `http://n8n:5678/webhook/<path>` — a URL pública (`nextags.app.br/webhook/...`) dá
    *connection refused* quando chamada de DENTRO do próprio n8n (`quirks_n8n.md` Quirk
    #31). Padrão "tool → backend interno": `references/arquitetura_padrao.md`.
-4. **Description:** segue `references/tool_descriptions_guide.md` (quando usar / quando
+5. **Description:** segue `references/tool_descriptions_guide.md` (quando usar / quando
    NÃO usar / parâmetros / retorno / comportamento em vazio e erro / campos proibidos) +
    a frase **"Nunca cite o nome desta ferramenta para a pessoa"** dentro da própria
    description (**[SEM EVIDÊNCIA DIRETA]** — nenhuma tool do corpus lido usa essa frase
    literalmente; é recomendação por analogia, não padrão observado — ver
    `tool_descriptions_guide.md`).
-5. **Settings:** `availableInMCP: true` — necessário pro workflow poder ser lido/auditado
+6. **Settings:** `availableInMCP: true` — necessário pro workflow poder ser lido/auditado
    via MCP do n8n.
-6. **Conferir do lado NexTags:** depois de publicar, confirmar que a tool aparece pra
+7. **Conferir do lado NexTags:** depois de publicar, confirmar que a tool aparece pra
    NexTags com `GET /agents/mcp` (ver `../nextags-webhook-builder/references/api_nextags.md`)
    — não basta o workflow estar ativo no n8n, precisa aparecer nesse endpoint.
    **Sem credencial nativa da loja** (Tray/Nuvemshop/Yampi-Dooki/Bagy): antes de pedir a
    chave da plataforma ao cliente, avalie o **Gateway Proxy NexTags**
    (`../nextags-webhook-builder/references/gateway_proxy_nextags.md`) como fonte alternativa
    de leitura de pedido/rastreio pro MCP.
-7. **Gate de escrita:** tool que ESCREVE (criar pedido, alterar cadastro) nunca é liberada
+8. **Gate de escrita:** tool que ESCREVE (criar pedido, alterar cadastro) nunca é liberada
    sem controle. Padrão: escopo **read-only** pra SAC; **escrita só na IA de Vendas**, e só
    com aprovação humana quando o domínio exigir (ex.: valor alto, dado sensível); testar
    sempre com **contato interno** antes de ligar a tool pra base de clientes real
@@ -281,7 +291,7 @@ Copia templates de `assets/` e customiza:
 Antes de criar, **valida com `validate_workflow`** do MCP n8n. Depois cria com `create_workflow_from_code`.
 
 **Ordem de criação:**
-0. **Pasta do cliente** — `search_folders` → criar se não existir → guardar `folderId`
+0. **Pasta do cliente** — `search_folders` → se não existir, pedir ao usuário que crie na interface (não há `create_folder` na API) → guardar `folderId`
 1. Data table de tokens (se OAuth)
 2. Refresh Token workflow (se OAuth) — nome: `<Cliente> Refresh Token — <API>`
 3. Reset Token workflow manual (se OAuth) — nome: `<Cliente> Reset Token — <API> (manual)`
@@ -399,6 +409,11 @@ operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`. Conteúd
 - URL do MCP exposto (`https://nextags.app.br/mcp/<slug>`)
 - IDs dos workflows criados
 - Credencial(is) que o usuário precisa criar/vincular
+- **"PASSOS PRA COLOCAR EM PÉ"** — runbook numerado, separado do "como testar": criar
+  credencial → vincular nos N nodes (listar quais) → smoke test → ativar → configurar webhook
+  externo → preencher placeholders. É a seção que o operador segue na mão; sem ela o relatório
+  descreve o que existe mas não diz o que fazer a seguir (formato recorrente no corpus:
+  AnaGrow, Amo Calçados, Hiven, Alto Giro)
 - Como testar (curl no endpoint, ou via Smoke Test workflow)
 - **Metadados de governança pro prompt-creator** (por tool):
   - `classe` semântica (leitura/catalogo/transacional/logistica-FdV/cadastro/auxiliar)

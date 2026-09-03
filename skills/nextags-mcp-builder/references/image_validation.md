@@ -68,7 +68,10 @@ Em vez de devolver o `image_url` cru, transformar na própria tool:
 1. Fazer HEAD durante o `get_product` / `list_products` / etc.
 2. Se `Content-Type` for WebP/AVIF/etc., usar uma das alternativas:
    - Anexar parâmetro de query que força JPEG (depende do CDN):
-     - Shopify: `?format=jpg` ou usar `/products/<id>.jpg`
+     - ⚠️ **Shopify: `?format=jpg` NÃO funciona** — testado em produção, o CDN
+       ignora o parâmetro e devolve PNG do mesmo jeito (Verdena v2.9). O que
+       resolveu foi o sufixo de tamanho (`_600x`) somado a um proxy Cloudinary
+       `f_jpg,q_auto` — ver "Shopify CDN" abaixo.
      - VTEX: troca `&fmt=webp` por `&fmt=jpg` (se possível)
      - Cloudinary: insere `/f_jpg/` no path
    - Passar pela URL alternativa de "high quality" que vários CDNs
@@ -110,7 +113,7 @@ O prompt do agente lê esse hint e decide:
 
 | Plataforma | Default | Como forçar JPEG/PNG |
 |---|---|---|
-| Shopify | WebP via `image_url` no GraphQL | Adicionar `?format=jpg` ou pedir `/products/<id>.jpg` no REST |
+| Shopify | WebP/PNG via `image_url` | ⚠️ `?format=jpg` **não funciona** (CDN ignora). Sufixo `_600x` + proxy Cloudinary `f_jpg,q_auto` — ver seção abaixo |
 | VTEX | WebP/JPEG variável por loja | Param `&fmt=jpg` (quando suportado), senão HEAD obrigatório |
 | Tray | JPEG por padrão | Geralmente OK; ainda assim valide |
 | Nuvemshop | WebP comum | HEAD obrigatório; URL `?width=N` às vezes força JPEG |
@@ -157,3 +160,24 @@ canal rejeita pode resultar em:
 - Messenger: imagem aparece quebrada (placeholder de erro).
 
 Texto + botão sempre funciona em todos os canais.
+
+---
+
+## Shopify CDN: dois limites do WhatsApp que só aparecem em produção
+
+Formato certo não basta. O CDN da Shopify entrega PNG **16 bits por canal**, de 5 a 15 MB, e
+o WhatsApp rejeita nos dois eixos:
+
+| Limite | O que estoura | Sintoma |
+|---|---|---|
+| **5 MB por imagem** | PNG de catálogo em resolução cheia | a mídia simplesmente não chega |
+| **8 bits por canal** | PNG 16-bit da Shopify | rejeitado mesmo abaixo de 5 MB |
+
+O que funcionou em produção (Verdena, hotfixes v2.6 e v2.9): **redimensionar pelo sufixo de
+tamanho da própria URL** (`..._600x.png`) e passar por um **proxy Cloudinary com
+`f_jpg,q_auto`**, que converte formato e profundidade de cor de uma vez. Resultado medido:
+imagem 450× menor, 16-bit → 8-bit.
+
+Não é só validar o formato — é **redimensionar e converter bit-depth** antes de entregar a URL
+à IA. Uma tool que devolve `image_url` cru de CDN de e-commerce está entregando uma imagem que
+pode não chegar no cliente, e o agente não tem como saber.

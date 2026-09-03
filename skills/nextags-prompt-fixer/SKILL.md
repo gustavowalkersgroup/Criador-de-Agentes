@@ -152,6 +152,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `prioridade_pipeline` fora de `baixa\|media\|alta` (**block**) | Corrigir para o valor mais próximo do enum ou `baixa` (default) — Seleção única rejeita qualquer outro valor. Ver Regra 21. |
 | `trio_handoff_incompleto` | `send_flow` de transferência sem os 3 `set_field_value` (motivo/prioridade/resumo) antes: inserir os que faltam. Ver Regra 21 (campo stale). |
 | `send_flow_antes_de_set_field` | Reordenar: `set_field_value`(s) sempre antes do `send_flow` no mesmo array. Ver Regra 16. |
+| `promessa_sem_entrega` | Mensagem promete enviar algo e o JSON não entrega (sem `send_flow`, sem attachment): acrescentar a action que entrega ou reescrever a mensagem para não prometer. Ver Regra 27. |
 
 ### 4. Versionamento do arquivo corrigido
 

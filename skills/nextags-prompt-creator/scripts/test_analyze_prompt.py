@@ -86,6 +86,36 @@ def test_two_web_url_buttons_warns():
     assert any(d.get("severity") == "warn" for d in it["details"])
 
 
+# ---- Promessa de envio sem a action que entrega -----------------------
+
+def test_promessa_sem_send_flow_warns():
+    content = '{"messages":[{"message":{"text":"Claro! Vou te enviar a tabela de medidas."}}]}\n'
+    f = ap.analyze(content)
+    it = _issue(f, "promessa_sem_entrega")
+    assert it is not None
+    assert it["details"][0]["severity"] == "warn"
+
+
+def test_promessa_com_send_flow_ok():
+    content = ('{"messages":[{"message":{"text":"Vou te enviar a tabela de medidas."}}],'
+               '"actions":[{"action":"send_flow","flow_id":"123"}]}\n')
+    f = ap.analyze(content)
+    assert "promessa_sem_entrega" not in _types(f)
+
+
+def test_promessa_com_attachment_ok():
+    content = ('{"messages":[{"message":{"text":"Já te mando a tabela."}},'
+               '{"message":{"attachment":{"type":"image","payload":{"url":"http://a.jpg"}}}}]}\n')
+    f = ap.analyze(content)
+    assert "promessa_sem_entrega" not in _types(f)
+
+
+def test_mensagem_sem_promessa_nao_dispara():
+    content = '{"messages":[{"message":{"text":"O prazo de entrega é de 5 dias úteis."}}]}\n'
+    f = ap.analyze(content)
+    assert "promessa_sem_entrega" not in _types(f)
+
+
 # ---- Limite de 20 caracteres no título do botão -----------------------
 # O passo "Filtro JSON" do fluxo (reparador de JSON) troca title > 20 chars
 # por "Comprar agora" sem sinalizar — num bot de SAC isso é absurdo.

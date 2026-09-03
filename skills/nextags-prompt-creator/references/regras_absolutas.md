@@ -411,3 +411,24 @@ qualquer jeito.
 > 🔧 NOTA PARA EDITORES: 20 caracteres é limite do fluxo, não preferência de estilo.
 
 (evidência: código do passo "Filtro JSON" em produção, enviado pelo dono em 2026-09-03)
+
+---
+
+## 27. Prometer envio sem a action que entrega
+
+**Regra:** se a mensagem diz que vai enviar alguma coisa ("vou te mandar o catálogo",
+"já te envio a tabela de medidas", "segue em anexo"), o **mesmo JSON** precisa entregar:
+um attachment, ou o `send_flow` do fluxo que envia. Sem isso a frase é mentira — o cliente
+espera e não chega nada.
+
+**Caso real:** a IA escreveu "vou enviar a tabela de medidas" em **três turnos seguidos**
+sem nenhuma action; a cliente pediu de novo a cada turno e nunca recebeu (DOLPS v1.7).
+
+**Como corrigir:** ou acrescenta a action que entrega, ou reescreve a mensagem para não
+prometer ("a tabela de medidas está no site, em Ajuda > Tamanhos"). Prometer e não entregar
+é pior que dizer que não tem.
+
+O analisador avisa (`promessa_sem_entrega`, warn) quando acha promessa de envio num JSON sem
+`send_flow` e sem attachment. É warn, não block: o envio pode vir de um fluxo disparado
+depois — mas confira, porque na maioria dos casos não vem.
+

@@ -1253,6 +1253,55 @@ Privilège Broadcast (`b9IJblHOEurFgj6o`) — sticky note: *"ajustar N e batchIn
 Quando descobrir novo quirk, adicione aqui com:
 - **O que acontece** (sintoma)
 - **Como evitar** (correção)
+---
+
+## 36. Sessão MCP perdida atrás de proxy/CDN — `Server not initialized` e a cascata de alucinação
+
+### O que acontece
+
+O cliente MCP externo lista as tools normalmente, mas toda `tools/call` falha com
+`Bad Request: Server not initialized`. O Streamable HTTP do MCP Trigger v2 é **com estado**:
+o `initialize` devolve um `Mcp-Session-Id` que precisa voltar em toda requisição seguinte, e
+todas elas precisam cair na **mesma instância**. Um proxy ou CDN stateless na frente (ex.:
+Cloudflare sem sticky session) rebobina o `initialize` e o `tools/call` chega numa sessão que
+não existe.
+
+### Por que é pior do que parece
+
+A falha não vira erro visível pro cliente final: o agente **inventa em cima do vazio**. No caso
+documentado (Wazzu), com as tools listadas mas nenhuma chamável, a IA respondeu com nome de
+produto "provavelmente" tirado da memória, "consulte no site" no lugar do preço que a tool
+traria, e um link de busca genérico em vez do `canonical_url` real. Da perspectiva de quem lê o
+log da NexTags, o agente estava conversando normalmente.
+
+### Como detectar
+
+`curl` do fluxo completo, guardando o header entre as chamadas: `initialize` → pegar
+`Mcp-Session-Id` → `tools/list` → `tools/call` com o mesmo id. Se `tools/list` passa e
+`tools/call` devolve `Server not initialized`, é sessão, não tool. Confirme se há proxy/CDN na
+frente do n8n e se ele mantém afinidade de sessão.
+
+---
+
+## 37. Roteador que devolve o JSON da plataforma estoura "Max Flow — Too many blocks"
+
+### O que acontece
+
+Prompt de roteador/classificador escrito com o bloco oficial da NexTags acaba respondendo
+`{"messages":[...],"actions":[...]}` em vez da palavra única. A produção devolve
+`"Max Flow — Too many blocks sent in a single response"` e o roteamento não acontece.
+
+### Por que é útil saber
+
+Essa mensagem é **sinal diagnóstico**: quem a vê num fluxo de entrada quase sempre tem um
+roteador com o formato errado, não um problema de volume de mensagem. Roteador e revalidador
+respondem **texto puro, 1 palavra, sem JSON** — ver `campos_canonicos.md` §1 e a exceção de
+roteador/revalidador nas regras do `nextags-prompt-fixer`.
+
+(evidência: Hiven, Orquestrador v1.0)
+
+---
+
 - **Como detectar** (como diagnosticar se aparecer)
 
 Esse arquivo é o principal blocker de bug repetido. Mantenha atualizado.

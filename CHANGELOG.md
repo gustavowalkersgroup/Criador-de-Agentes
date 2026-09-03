@@ -239,6 +239,50 @@ Três das cinco perguntas desta rodada foram fechadas e já valem como canônico
   que JSON cru, markdown ou raciocínio da IA cheguem ao cliente. Confirma o desenho
   adotado: o prompt devolve o JSON canônico, o filtro extrai o texto e grava `resposta_ia`.
 
+### Aprendizado dos 75 relatórios MCP de produção
+
+Leitura completa do compilado de relatórios (maio a setembro/2026) contra o que as skills
+ensinavam. O que estava errado:
+
+- **A recipe do Martz afirmava que pedidos transacionais saem por webhook Martz** e que "não
+  precisa montar webhooks próprios". O Martz é CRM/fidelidade: 9 eventos, nenhum `order.*` ou
+  `cart.*` (Verdena e Nalisa, relatórios independentes). Seguir a skill era prometer ao cliente
+  um transacional impossível. Também: `?status=` é parâmetro fantasma e busca por `number`
+  devolve resultado aleatório — use `order_number`.
+- **`?format=jpg` não força JPEG no CDN da Shopify** — testado, o CDN ignora. E faltavam os
+  dois limites que barram entrega de verdade: 5 MB e 8 bits por canal (o PNG 16-bit da Shopify
+  é rejeitado mesmo pequeno). O que resolveu em produção: sufixo `_600x` + proxy Cloudinary
+  `f_jpg,q_auto`.
+- **A regra inegociável mandava chamar `create_folder`, que não existe** no MCP do n8n. Dois
+  clientes ficaram com workflow solto por causa disso. Agora descreve o caminho real, com
+  `move_workflows_to_folder` como reorganização.
+- **`optimizeResponse` proibido no SKILL.md e recomendado na recipe VTEX** — contradição
+  interna, seguida em produção (Hiven, 12 tools) antes de o bug ser confirmado.
+- **`toolWorkflow` deixou de ser "nunca"**: reproduzido quebrado na Verdena e funcionando na
+  Nalisa (2026-07-03, dado real), na mesma janela. Vira dependente de versão, com
+  `httpRequestTool` como padrão e smoke test obrigatório antes de considerar o outro. Isso
+  também desfaz a contradição entre `arquitetura_padrao.md`/`auth_patterns.md` e o `SKILL.md`.
+
+O que faltava:
+
+- Quirk #36 (**sessão MCP perdida atrás de proxy/CDN**): `tools/list` passa, `tools/call`
+  devolve `Server not initialized`, e o agente **alucina em cima do vazio** — preço "consulte
+  no site" tendo tool, produto de memória. Não aparecia como erro em lugar nenhum.
+- Quirk #37: `"Max Flow — Too many blocks sent in a single response"` é sinal de roteador
+  devolvendo o JSON da plataforma em vez de 1 palavra.
+- `neverError: true` como regra geral de toda tool, não só exemplo nas recipes.
+- **Regra 27 (nova): prometer envio sem a action que entrega.** A IA escreveu "vou enviar a
+  tabela de medidas" em três turnos seguidos sem `send_flow`; a cliente nunca recebeu.
+  Analisador avisa (`promessa_sem_entrega`), com 4 testes.
+- Runbook "PASSOS PRA COLOCAR EM PÉ" como bloco próprio do relatório de entrega.
+- O MCP mora no n8n — não se constrói servidor standalone em Node/Express.
+- Tabela de legado com as variantes reais: `motivo_pipeline`, `urgencia`, `agente_ia`,
+  `roteamento_inicial`, seis nomes alternativos de `resumo_pipeline`, e as duas arquiteturas
+  IA↔IA abandonadas (N flow_ids por categoria; tags `ia_vendas`/`ia_sac`, que deixou cliente
+  no vácuo e exigiu hotfix).
+- Exceção de naming registrada: MCP VTEX usa prefixo em inglês; em cliente existente não se
+  renomeia tool, porque o prompt que a chama quebra.
+
 ### A confirmar com o dono
 
 Continuam abertas, **não resolvidas por chute**, marcadas nas skills como pendência:

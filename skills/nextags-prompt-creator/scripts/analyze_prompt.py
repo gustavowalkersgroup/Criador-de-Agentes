@@ -834,6 +834,63 @@ def check_handoff_trio(parsed) -> list[dict]:
     return issues
 
 
+# Promessa de envio sem a action que entrega. A IA escreve "vou te mandar o
+# catálogo" e não emite send_flow nem attachment: o cliente nunca recebe e a
+# frase vira mentira. Caso real: 3 turnos seguidos prometendo a tabela de
+# medidas (DOLPS v1.7).
+PROMESSA_DE_ENVIO = re.compile(
+    r"\b(vou (te )?(enviar|mandar|passar)|já (te )?(envio|mando|passo)|"
+    r"te (envio|mando|passo) (agora|já)|estou (te )?(enviando|mandando)|"
+    r"segue (o|a|em) (anexo|seguida))\b",
+    re.IGNORECASE,
+)
+
+
+def check_promessa_sem_entrega(parsed) -> list[dict]:
+    """Mensagem promete enviar algo, mas o JSON não entrega nada: sem
+    `send_flow` nas actions e sem attachment em nenhuma mensagem. WARN —
+    o envio pode vir do fluxo disparado depois, mas na maioria dos casos
+    é promessa que o cliente nunca vê cumprida."""
+    if not isinstance(parsed, dict):
+        return []
+    messages = parsed.get("messages")
+    if not isinstance(messages, list):
+        return []
+
+    tem_attachment = any(
+        isinstance(m, dict)
+        and isinstance(m.get("message"), dict)
+        and m["message"].get("attachment")
+        for m in messages
+    )
+    actions = parsed.get("actions")
+    tem_send_flow = isinstance(actions, list) and any(
+        isinstance(a, dict) and a.get("action") == "send_flow" for a in actions
+    )
+    if tem_attachment or tem_send_flow:
+        return []
+
+    issues = []
+    for idx, m in enumerate(messages):
+        if not isinstance(m, dict) or not isinstance(m.get("message"), dict):
+            continue
+        texto = m["message"].get("text")
+        if not isinstance(texto, str):
+            continue
+        achado = PROMESSA_DE_ENVIO.search(texto)
+        if achado:
+            issues.append({
+                "path": f"$.messages[{idx}].message.text",
+                "problem": (
+                    f'mensagem promete enviar algo ("{achado.group(0)}") mas o JSON não '
+                    "tem `send_flow` nem attachment — o cliente não recebe nada"
+                ),
+                "severity": "warn",
+                "title": texto[:80],
+            })
+    return issues
+
+
 def check_send_flow_action_order(parsed) -> list[dict]:
     """`send_flow` antes de `set_field_value` no MESMO array → WARN. O fluxo
     dispara e lê o campo antes de ele existir (chega vazio ou com valor velho).
@@ -1071,6 +1128,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
             "prioridade_fora_do_enum_count": 0,
             "trio_handoff_incompleto_count": 0,
             "send_flow_antes_de_set_field_count": 0,
+            "promessa_sem_entrega_count": 0,
             # blocos editáveis pelo cliente (SPEC §5.1 e §5.2)
             "avisos_ativos_missing_count": 0,
             "nota_editor_longa_count": 0,
@@ -1143,6 +1201,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
                 (check_prioridade_pipeline_enum(parsed), "prioridade_fora_do_enum", "prioridade_fora_do_enum_count"),
                 (check_handoff_trio(parsed), "trio_handoff_incompleto", "trio_handoff_incompleto_count"),
                 (check_send_flow_action_order(parsed), "send_flow_antes_de_set_field", "send_flow_antes_de_set_field_count"),
+                (check_promessa_sem_entrega(parsed), "promessa_sem_entrega", "promessa_sem_entrega_count"),
             ):
                 if issues:
                     block_report["issues"].append({"type": key, "details": issues})
