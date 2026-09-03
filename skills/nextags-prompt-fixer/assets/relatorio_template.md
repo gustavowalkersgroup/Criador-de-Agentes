@@ -76,6 +76,24 @@
       anti-alucinação, não-revelar-IA, JSON obrigatório, transferência via
       `send_flow`, texto como padrão, manter-se no escopo.
 - [x] Menções a ações proibidas em prosa fora de blocos JSON.
+- [x] Bloco `📣 AVISOS ATIVOS` presente no formato canônico
+      (`avisos_ativos_presente`).
+- [x] Notas `> 🔧 NOTA PARA EDITORES:` dentro do limite de 1 linha
+      (`nota_editor_longa`).
+- [x] A IA nunca grava `setor_agente`/`tipo_setor`
+      (`ia_grava_campo_de_roteamento` — bloqueante).
+- [x] `motivo_transferencia` dentro do enum canônico por setor
+      (`motivo_fora_do_enum`).
+- [x] `prioridade_pipeline` em `baixa|media|alta`
+      (`prioridade_pipeline` fora do enum — bloqueante).
+- [x] Trio de handoff completo antes de `send_flow`: `motivo_transferencia`
+      + `prioridade_pipeline` + `resumo_pipeline` (`trio_handoff_incompleto`).
+- [x] Ordem das actions: `set_field_value` sempre antes de `send_flow`
+      (`send_flow_antes_de_set_field`).
+
+*(Exceção: prompts de Roteador/Revalidador — saída de 1 palavra — não são
+avaliados pelos itens acima que pressupõem JSON/handoff; ver Regra 23 de
+`regras_absolutas.md`.)*
 
 ---
 
@@ -94,6 +112,8 @@
 | Imagens em formato proibido (WebP/AVIF/SVG/GIF) | {FORBIDDEN_IMAGE_FORMATS_COUNT} |
 | Seções obrigatórias faltando | {MISSING_SECTIONS_COUNT} |
 | Exemplos negativos preservados (não contados) | {NEGATIVE_EXAMPLES_SKIPPED} |
+| Campos de roteamento gravados pela IA (`setor_agente`/`tipo_setor` — bloqueante) | {IA_GRAVA_CAMPO_ROTEAMENTO_COUNT} |
+| `motivo_transferencia` fora do enum canônico | {MOTIVO_FORA_DO_ENUM_COUNT} |
 
 ---
 

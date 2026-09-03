@@ -208,6 +208,12 @@ descrição clara das opções.
 usuário no resumo: o prompt provavelmente precisa ser refeito do zero, não
 remendado.
 
+**Prompt de Roteador ou Revalidador (saída de 1 palavra).** Não aplique as
+regras de agente (bloco oficial JSON, `send_flow`/trio de handoff, AVISOS
+ATIVOS, seções obrigatórias de agente) — esses prompts não conversam com o
+cliente nem produzem JSON. Ver Regra 23 em `references/regras_absolutas.md`
+para o que auditar de fato nesse caso.
+
 **Prompt inchado (>30 KB).** Sempre meça `wc -c` no início e reporte no
 relatório. Prompts NexTags ideais ficam em 15-20 KB. Acima de 30 KB,
 **sugira redução** com base nas estratégias da Regra 13
