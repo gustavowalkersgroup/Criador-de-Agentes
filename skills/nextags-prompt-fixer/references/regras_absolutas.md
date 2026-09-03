@@ -539,11 +539,49 @@ Abertura com nome: {"messages":[{"message":{"text":"Oi, {{first_name}}! Tudo bem
 Abertura sem nome: {"messages":[{"message":{"text":"Oi! Tudo bem? Como posso te ajudar?"}}]}
 ```
 
-5. **CUFs por canal e caso "Guest" (webchat):**
+5. **Regra do nome (`first_name`) — canônica, TODOS os canais (evidência: SPEC
+   §5.3, princípio transversal 5):** se `{{first_name}}` vier vazio, for
+   literalmente `"Guest"` ou não parecer primeiro nome de pessoa (e-mail,
+   número, "Usuário", texto genérico), a IA faz saudação neutra e pergunta o
+   nome UMA vez; ao receber, grava
+   `{"action":"set_field_value","field_name":"first_name","value":"<nome>"}`.
+   Não repetir a pergunta se a pessoa não responder. Vale pra Messenger,
+   WhatsApp, Instagram e Webchat — **não é mais regra exclusiva de webchat**
+   (correção de versão anterior desta referência, que só cobria "Guest" em
+   webchat como sugestão opcional).
+
+   **Como corrigir:** se o prompt já trata `{{first_name}}` vazio/"Guest" como
+   sugestão opcional ou só menciona o caso webchat, **promova** para a regra
+   obrigatória acima, com o `set_field_value` explícito e valendo pra todo
+   canal. Se o prompt não tem o bloco `## DADOS DESTA CONVERSA` (Regra 22.4
+   abaixo), a tag `{{first_name}}` pode nem estar visível pra IA — insira o
+   bloco (ver "achado" logo acima nesta mesma referência: CUF é
+   find-and-replace no texto, não uma tool).
+
+6. **CUFs por canal:**
    - Instagram → preferir `{{ig_user_name}}` em vez de `{{first_name}}` nesse canal.
    - Facebook → preferir `{{page_user_name}}` em vez de `{{first_name}}` nesse canal.
-   - Webchat → `{{first_name}}` pode chegar como `"Guest"` (usuário não logado). `Guest` nunca é o nome da pessoa. Se o prompt atende webchat e usa `{{first_name}}` sem tratar o caso "Guest", **sugerir adicionar** a regra: "Se `{{first_name}}` = 'Guest' → perguntar nome + `set_field_value` pra atualizar `first_name`."
    - `{{phone}}` em SAC: quando preenchido, pode consultar pedidos na tool sem pedir ao cliente. Se o prompt de SAC tem tool de pedidos mas não usa `{{phone}}`, sugerir como melhoria (pendência opcional).
+
+7. **Prompt manda "usar dados do cliente" sem `{{campo}}` escrito no texto
+   (padrão de fix):** se o prompt tem instrução tipo "use os dados do cliente
+   pra personalizar" ou "considere o histórico do cliente" mas nenhum
+   `{{campo}}` aparece literalmente no texto, a IA não enxerga NENHUM dado —
+   CUF só é visível se a tag estiver escrita ali (ver "achado" acima). **Corrija
+   inserindo o bloco canônico**, logo após IDENTIDADE/AVISOS ATIVOS:
+
+   ```
+   ## DADOS DESTA CONVERSA (uso interno — nunca liste de volta para o cliente)
+   Nome: {{first_name}} · Telefone: {{phone}} · E-mail: {{email}} · Hora local: {{current_user_time}}
+   {SE SAC/transacional} Último pedido: {{numero_pedido}} · Status: {{status_pedido}} · Rastreio: {{rastreio_url}} · Previsão: {{previsao_entrega}}
+   > 🔧 NOTA PARA EDITORES: a IA só enxerga campo escrito aqui como {{campo}}. Campo vazio = ignorar.
+   ```
+
+   Mantenha a linha "SE SAC/transacional" só se o agente atender pedidos;
+   remova se não se aplicar. Não invente CUFs específicos da conta fora de
+   `references/cufs_nextags.md` ou `references/campos_canonicos.md` — se o
+   prompt cita um campo que não consta nessas listas, vira pendência
+   ("confirmar com o dono se este CUF existe na conta").
 
 **Princípio:** use CUFs SOMENTE quando necessário. Não force `{{first_name}}` em toda mensagem — saudação e momentos-chave bastam.
 
