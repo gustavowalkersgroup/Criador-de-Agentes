@@ -608,11 +608,18 @@ Confirmado em 2026-05-26, debugging smoke test Veuske ZOPPY. `buscar_cupom` rece
 
 ---
 
-## 20. `toolWorkflow` NÃO propaga argumentos de clientes MCP externos — em NENHUM modo
+## 20. `toolWorkflow` pode não propagar argumentos de clientes MCP externos (depende da versão do n8n)
 
 ### O que acontece
 
-`@n8n/n8n-nodes-langchain.toolWorkflow` v2.2 **não entrega os argumentos da tool call ao backend em nenhuma configuração** quando o MCP é chamado por cliente externo (NexTags, OpenAI Playground, qualquer cliente HTTP).
+`@n8n/n8n-nodes-langchain.toolWorkflow` v2.2 **não entregou os argumentos da tool call ao backend em nenhuma configuração testada** quando o MCP é chamado por cliente externo (NexTags, OpenAI Playground, qualquer cliente HTTP).
+
+> ⚠️ **Não é universal.** A Nalisa registrou em 2026-07-03 as 3 tools do MCP com
+> `toolWorkflow` + `$fromAI` (`defineBelow`) **propagando corretamente** naquela instância,
+> com `tools/call consultar_pedido` devolvendo dado real. A Verdena, na mesma janela,
+> reproduziu a falha. Trate como **dependente de versão/instância**, não como lei: o padrão
+> continua sendo `httpRequestTool` (funciona nos dois casos); `toolWorkflow` só depois de
+> smoke test por `curl` naquela instância. Nunca decida por dedução.
 
 **Ambos os modos falham:**
 

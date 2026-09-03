@@ -14,9 +14,9 @@ Fabrica a **infraestrutura MCP** completa no n8n pra um cliente novo da NexTags.
 
 1. Chamar `search_folders` com o nome do cliente
 2. Se encontrar → usar o `folderId` retornado
-3. Se não encontrar → **perguntar ao usuário** antes de criar: *"Não encontrei a pasta '[Nome]' no n8n. Ela já existe com outro nome, ou devo criar agora?"*
-4. Só criar a pasta com `create_folder` após confirmação do usuário (ou se ele já tiver dito "pode criar")
-5. Passar `folderId` em **todos** os `create_workflow_from_code` — sem exceção
+3. Se não encontrar → **perguntar ao usuário**: *"Não encontrei a pasta '[Nome]' no n8n. Ela já existe com outro nome, ou você cria agora na interface?"*
+4. ⚠️ **Não existe `create_folder` no MCP do n8n** — a criação de pasta é manual, na interface web. Peça ao usuário e espere. Enquanto a pasta não existir, o fallback é: criar os workflows, aplicar **tag com o nome do cliente** em todos, e **`move_workflows_to_folder`** assim que a pasta existir. Esse caminho é pendência de entrega, não pode ficar esquecido (Nalisa 2026-07-03 e Cantarola ficaram soltos no projeto pessoal; Otogama idem).
+5. Passar `folderId` em **todos** os `create_workflow_from_code` quando a pasta existir — sem exceção
 6. O **nome do cliente DEVE aparecer no nome de todos os workflows** — MCP, backends, smoke test, refresh, reset
 
 Exemplos corretos:
@@ -148,10 +148,15 @@ Doutrina consolidada de como uma tool sai do n8n e chega visível/chamável pela
 1. **Trigger:** MCP Server Trigger **v2**, path `/mcp/<slug>` — Streamable HTTP (ver regra
    de transporte acima e `quirks_n8n.md` §1).
 2. **Tools:** sempre `n8n-nodes-base.httpRequestTool` v4.4/v4.5, com `$fromAI(...)` em cada
-   parâmetro dinâmico. **Nunca** `toolWorkflow` nem `toolHttpRequest` +
-   `placeholderDefinitions` — este último colapsa o schema exposto ao cliente MCP externo
-   num único campo `{input}` e a tool nunca dispara com os argumentos certos (evidência
-   Poé, MCP `lk0lpDShxXFGia7D`; ver `quirks_n8n.md` Quirk #30).
+   parâmetro dinâmico. **Nunca** `toolHttpRequest` + `placeholderDefinitions` — colapsa o
+   schema exposto ao cliente MCP externo num único campo `{input}` e a tool nunca dispara
+   com os argumentos certos (evidência Poé, MCP `lk0lpDShxXFGia7D`; `quirks_n8n.md` Quirk
+   #30). **`toolWorkflow` depende da versão do n8n** e por isso não é o padrão: o Quirk #20
+   (argumentos chegando `null` com cliente MCP externo) foi reproduzido na Verdena, mas a
+   Nalisa registrou `toolWorkflow` + `$fromAI` funcionando na instância dela em 2026-07-03,
+   com `tools/call` devolvendo dado real. Em projeto novo use `httpRequestTool`, que funciona
+   nas duas situações; só considere `toolWorkflow` depois de um smoke test por `curl` naquela
+   instância — nunca por dedução.
 3. **Backend (quando houver):** a tool chama o backend pela **URL interna**
    `http://n8n:5678/webhook/<path>` — a URL pública (`nextags.app.br/webhook/...`) dá
    *connection refused* quando chamada de DENTRO do próprio n8n (`quirks_n8n.md` Quirk
@@ -388,9 +393,9 @@ Lista clara dos nós que ficaram pendentes de credencial (vem da resposta da API
 
 ### Fase 7 — Entrega
 
-Salva relatório em `Z:\WALKERS\<cliente>\relatorio-mcp.md` (⚠️ **confirmar com o dono** —
-caminho ainda não validado neste ambiente; fallback se `Z:\` não existir na máquina do
-operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`) com:
+Salva relatório em `Z:\WALKERS\<cliente>\relatorio-mcp.md` — caminho **confirmado**: é onde
+estão os 75 relatórios de maio a setembro/2026. Fallback se `Z:\` não existir na máquina do
+operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`. Conteúdo:
 - URL do MCP exposto (`https://nextags.app.br/mcp/<slug>`)
 - IDs dos workflows criados
 - Credencial(is) que o usuário precisa criar/vincular

@@ -462,13 +462,18 @@ O relatório do creator entrega isso como **"LISTA DE FLUXOS E CAMPOS A CRIAR"**
 |---|---|---|
 | `duvidas` | `duvida` | singular, sem plural |
 | `sac_geral` | `duvida` | o catch-all agora é `duvida`, mesmo destino do `else` |
-| `ignorar` (roteador) | `analisar_humano_bot` (placeholder) | `ignorar` ainda é aceito pelo `else` do fluxo; palavra final vem do prompt do roteador (§9) |
+| `ignorar` (roteador) | `analisar_humano_bot` | `ignorar` ainda é aceito pelo `else` do fluxo, mas não se escreve mais |
 | `agente_setor` | `setor_agente` | nome invertido em docs antigas |
 | `StatusPedidoYMP` | `status_pedido` + `origem_pedido: yampi` | CamelCase + sufixo de plataforma |
 | `RastreioNS` / `RastreioPedidoYMP` | `rastreio_url` (e `rastreio_codigo`) | separar código de URL |
 | `NumeroPedidoBW` / `NumeroPedidoBling` / `NumeroPedidoShopify` | `numero_pedido` + `origem_pedido` | a origem sai do nome e vira campo |
 | `OrigemPedido` | `origem_pedido` | snake_case |
-| `assunto_ticket` / `resumo_lead` / `sac_resumo` | `resumo_pipeline` | um resumo só, §2.3 |
+| `assunto_ticket` / `resumo_lead` / `sac_resumo` / `resumo_atendimento` / `resumo_para_pipeline` / `assunto_atendimento` | `resumo_pipeline` | um resumo só, §2.3. Sete nomes para o mesmo conceito em contas diferentes — só a Degan foi retrofitada |
+| `motivo_pipeline` | `motivo_transferencia` | mesmo conceito, contas diferentes (Privilège, Verdena, Amo Calçados). Na Amo Calçados os dois coexistiam no mesmo prompt com valores divergentes e a transferência caía na fila errada |
+| `urgencia` | `prioridade_pipeline` | valores `baixa\|media\|alta` |
+| `agente_ia` | — (não substituir por CUF) | roteamento por CUF intermediário; a AnaGrow removeu em 2026-07-02 em favor de `send_flow` direto |
+| `roteamento_inicial` | `setor_agente` | CUF de log do roteador (Zencial), sem equivalente canônico separado |
+| `link_rastreio` / `url_rastreamento` / `transportadora_rastreio` | `rastreio_url` (+ `rastreio_codigo`) | três nomes em dois clientes para o mesmo dado |
 | `sac_prioridade` | `prioridade_pipeline` | valores `baixa\|media\|alta` |
 | `sac_categoria` | `motivo_transferencia` | enum §2.1 |
 | N flows dedicados IA↔IA (padrão Veuske) | 1 roteador por mensagem | §8.1 abaixo |

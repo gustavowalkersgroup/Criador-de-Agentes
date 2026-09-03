@@ -20,7 +20,7 @@ Mapeia o esqueleto comum de TODO MCP construído com essa skill. Decisões varia
        │  auth: none (default) | headerAuth│
        └─┬────────────────────────────────┘
          │
-         │  N tools subnodes (httpRequestTool OU toolWorkflow)
+         │  N tools subnodes (httpRequestTool — padrão; ver nota do Caso B)
          │
          ▼ depende do tipo de auth (ver abaixo)
 ```
@@ -64,17 +64,27 @@ API exige fluxo OAuth com `access_token` curto + `refresh_token` longo. Exemplos
 MCP Trigger v2     │           Workflow: Refresh Token
    │               │           (Schedule 60min)
    │               │
-   ├─ tool 1 (toolWorkflow → Backend 1 → lê token → API)
-   ├─ tool 2 (toolWorkflow → Backend 2 → lê token → API)
+   ├─ tool 1 (httpRequestTool → Backend 1 → lê token → API)
+   ├─ tool 2 (httpRequestTool → Backend 2 → lê token → API)
    └─ tool N ...
 
 Workflow auxiliar: Reset Token (manual, recovery)
 Workflow auxiliar: Smoke Test (manual, diagnóstico)
 ```
 
-**Por que backends dedicados em vez de tool direto:**
+**Por que backends dedicados em vez de tool direto:** o token vive numa data table e precisa
+ser lido a cada chamada; o backend é quem lê. 1 workflow backend por operação, cada um com seu
+próprio webhook, chamado pela **URL interna** `http://n8n:5678/webhook/<path>` (Quirk #31 — a
+URL pública não é alcançável de dentro do n8n).
 
-`@n8n/n8n-nodes-langchain.toolWorkflow.workflowInputs` descarta valores estáticos — só passa adiante o que vem via `$fromAI`. Não dá pra usar router único com parâmetro `operation`. Solução: 1 workflow backend por operação. Cada um tem seu próprio Execute Workflow Trigger com 1 input dinâmico.
+**Por que `httpRequestTool` e não `toolWorkflow`:** duas armadilhas somadas. A primeira é o
+`workflowInputs` do `toolWorkflow`, que descarta valores estáticos — só passa adiante o que vem
+via `$fromAI`, então não dá pra montar router único com parâmetro `operation` (Quirk #2). A
+segunda é o Quirk #20: com cliente MCP externo (NexTags, OpenAI), os argumentos da `tools/call`
+podem chegar `null`. Esse segundo depende da versão do n8n — foi reproduzido na Verdena e
+**não** ocorreu na Nalisa (2026-07-03, `toolWorkflow` + `$fromAI` devolvendo dado real). O
+`httpRequestTool` funciona nas duas situações, então é o padrão; `toolWorkflow` só depois de
+smoke test por `curl` naquela instância.
 
 Veja `quirks_n8n.md` pra detalhes.
 
