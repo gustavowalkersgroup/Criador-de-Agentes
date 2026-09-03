@@ -485,11 +485,14 @@ O relatório do creator entrega isso como **"LISTA DE FLUXOS E CAMPOS A CRIAR"**
 | N flow_ids fixos por categoria de transferência (`vendas-triagem`, `sac-geral`, `rastreio`, `devolucao`, `troca`, `problemas-criticos`) | 1 fluxo de pipeline + `motivo_transferencia` | a categoria vira VALOR de campo, não fluxo (visto no Closet FIT) |
 | Tags `ia_vendas` / `ia_sac` para trocar de IA | roteador único grava `setor_agente` | chegou a produção e precisou de hotfix: o cliente ficava no vácuo depois da troca de tag, porque a 2ª IA não se apresentava sozinha (Verdena v2.2/v2.3) |
 
-⚠️ **Regra dura: nunca renomear campo em cliente rodando sem atualizar o fluxo junto.** O flow
-de produção filtra pelo nome/valor antigo; renomear o CUF sem tocar no flow quebra o
-roteamento em silêncio (o disparo retorna sucesso e não faz nada). Em auditoria de cliente
-existente: registrar como legado no relatório, migrar só em janela combinada, campo e flow na
-mesma mudança.
+⚠️ **Esta tabela é mapa de equivalência, não roteiro de migração.** Em cliente que já roda,
+a infra inteira (fluxos, condições, filtros de pipeline) está montada sobre os nomes atuais —
+o flow filtra pelo nome/valor antigo, e renomear o CUF sem tocar no flow quebra o roteamento
+**em silêncio** (o disparo retorna sucesso e não faz nada).
+
+Então, em auditoria de cliente existente: **só registrar no relatório** qual é o canônico
+equivalente, e seguir. Não sugerir a troca, não renomear no prompt. Migrar é decisão do dono,
+em janela combinada, campo e fluxo na mesma mudança. O canônico vale para **projeto novo**.
 
 ### 8.1 Legado IA↔IA: o padrão Veuske (`handoff_pattern.md`) e por que foi abandonado
 

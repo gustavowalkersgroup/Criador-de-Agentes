@@ -438,10 +438,13 @@ critério de prioridade e conteúdo do resumo: Regra 21 e
 prompts-ouro gravam um briefing pro humano via `set_field_value` ANTES de
 transferir (evidência histórica: Flora usava `assunto_ticket`, Nex usava
 `nex_resumo`). A PRÁTICA em si — sempre resumir o caso antes de transferir —
-é padrão-ouro e NUNCA se remove. O NOME do campo, porém, é legado: ao
-auditar, migre `assunto_ticket`/`nex_resumo`/`resumo_lead`/`sac_resumo` para
-o canônico `resumo_pipeline` (Regra 21), preservando o CONTEÚDO do resumo já
-escrito. Se o prompt não grava briefing nenhum antes de transferir, NÃO
+é padrão-ouro e NUNCA se remove. O NOME do campo é legado — mas
+**não renomeie**: `assunto_ticket`, `nex_resumo`, `resumo_lead`,
+`sac_resumo`, `resumo_atendimento`, `resumo_para_pipeline` e
+`assunto_atendimento` são o mesmo conceito que hoje se chama
+`resumo_pipeline`, e em cliente rodando **a infra inteira já está montada em
+cima do nome atual**. Registre a equivalência no RELATÓRIO e siga; trocar o
+`field_name` no prompt quebra o fluxo que lê o nome antigo, em silêncio. Se o prompt não grava briefing nenhum antes de transferir, NÃO
 invente conteúdo de campo (vira pendência opcional, não correção) — mas o
 NOME do campo a usar, se vier a existir, já é `resumo_pipeline`.
 
@@ -969,11 +972,23 @@ Minúsculas, sem acento, sem plural (`duvida`, não `duvidas`).
 | `sac_prioridade` | `prioridade_pipeline` | valores `baixa\|media\|alta` |
 | `sac_categoria` | `motivo_transferencia` | enum acima |
 
-**Como corrigir:** renomear o `field_name` para o canônico, preservando o
-VALOR original quando ele já bate com o enum (só normalizando singular/
-plural, ex. `duvidas`→`duvida`). Se o valor gravado não bate com nenhum
-valor do enum canônico, ver "Quando NÃO corrigir" abaixo antes de forçar
-uma reescrita.
+**Como corrigir — e o que NÃO corrigir.** A tabela acima é mapa de
+equivalência, **não roteiro de renomeação**. Em cliente que já roda, a infra
+(fluxos, condições, filtros de pipeline) está montada sobre o nome e o valor
+atuais: renomear o `field_name` no prompt quebra tudo isso em silêncio, sem
+erro nenhum no painel. Então:
+
+- **Nome de campo legado (`sac_categoria`, `motivo_pipeline`, `urgencia`,
+  `assunto_ticket`…): NÃO renomeie.** Registre no relatório, na seção de
+  observações, dizendo qual é o canônico equivalente. A decisão de migrar é
+  do dono, em janela combinada, campo e fluxo na mesma mudança.
+- **Valor com erro de digitação ou plural dentro do MESMO campo canônico**
+  (`duvidas`→`duvida`): aí sim corrija — é normalização de valor, o campo
+  continua o mesmo.
+- **Valor fora de qualquer enum:** ver "Quando NÃO corrigir" abaixo antes de
+  forçar reescrita.
+
+Vale só para projeto NOVO: aí o canônico entra desde o começo.
 
 ### Ordem fixa + `send_flow` por último
 
