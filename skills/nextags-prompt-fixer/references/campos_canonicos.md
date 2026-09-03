@@ -525,9 +525,8 @@ deixa de ser contexto de handoff IA↔IA e passa a ser o resumo que vai para o c
 - **O roteador tem três palavras: `vendas`, `sac`, `ignorar`** (+ setor extra quando há IA
   dedicada e ramo no fluxo). `ignorar` é o canônico.
 
-### Ainda aberto — NÃO chutar
+- **Caminho do relatório MCP:** `Z:\WALKERS\<cliente>\relatorio-mcp.md` — confirmado pelo
+  próprio acervo (75 relatórios entregues nesse caminho entre maio e setembro/2026).
 
-1. **Caminho do relatório MCP por cliente** (`Z:\WALKERS\<cliente>\`) — o dono vai passar.
-
-Enquanto não houver resposta, as skills usam o placeholder acima e **marcam a pendência no
-relatório**; nenhuma skill decide por conta própria.
+Quando aparecer decisão nova que a skill não tem, o padrão continua o mesmo: **marcar a
+pendência no relatório**, nunca decidir por conta própria.
