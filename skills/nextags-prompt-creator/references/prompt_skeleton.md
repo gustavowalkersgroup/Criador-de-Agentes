@@ -493,9 +493,27 @@ Quando:
 - Erro persistente em tool
 - {Outros gatilhos do briefing}
 
-Como:
+Como — padrão canônico: UM flow rotativo, destino escolhido por CUF:
 1. Avisar com a persona: "Vou te conectar com nossa equipe!"
-2. Disparar `send_flow` com `flow_id: "{ID_DO_FLUXO_TRANSFERENCIA}"`
+2. `set_field_value` `resumo_pipeline` = 2-3 frases (quem é, o que queria, o que você
+   já fez, por que está transferindo)
+3. `set_field_value` `motivo_transferencia` = um dos valores da tabela abaixo
+4. `send_flow` com `flow_id: "{ID_DO_FLUXO_ROTATIVO}"` — SEMPRE o mesmo id, por último
+
+| Situação | motivo_transferencia |
+|---|---|
+| Lead qualificada, pediu pessoa no funil de compra, exceção comercial, representante | `vendas` |
+| Pedido, entrega, atraso, extravio, rastreio parado | `rastreio` |
+| Quer TROCAR por outra peça/produto | `troca` |
+| Quer DEVOLVER e receber o valor de volta, arrependimento | `devolucao` |
+| Pergunta que você não respondeu: fora da base, insistiu, repetiu 2x sem solução | `duvidas` |
+| Todo o resto: defeito, reação, pagamento, cancelamento, reputacional, jurídico | `sac_geral` |
+
+⚠️ Grave os DOIS campos em TODA transferência, sem exceção — eles persistem no contato,
+então transferir sem gravar faz o flow ler o valor do atendimento ANTERIOR e mandar a
+pessoa para a fila errada. Escreva essa consequência na regra do prompt.
+
+⚠️ NUNCA grave `setor_agente` — quem grava é o flow. Ver `cufs_nextags.md`.
 ```
 
 ---

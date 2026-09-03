@@ -93,12 +93,22 @@ options: ["Sim — vou listar quais", "Não usa tools",
 Se "Sim", pergunta aberta: "Liste as tools disponíveis e o que cada uma faz
 (nome + 1-2 linhas descrevendo input/output)."
 
-### 2.2 ID do fluxo de transferência humana
-Pergunta aberta: "Qual o `flow_id` configurado na NexTags para encaminhar
-para um atendente humano? (algo como `flow_12345` ou similar)"
+### 2.2 ID do fluxo de transferência humana (UM só)
+Pergunta aberta: "Qual o `flow_id` do fluxo rotativo de transferência para humano?
+É um só — o destino por fila é decidido pelo CUF `motivo_transferencia`, que o
+próprio fluxo filtra."
 
-⚠️ Se o humano não souber agora: **mantenha o placeholder
-`<ID_DO_FLUXO_TRANSFERENCIA>` no prompt** e liste como pendência crítica.
+Pergunte também, na mesma rodada: "O fluxo filtra os valores padrão
+(`vendas` / `rastreio` / `devolucao` / `troca` / `duvidas`, com `else` no SAC geral),
+ou vocês usam outros?"
+
+⚠️ **Não peça um flow_id por motivo.** O padrão canônico é UM flow rotativo; pedir
+vários gera prompt com N placeholders e depois exige refatoração (caso real: Joias
+Degan, 66 ocorrências de 3 placeholders trocadas depois). Ver `cufs_nextags.md`.
+
+⚠️ Se o humano não souber o id agora: **mantenha `<ID_DO_FLUXO_ROTATIVO>`** e liste
+como pendência crítica. Se ele não souber os valores do enum, use os canônicos —
+errar um valor degrada para o `else` (fila genérica), não perde o cliente.
 
 ### 2.3 Outros fluxos específicos?
 Pergunta aberta: "Há outros fluxos da NexTags que o agente deve disparar

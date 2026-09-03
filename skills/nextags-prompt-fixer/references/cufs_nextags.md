@@ -203,3 +203,88 @@ Quando o prompt usa `{{first_name}}` numa saudação, considere oferecer uma var
 ```
 
 A plataforma decide qual usar baseado em se o CUF tá preenchido. Se você não der variante, a frase "Oi, ! Tudo bem?" pode aparecer (estranho mas não quebra).
+
+---
+
+## ⚠️ Achado — como a IA REALMENTE "lê" um CUF (não é uma ferramenta, é substituição de texto)
+
+Testado e confirmado em produção (cliente Otogama, 11/08/2026): um agente de IA sem NENHUM prompt de negócio, contendo só a lista literal de tags (`{{campo1}},{{campo2}},...`), respondeu corretamente com o conteúdo real desses campos do contato. Atualizando os valores do contato (`POST /contacts` + `set_field_value`) e perguntando de novo na mesma conversa, o agente devolveu os valores NOVOS — nunca os antigos.
+
+**Conclusão:** CUFs são substituídos (merge/interpolação) diretamente no TEXTO do prompt, no servidor, ANTES da chamada ao modelo. Não é uma tool que o modelo "chama" pra buscar dado ao vivo — é um find-and-replace no texto do prompt. A substituição acontece a cada requisição, sem cache.
+
+**Implicação crítica ao auditar/corrigir um prompt:** um CUF só é visível pro agente se o texto literal `{{nome_do_campo}}` aparecer EM ALGUM LUGAR do prompt. Se o prompt instrui o agente a "usar os dados do cliente" ou "verificar {{campo}}" sem a tag estar de fato escrita ali, ou se o cliente reclama que "a IA não está vendo o campo X" — confira primeiro se `{{X}}` está literalmente no texto do prompt, antes de investigar CRM, flow ou webhook. Campo populado no contato mas sem a tag escrita no prompt = o agente nunca sabe que o dado existe.
+
+**Regra prática de correção:** sempre que o prompt depender do agente RACIOCINAR sobre um dado de contato (decidir, comparar, responder pergunta aberta sobre ele) — não só repetir numa frase pronta — garanta um bloco explícito de dados no prompt, tipo:
+
+```
+### Dados do contato (usar se preenchidos, ignorar se vazio)
+Nome: {{nomesocial}}
+Data de nascimento: {{nascimento}}
+Agendamento: {{data_agendamento}} às {{hora_agendamento}} com {{medico}}
+```
+
+Liste TODOS os CUFs relevantes aí, mesmo os que não aparecem em nenhuma mensagem de exemplo — é a PRESENÇA da tag no texto, não o uso estético dela numa fala, que libera a leitura pro modelo.
+---
+
+## 🏛️ CUFs de ESCRITA canonicos do metodo (padrao em TODO cliente)
+
+Todos os CUFs listados acima sao de **LEITURA** - nativos da plataforma. Os tres abaixo sao
+de **ESCRITA** e fazem parte do metodo, nao da plataforma: **crie-os em toda conta nova e
+use estes nomes**, mudando so se o cliente pedir.
+
+| CUF | Tipo | Quem escreve | Papel |
+|---|---|---|---|
+| `resumo_pipeline` | Text (0) | **a IA**, antes de todo `send_flow` | contexto do caso; viaja com a conversa no handoff |
+| `motivo_transferencia` | Text (0) | **a IA**, antes de todo `send_flow` | qual fila **HUMANA** recebe - e o filtro do flow rotativo |
+| `setor_agente` | Text (0) | **o FLOW, NUNCA a IA** | qual **AGENTE IA** atende - lido pelo Flow de Entrada a cada mensagem |
+
+⚠️ **`setor_agente` e a excecao: a IA NUNCA grava nele.** O Flow de Entrada le esse campo em
+CADA mensagem para decidir quem atende, entao se a IA escrever nele ela pode se re-rotear
+para si mesma - loop infinito. Bug real em producao (cliente Veuske). Quem grava e o flow
+dedicado de destino. Detalhes em `handoff_pattern.md` da skill `nextags-mcp-builder`.
+
+**As duas camadas nao se misturam:**
+
+```
+IA <-> IA          (qual agente atende)  -> setor_agente, N flows dedicados, 1 por destino
+IA  -> fila humana (qual fila recebe)    -> motivo_transferencia, UM flow rotativo
+```
+
+### `motivo_transferencia` - enum canonico
+
+```
+vendas | rastreio | devolucao | troca | duvidas
+```
+
+Mais o ramo **`else` do flow, que cai na fila de SAC geral**. O `else` e o default e cobre
+tudo o que nao e um dos cinco: defeito, reacao na pele/produto, pagamento, cancelamento,
+reputacional, juridico. Nesses casos grave **`sac_geral`** explicitamente no prompt - cai no
+mesmo destino do `else` e deixa o motivo legivel no contato.
+
+Minusculas, sem acento. **So mude os valores se o cliente pedir** - o flow dele ja esta
+filtrando por estas strings exatas.
+
+⚠️ **`troca` vs `devolucao` precisa de regra escrita no prompt**, senao a IA escolhe no
+chute: use a palavra que a cliente usou; se ela usou as duas ou nenhuma, quer outra peca e
+`troca`, quer o dinheiro de volta e `devolucao`. Cancelar antes de receber nao e nenhum dos
+dois - e `sac_geral`.
+
+⚠️ **Cada valor do enum precisa de pelo menos um exemplo JSON verbatim no prompt.** Enum sem
+exemplo e enum que a IA erra: a galeria de exemplos e o mecanismo mais forte de aderencia.
+Ao gerar, confira a cobertura - se um valor nao aparece em nenhum exemplo, escreva um.
+
+⚠️ **Ao colapsar N flows em 1, procure linhas de tabela AGRUPADAS.** Situacoes que iam para
+o mesmo flow costumam estar juntas numa linha ("Troca, devolucao, cancelamento"). Se o enum
+separa esses casos, a linha agrupada faz a IA escolher no chute - precisa split.
+
+### O modo de falha e CAMPO STALE, e e pior que campo vazio
+
+`resumo_pipeline` e `motivo_transferencia` **persistem no contato**. Se a IA disparar o flow
+sem grava-los, o filtro le o valor do atendimento ANTERIOR da mesma pessoa e ela cai na fila
+errada - parecendo funcionar. Campo vazio cai no `else` (aceitavel); campo velho cai no lugar
+errado (pior, porque nao aparece como erro).
+
+Por isso, ao gerar o prompt:
+1. Escreva a regra de gravar os dois em TODA transferencia, **com a consequencia explicita**.
+2. Nao deixe **nenhum** exemplo de `send_flow` sem os dois `set_field_value` antes.
+3. `send_flow` sempre por ultimo no array de `actions`.
