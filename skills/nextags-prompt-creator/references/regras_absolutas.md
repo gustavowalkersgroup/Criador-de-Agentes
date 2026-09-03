@@ -315,3 +315,62 @@ como violação bloqueante.
 
 Se uma correção exigiria tocar em qualquer uma dessas coisas, ela vira
 **pendência humana** automaticamente.
+
+---
+
+## 21. Campos canônicos de handoff (motivo_transferencia · prioridade_pipeline · resumo_pipeline)
+
+**Regra:** todo agente que transfere para humano gera, no MESMO JSON, antes do
+`send_flow` de pipeline: `set_field_value motivo_transferencia` (enum
+canônico por setor), `set_field_value prioridade_pipeline`
+(`baixa|media|alta`), `set_field_value resumo_pipeline` (2-4 frases), nesta
+ordem, com `send_flow` sempre por último. Existe **UM** `<ID_DO_FLUXO_PIPELINE>`
+— a fila é decidida pelo VALOR de `motivo_transferencia`, não pelo `flow_id`.
+Detalhe completo (enum por setor, critério de prioridade, conteúdo do
+resumo, tabela de legado) em `references/campos_canonicos.md` §2, §2.1-§2.4 —
+não duplicar aqui.
+
+Enum resumido (minúsculas, sem acento, sem plural): Parcerias
+`ugc|colaboracao|influencer|revenda|atacado`; Comercial `vendas|carrinho`;
+SAC `rastreio|devolucao|troca|duvida` (`duvida` = catch-all; `sac_geral`
+não existe mais). Cada valor que o agente pode usar precisa de ≥1 exemplo
+JSON verbatim no prompt gerado.
+
+**A IA NUNCA grava `setor_agente` nem `tipo_setor`** — esses são exclusivos
+do Roteador e do Revalidador. Ao gerar o skeleton de um agente (Vendas, SAC,
+extras), nunca incluir esses dois campos nas actions de exemplo; a única
+transferência que um agente faz é para HUMANO via o trio acima.
+
+Campo stale: os três campos persistem no contato — gerar sempre a regra
+explícita ("grave os três em TODA transferência, mesmo repetindo valor")
+e nunca um exemplo de `send_flow` sem os três `set_field_value` antes.
+
+---
+
+## 22. Bloco AVISOS ATIVOS e notas para editores
+
+**Regra:** todo prompt de agente gerado (exceto Roteador/Revalidador, que não
+levam este bloco) inclui, perto do topo, o bloco `📣 AVISOS ATIVOS` no
+formato canônico, vazio por padrão:
+
+```
+📣 AVISOS ATIVOS
+> 🔧 NOTA PARA EDITORES: edite SÓ as linhas entre os marcadores. Vazio = sem aviso. Remova avisos vencidos.
+=== INÍCIO DOS AVISOS ===
+(nenhum aviso ativo)
+=== FIM DOS AVISOS ===
+Se houver aviso acima, considere-o em prazos, disponibilidade e promoções. Se estiver vazio, ignore.
+```
+
+Além disso, gerar notas curtas `> 🔧 NOTA PARA EDITORES:` (1 linha, ≤200
+caracteres) nos pontos de edição futura provável: AVISOS ATIVOS, tabela de
+`motivo_transferencia`, tabela de flow_ids, tabela de tools, bloco DADOS
+DESTA CONVERSA, base de conhecimento. Lista completa e frases-modelo em
+`references/campos_canonicos.md` §6.1-§6.2.
+
+**Whitelist:** uma linha `> 🔧 NOTA PARA EDITORES:` não é meta-documentação
+proibida — é a única forma de nota permitida dentro do prompt gerado. Continua
+proibido gerar changelog, versão, pendências, TODO ou justificativas de
+decisão dentro do prompt (isso vai só no relatório do creator) — a
+whitelist vale só para essa 1 linha curta (≤200 caracteres), nunca para um
+parágrafo disfarçado com o mesmo prefixo.

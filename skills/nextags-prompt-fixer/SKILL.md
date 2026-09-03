@@ -1,6 +1,6 @@
 ---
 name: nextags-prompt-fixer
-description: "Audit and fix customer-service AI prompts for the NexTags Messenger Messaging Platform. Use to review, validate, lint, audit or correct a NexTags-style prompt (uploaded as `.md` or pasted). Triggers PT ('corrigir prompt', 'validar prompt', 'auditar prompt', 'revisar prompt do bot', 'JSON do prompt quebrado') and EN ('fix nextags prompt', 'lint bot prompt'). Catches/repairs invalid JSON, transfer actions (recommends `send_flow` as default; `transfer_conversation_to`/`assign_conversation` stay valid as fallback), `web_url` buttons without `url`, carousels with under 2 items, standard-markdown leaking into JSON text fields (WhatsApp `*bold*`/`_italic_`/`~strike~` is allowed), and missing sections (anti-hallucination, JSON-only output, `send_flow` transfers, text-as-default). Preserves persona, flows, knowledge base and business rules — fixes only structural violations. Outputs corrected `.md` + Portuguese report."
+description: "Audit and fix customer-service AI prompts for the NexTags Messenger Messaging Platform. Use to review, validate, lint, audit or correct a NexTags-style prompt (uploaded as `.md` or pasted). Triggers PT ('corrigir prompt', 'validar prompt', 'auditar prompt', 'revisar prompt do bot', 'JSON do prompt quebrado') and EN ('fix nextags prompt', 'lint bot prompt'). Catches/repairs invalid JSON, transfer actions (recommends `send_flow` as default; `transfer_conversation_to`/`assign_conversation` stay valid as fallback), `web_url` buttons without `url`, carousels with under 2 items, standard-markdown leaking into JSON text fields (WhatsApp `*bold*`/`_italic_`/`~strike~` is allowed), missing sections, and canonical handoff fields (blocks the AI writing `setor_agente`/`tipo_setor`; enforces `motivo_transferencia`/`prioridade_pipeline`/`resumo_pipeline` before `send_flow`). Preserves persona, flows, knowledge base and business rules. Outputs corrected `.md` + Portuguese report."
 ---
 
 # NexTags Prompt Fixer
@@ -31,6 +31,19 @@ prompts de produção usam `send_flow`). Mas `transfer_conversation_to` é
 fallback legítimo quando não há fluxo de transferência, e `assign_conversation`
 é caso especial raro (atendente específico). São camadas complementares, sem
 conflito. Ver Regra 2 em `regras_absolutas.md`.
+
+**Relação com `references/campos_canonicos.md`.** É a fonte de verdade única
+do método (compartilhada com `nextags-prompt-creator`, `nextags-mcp-builder`
+e `nextags-webhook-builder`) para quem escreve cada campo, o enum de
+`motivo_transferencia`, os critérios de `prioridade_pipeline`/`resumo_pipeline`
+e a arquitetura de Roteador/Revalidador. Esta skill audita CONTRA esse
+documento — `regras_absolutas.md` (Regras 21-23) e `cufs_nextags.md` trazem só
+o resumo operacional de auditoria; o detalhe (tabelas, critérios, exemplos,
+legado) vive em `campos_canonicos.md`.
+
+**Exceção Roteador/Revalidador.** Um prompt que só classifica em UMA PALAVRA
+(`setor_agente` ou `tipo_setor`) não é um "agente" no sentido das regras
+acima — não produz JSON, não transfere, não tem AVISOS ATIVOS. Ver Regra 23.
 
 ## Quando essa skill se aplica
 
@@ -128,8 +141,16 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | Ordem `send_flow` antes de `set_field_value` | Reordenar: campos PRIMEIRO, `send_flow` por último (senão campos chegam vazios). Ver Regra 16. |
 | `>1` botão `web_url` / CTA >20 chars / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp). |
 | Data fixa que apodrece ("28/02", "até hoje") / preço literal em exemplo com tool | Ver Regra 18 (datas e preço literal). |
-| `{{first_name}}` = "Guest" sem tratamento (webchat) / CUF errado por canal | Sugerir: "Guest" → perguntar nome + `set_field_value`; Instagram → `{{ig_user_name}}`; Facebook → `{{page_user_name}}`. Ver Regra 14. |
+| `{{first_name}}` vazio/"Guest"/não-nome (TODOS os canais) | Saudação neutra + perguntar o nome UMA vez + `set_field_value first_name`. Nunca saudar por `{{ig_user_name}}`/`{{page_user_name}}`/username (identificador, não vocativo; vetor de injeção). Ver Regra 14 (itens 5-6). |
 | Regra de disparo/broadcast ausente em agente com campanhas ativas | Sugerir adicionar à Anti-alucinação. Ver Regra 20. |
+| Empurrar pra outro número / reapresentar após handoff | Sugerir (não bloquear): usar `send_flow` no mesmo canal; não repetir saudação inicial pós-handoff. Ver Regra 20b. |
+| `avisos_ativos_presente` = ausente | Inserir bloco `📣 AVISOS ATIVOS` vazio no formato canônico (correção estrutural). Ver Regra 22. |
+| `nota_editor_longa` | Encurtar a linha `> 🔧 NOTA PARA EDITORES:` para ≤200 caracteres, preservando a intenção. Ver Regra 22. |
+| `ia_grava_campo_de_roteamento` (**block**) | `set_field_value` em `setor_agente`/`tipo_setor` num JSON de agente: remover a action; se a intenção era "trocar de IA", converter em transferência para humano (trio + `send_flow`) e registrar pendência. Ver Regra 21. |
+| `motivo_fora_do_enum` | Valor de `motivo_transferencia` fora do enum canônico (§2.1): mapear se for legado conhecido (`duvidas`→`duvida`, `sac_geral`→`duvida`, etc.); se for enum próprio documentado no prompt, registrar como aviso resolvido. Ver Regra 21. |
+| `prioridade_pipeline` fora de `baixa\|media\|alta` (**block**) | Corrigir para o valor mais próximo do enum ou `baixa` (default) — Seleção única rejeita qualquer outro valor. Ver Regra 21. |
+| `trio_handoff_incompleto` | `send_flow` de transferência sem os 3 `set_field_value` (motivo/prioridade/resumo) antes: inserir os que faltam. Ver Regra 21 (campo stale). |
+| `send_flow_antes_de_set_field` | Reordenar: `set_field_value`(s) sempre antes do `send_flow` no mesmo array. Ver Regra 16. |
 
 ### 4. Versionamento do arquivo corrigido
 

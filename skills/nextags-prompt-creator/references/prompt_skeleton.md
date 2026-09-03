@@ -32,28 +32,101 @@ Em GERAL, o padrão NexTags é OCULTAR O STACK, não mentir sobre a natureza:
 
 ---
 
-## 🟡 1.5 AVISOS ATIVOS (espaço reservado — preenchimento MANUAL)
+## 🟢 1.5 AVISOS ATIVOS (OBRIGATÓRIO — formato fixo, editado à mão pelo cliente)
 
-> 🔧 Gere SEMPRE este bloco no começo do prompt, **mesmo vazio**. É o espaço
-> onde o dono do projeto edita À MÃO avisos de **promoções vigentes** e
-> **feriados/horários especiais**. NÃO é changelog/auditoria — é conteúdo
-> OPERACIONAL que o agente lê pra responder.
-> ⚠️ Manter atual: remover promoção/feriado VENCIDO (senão o agente trata como
-> vigente). Como é editado à mão, datas aqui são permitidas (exceção à regra de
-> "data hardcoded que apodrece").
+> Gere SEMPRE este bloco no topo do prompt, **mesmo vazio**, no formato EXATO
+> abaixo. É o espaço onde o dono do projeto edita À MÃO promoção vigente,
+> feriado e horário especial. NÃO é changelog/auditoria — é conteúdo
+> OPERACIONAL que o agente lê pra responder. O analyzer checa a presença
+> (`avisos_ativos`) e a existência dos marcadores.
+
+Formato canônico (copiar literal — o cliente edita SÓ entre os marcadores):
 
 ```
-📣 AVISOS ATIVOS (preencher só quando houver; deixar VAZIO fora de campanha/feriado)
-{AVISOS_ATIVOS}
-
-Exemplos do que o humano coloca aqui:
-- Promoção: "10% OFF até 12/05 com o cupom MAES10."
-- Feriado: "15/11 não há expedição; pedidos confirmados saem a partir de 18/11."
-- Atendimento: "Nesta semana o time humano responde só das 9h às 13h."
-
-Se este bloco estiver vazio, ignore-o. Se houver aviso, considere-o ao falar de
-prazos, disponibilidade e promoções.
+📣 AVISOS ATIVOS
+> 🔧 NOTA PARA EDITORES: edite SÓ as linhas entre os marcadores. Vazio = sem aviso. Remova avisos vencidos.
+=== INÍCIO DOS AVISOS ===
+(nenhum aviso ativo)
+=== FIM DOS AVISOS ===
+Se houver aviso acima, considere-o em prazos, disponibilidade e promoções. Se estiver vazio, ignore.
 ```
+
+**Por que os marcadores importam:** sem delimitador explícito o cliente edita
+fora do bloco e mexe em regra do prompt. Os dois `===` são a fronteira do que
+ele pode alterar sozinho (evidência: campos_canonicos.md §6.1).
+
+Exemplos do que o humano escreve entre os marcadores (nunca gere estes valores
+por conta própria — só o `(nenhum aviso ativo)`):
+
+| Tipo | Linha de exemplo |
+|---|---|
+| Promoção | `10% OFF até 12/05 com o cupom MAES10.` |
+| Feriado | `15/11 não há expedição; pedidos confirmados saem a partir de 18/11.` |
+| Atendimento | `Nesta semana o time humano responde só das 9h às 13h.` |
+
+⚠️ Manter atual é responsabilidade do cliente: aviso VENCIDO é tratado como
+vigente pelo agente. Como o bloco é editado à mão, data aqui é permitida —
+é a única exceção à regra de "data hardcoded que apodrece".
+
+---
+
+## 🟢 1.7 DADOS DESTA CONVERSA (leitura de CUFs — OBRIGATÓRIO)
+
+> A IA só enxerga o que está escrito no prompt como `{{campo}}`: a plataforma
+> interpola o texto ANTES de chamar o modelo. Campo populado no contato sem
+> `{{campo}}` no prompt = a IA é cega para ele (`cufs_nextags.md`). Por isso
+> este bloco é obrigatório, logo depois de IDENTIDADE/AVISOS.
+
+Base (todo agente):
+
+```
+## DADOS DESTA CONVERSA (uso interno — nunca liste de volta para o cliente)
+Nome: {{first_name}} · Telefone: {{phone}} · E-mail: {{email}} · Hora local: {{current_user_time}}
+> 🔧 NOTA PARA EDITORES: a IA só enxerga campo escrito aqui como {{campo}}. Campo vazio = ignorar.
+```
+
+Variante SAC / transacional (só se a conta tem integração de pedido — os campos
+são gravados pelos fluxos transacionais, `campos_canonicos.md` §5):
+
+```
+Último pedido: {{numero_pedido}} · Status: {{status_pedido}} · Origem: {{origem_pedido}}
+Rastreio: {{rastreio_codigo}} · Link: {{rastreio_url}} · Previsão: {{previsao_entrega}}
+Carrinho: {{produtos_carrinho}} · Valor: {{valor_carrinho}} · Link: {{link_carrinho}}
+```
+
+Com esses campos preenchidos, o agente responde "onde está meu pedido" **sem
+tool** — o transacional já populou. Sem eles no texto do prompt, ele pede o
+número do pedido mesmo tendo o dado no contato.
+
+**Regra de ouro do bloco:** só entra campo que a IA usa para DECIDIR ou
+personalizar. Cada `{{campo}}` extra é contexto gasto em todo turno e uma
+chance a mais de ler valor velho (stale).
+
+### 1.7.1 Regra do nome — vale para TODOS os canais
+
+```
+Se {{first_name}} estiver vazio, for "Guest" ou não parecer primeiro nome de pessoa
+(frase, nome de empresa, expressão, número), NÃO interpole: use saudação neutra,
+pergunte o nome UMA vez e grave o valor. Não repita a pergunta se a pessoa não responder.
+```
+
+— Perguntar (saudação neutra, sem nome):
+
+{"messages":[{"message":{"text":"Oi! Tudo bem? Como você prefere que eu te chame?"}}]}
+
+— Gravar o nome que a pessoa informou:
+
+{"actions":[{"action":"set_field_value","field_name":"first_name","value":"Ana"}]}
+
+⚠️ **Não é regra só de webchat.** O webchat é o caso mais óbvio (manda `"Guest"`
+literal quando ninguém está logado), mas WhatsApp entrega o nome que a pessoa
+configurou no aparelho ("Deus é fiel", "Clínica Central", "12345") e
+Instagram/Messenger entregam o nome de EXIBIÇÃO do perfil. A validação é a mesma
+nos quatro canais: parece primeiro nome de pessoa? Se não, saudação neutra +
+pergunta + `set_field_value first_name`.
+
+⚠️ A IA grava o nome em `first_name` (campo NATIVO), nunca no CUF `Nome cliente`
+da conta — esse é de fluxo/legado (`campos_canonicos.md` §3).
 
 ---
 
@@ -138,6 +211,8 @@ Você NÃO deve:
 > sempre ganha em caso de conflito. Estrutura sugerida:
 
 ```
+> 🔧 NOTA PARA EDITORES: preço, estoque e disponibilidade vêm da tool — não escreva aqui.
+
 ## Sobre a {EMPRESA}
 - {Linha 1: especialidade}
 - {Linha 2: histórico/diferencial}
@@ -241,18 +316,17 @@ classificadores) podem ir com só `actions`.
   {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Pra fechar é só clicar 👇","buttons":[{"title":"Comprar agora","type":"web_url","url":"<URL_DO_PRODUTO>"}]}}}}
 ]}
 
-— Transferência para humano:
+— Transferência para humano (trio canônico + send_flow por último):
 
-{"messages":[{"message":{"text":"Vou te conectar com nossa equipe agora!"}}],
- "actions":[{"action":"send_flow","flow_id":"{ID_DO_FLUXO_TRANSFERENCIA}"}]}
+{"messages":[{"message":{"text":"Vou te conectar com nossa equipe agora!"}}],"actions":[{"action":"set_field_value","field_name":"motivo_transferencia","value":"rastreio"},{"action":"set_field_value","field_name":"prioridade_pipeline","value":"media"},{"action":"set_field_value","field_name":"resumo_pipeline","value":"Ana, pedido 11488, pago ha 12 dias sem despacho. Consultei o rastreio: sem movimentacao. Nao consigo abrir reclamacao com a transportadora; escalo."},{"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}]}
 
 — Apresentação de produto (imagem → 4 → texto+botão → 4 → follow-up):
 
 {"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},4,{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"{produto} — R$ 0,00\n{pitch curto}","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>?utm_source=nextags&utm_campaign=ia"}]}}}},4,{"message":{"text":"Qual cor você prefere?"}}]}
 
-— Handoff com contexto (set_field_value ANTES de send_flow):
+— Handoff com contexto, prioridade alta (set_field_value ANTES de send_flow):
 
-{"messages":[{"message":{"text":"Vou te encaminhar pra equipe agora!"}}],"actions":[{"action":"set_field_value","field_name":"assunto_ticket","value":"Cliente {{first_name}}, pedido X, atraso confirmado. Atendente: acionar transportadora."},{"action":"send_flow","flow_id":"<ID_DO_FLUXO_TRANSFERENCIA>"}]}
+{"messages":[{"message":{"text":"Vou te encaminhar pra equipe agora!"}}],"actions":[{"action":"set_field_value","field_name":"motivo_transferencia","value":"duvida"},{"action":"set_field_value","field_name":"prioridade_pipeline","value":"alta"},{"action":"set_field_value","field_name":"resumo_pipeline","value":"Ana, pedido 11488 pago duas vezes no cartao. Confirmei as duas cobrancas no historico. Nao posso estornar; cliente irritada e falou em Procon."},{"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}]}
 
 — Disparo silencioso (NPS/mockup: só actions, sem messages — `send_flow` dispara normalmente, o fluxo fala):
 
@@ -260,10 +334,13 @@ classificadores) podem ir com só `actions`.
 ```
 
 **Notas:**
-- **Handoff padrão = `send_flow` com `flow_id`.** `transfer_conversation_to` é
-  FALLBACK quando NÃO há flow de transferência configurado no projeto (rede de
-  segurança, não proibida). `assign_conversation` (atribuir a atendente específico)
-  é caso especial raro, definido pelo humano — não sugerir por default, mas não bloquear.
+- **Handoff padrão = `send_flow` com `flow_id`** do fluxo de pipeline, sempre
+  precedido do trio `motivo_transferencia` + `prioridade_pipeline` +
+  `resumo_pipeline` (seção 8, "Fluxo X — Transferência").
+  `transfer_conversation_to` é FALLBACK quando NÃO há flow de transferência
+  configurado no projeto (rede de segurança, não proibida).
+  `assign_conversation` (atribuir a atendente específico) é caso especial raro,
+  definido pelo humano — não sugerir por default, mas não bloquear.
 - Se algum `flow_id` não foi fornecido pelo humano, deixe placeholder explícito
   `<ID_DO_FLUXO_*>` e marque como pendência.
 - Para sim/não ou menus, prefira a pergunta em texto. Botão `web_url` abre link;

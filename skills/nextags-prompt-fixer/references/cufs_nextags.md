@@ -226,65 +226,97 @@ Agendamento: {{data_agendamento}} às {{hora_agendamento}} com {{medico}}
 Liste TODOS os CUFs relevantes aí, mesmo os que não aparecem em nenhuma mensagem de exemplo — é a PRESENÇA da tag no texto, não o uso estético dela numa fala, que libera a leitura pro modelo.
 ---
 
-## 🏛️ CUFs de ESCRITA canonicos do metodo (padrao em TODO cliente)
+## 🏛️ CUFs de ESCRITA canônicos do método (padrão em TODO cliente)
 
-Todos os CUFs listados acima sao de **LEITURA** - nativos da plataforma. Os tres abaixo sao
-de **ESCRITA** e fazem parte do metodo, nao da plataforma: **crie-os em toda conta nova e
-use estes nomes**, mudando so se o cliente pedir.
+> ⚠️ **Esta seção foi superada por `references/campos_canonicos.md`** (§1-§3), fonte de
+> verdade única. O que mudou em relação à versão anterior desta referência: o enum de
+> `motivo_transferencia` cresceu (parcerias + comercial + SAC), o catch-all passou a ser
+> `duvida` (singular) e **`sac_geral` deixou de existir**; `prioridade_pipeline` entra como
+> 3º campo do trio (junto de `motivo_transferencia` e `resumo_pipeline`); `tipo_setor` e
+> `resposta_ia` entram na tabela como campos que a IA nunca grava. Ao auditar/corrigir um
+> prompt, use o resumo operacional abaixo e o detalhe completo (critério de cada valor,
+> tabela de legado, exemplos) em `references/campos_canonicos.md`.
+
+Todos os CUFs listados acima são de **LEITURA** — nativos da plataforma. Os CUFs abaixo são
+de **ESCRITA** e fazem parte do método, não da plataforma: existem em toda conta nova com
+estes nomes, mudando só se o cliente pedir.
 
 | CUF | Tipo | Quem escreve | Papel |
 |---|---|---|---|
-| `resumo_pipeline` | Text (0) | **a IA**, antes de todo `send_flow` | contexto do caso; viaja com a conversa no handoff |
-| `motivo_transferencia` | Text (0) | **a IA**, antes de todo `send_flow` | qual fila **HUMANA** recebe - e o filtro do flow rotativo |
-| `setor_agente` | Text (0) | **o FLOW, NUNCA a IA** | qual **AGENTE IA** atende - lido pelo Flow de Entrada a cada mensagem |
+| `setor_agente` | Texto | **o ROTEADOR, NUNCA a IA** | qual **AGENTE IA** atende (`vendas`\|`sac`\|`analisar_humano_bot`) — lido pelo Fluxo de Entrada a CADA mensagem |
+| `tipo_setor` | Seleção única | **o REVALIDADOR, NUNCA a IA** | `humano`\|`bot` — 2ª camada de classificação, só roda no `else` do roteador |
+| `motivo_transferencia` | Texto | **a IA**, antes de todo `send_flow` de pipeline | enum canônico por setor (abaixo) — é o filtro que decide a fila HUMANA |
+| `prioridade_pipeline` | Seleção única | **a IA**, antes de todo `send_flow` | `baixa`\|`media`\|`alta` |
+| `resumo_pipeline` | Texto | **a IA**, antes de todo `send_flow` | contexto do caso (2-4 frases); viaja com a conversa no handoff |
+| `resposta_ia` | Texto | **o FLUXO** (passo Filtro JSON), NUNCA a IA | resposta já filtrada, enviada por `{{resposta_ia}}`; o prompt não menciona esse campo |
 
-⚠️ **`setor_agente` e a excecao: a IA NUNCA grava nele.** O Flow de Entrada le esse campo em
-CADA mensagem para decidir quem atende, entao se a IA escrever nele ela pode se re-rotear
-para si mesma - loop infinito. Bug real em producao (cliente Veuske). Quem grava e o flow
-dedicado de destino. Detalhes em `handoff_pattern.md` da skill `nextags-mcp-builder`.
+⚠️ **`setor_agente` e `tipo_setor` são as exceções mais graves: a IA NUNCA grava neles.** O
+Fluxo de Entrada lê `setor_agente` em CADA mensagem para decidir quem atende — se um agente
+escrever nesse campo (ex.: tentando "passar para o SAC"), ele pode se re-rotear para si
+mesmo, criando loop infinito (bug real em produção, cliente Veuske). Ao auditar/corrigir um
+prompt e encontrar `set_field_value` com `field_name` `setor_agente` ou `tipo_setor` num JSON
+de agente: **bloquear e remover a action** — padrão de fix completo (inclusive o caso em que
+a intenção era "trocar de IA") na Regra 21 de `references/regras_absolutas.md`.
 
-**As duas camadas nao se misturam:**
+**As duas camadas não se misturam:**
 
 ```
-IA <-> IA          (qual agente atende)  -> setor_agente, N flows dedicados, 1 por destino
-IA  -> fila humana (qual fila recebe)    -> motivo_transferencia, UM flow rotativo
+IA <-> IA          (qual agente atende)  -> setor_agente (só o Roteador grava)
+IA  -> fila humana (qual fila recebe)    -> motivo_transferencia + prioridade_pipeline
+                                             + resumo_pipeline (só a IA grava, nesta ordem)
 ```
 
-### `motivo_transferencia` - enum canonico
+### `motivo_transferencia` — enum canônico por setor
 
 ```
-vendas | rastreio | devolucao | troca | duvidas
+Parcerias: ugc | colaboracao | influencer | revenda | atacado
+Comercial: vendas | carrinho
+SAC:       rastreio | devolucao | troca | duvida   (duvida = catch-all)
 ```
 
-Mais o ramo **`else` do flow, que cai na fila de SAC geral**. O `else` e o default e cobre
-tudo o que nao e um dos cinco: defeito, reacao na pele/produto, pagamento, cancelamento,
-reputacional, juridico. Nesses casos grave **`sac_geral`** explicitamente no prompt - cai no
-mesmo destino do `else` e deixa o motivo legivel no contato.
+Minúsculas, sem acento, sem plural (`duvida`, não `duvidas`). **`sac_geral` não existe
+mais** — o catch-all é `duvida`, que cai no mesmo destino do `else` do fluxo de pipeline
+(painel SAC). Critério completo de quando usar cada valor, tabela de legado
+(`duvidas`→`duvida`, `sac_geral`→`duvida`, `assunto_ticket`/`resumo_lead`/`sac_resumo`→
+`resumo_pipeline`, `sac_prioridade`→`prioridade_pipeline`, `sac_categoria`→
+`motivo_transferencia`) e exemplos: ver `references/campos_canonicos.md` §2.1 e §8, e Regra
+21 de `references/regras_absolutas.md`.
 
-Minusculas, sem acento. **So mude os valores se o cliente pedir** - o flow dele ja esta
-filtrando por estas strings exatas.
+⚠️ **`troca` vs `devolucao` precisa de regra escrita no prompt**, senão a IA escolhe no
+chute: use a palavra que a cliente usou — quer outra peça é `troca`, quer o dinheiro de
+volta é `devolucao`. Cancelar antes de receber não é nenhum dos dois — é `duvida`.
 
-⚠️ **`troca` vs `devolucao` precisa de regra escrita no prompt**, senao a IA escolhe no
-chute: use a palavra que a cliente usou; se ela usou as duas ou nenhuma, quer outra peca e
-`troca`, quer o dinheiro de volta e `devolucao`. Cancelar antes de receber nao e nenhum dos
-dois - e `sac_geral`.
+⚠️ **Cada valor do enum que o agente pode usar precisa de pelo menos um exemplo JSON
+verbatim no prompt.** Enum sem exemplo é enum que a IA erra: a galeria de exemplos é o
+mecanismo mais forte de aderência. Ao auditar, confira a cobertura — se um valor não aparece
+em nenhum exemplo, sugerir adicionar.
 
-⚠️ **Cada valor do enum precisa de pelo menos um exemplo JSON verbatim no prompt.** Enum sem
-exemplo e enum que a IA erra: a galeria de exemplos e o mecanismo mais forte de aderencia.
-Ao gerar, confira a cobertura - se um valor nao aparece em nenhum exemplo, escreva um.
+⚠️ **Ao colapsar situações numa tabela, procure linhas AGRUPADAS.** Situações que iam para o
+mesmo destino costumam estar juntas numa linha ("Troca, devolução, cancelamento"). Se o enum
+separa esses casos, a linha agrupada faz a IA escolher no chute — precisa split.
 
-⚠️ **Ao colapsar N flows em 1, procure linhas de tabela AGRUPADAS.** Situacoes que iam para
-o mesmo flow costumam estar juntas numa linha ("Troca, devolucao, cancelamento"). Se o enum
-separa esses casos, a linha agrupada faz a IA escolher no chute - precisa split.
+### O modo de falha é CAMPO STALE, e é pior que campo vazio
 
-### O modo de falha e CAMPO STALE, e e pior que campo vazio
+Os três campos do trio (`motivo_transferencia`, `prioridade_pipeline`, `resumo_pipeline`)
+**persistem no contato**. Se a IA disparar `send_flow` sem gravá-los, o fluxo lê o valor do
+atendimento ANTERIOR da mesma pessoa e ela cai na fila/prioridade errada — parecendo
+funcionar. Campo vazio cai no `else` (aceitável); campo velho cai no lugar errado (pior,
+porque não aparece como erro em lugar nenhum).
 
-`resumo_pipeline` e `motivo_transferencia` **persistem no contato**. Se a IA disparar o flow
-sem grava-los, o filtro le o valor do atendimento ANTERIOR da mesma pessoa e ela cai na fila
-errada - parecendo funcionar. Campo vazio cai no `else` (aceitavel); campo velho cai no lugar
-errado (pior, porque nao aparece como erro).
+Ao auditar/corrigir:
+1. Confira que os TRÊS campos são gravados em TODA transferência, com a consequência
+   explícita escrita no prompt caso falte.
+2. Nenhum exemplo de `send_flow` de transferência pode ficar sem os três `set_field_value`
+   antes.
+3. `send_flow` sempre por último no array de `actions`.
+4. Nunca `setor_agente`/`tipo_setor` num JSON de agente (bloqueio — ver acima).
 
-Por isso, ao gerar o prompt:
-1. Escreva a regra de gravar os dois em TODA transferencia, **com a consequencia explicita**.
-2. Nao deixe **nenhum** exemplo de `send_flow` sem os dois `set_field_value` antes.
-3. `send_flow` sempre por ultimo no array de `actions`.
+### CUFs transacionais — leitura para o SAC
+
+Os CUFs transacionais (`numero_pedido`, `status_pedido`, `rastreio_url`, `previsao_entrega`
+etc., gravados pelo webhook-builder — ver `references/campos_canonicos.md` §5) são de
+**LEITURA** para o agente de SAC: se estiverem escritos como `{{campo}}` no bloco `## DADOS
+DESTA CONVERSA` do prompt (§6.3), o agente responde "onde está meu pedido" sem precisar de
+tool, porque o transacional já populou o contato. Ao auditar um prompt de SAC com tool de
+rastreio mas sem esses `{{campo}}` no texto, sugerir adicioná-los (ver "Achado" acima nesta
+mesma referência).
