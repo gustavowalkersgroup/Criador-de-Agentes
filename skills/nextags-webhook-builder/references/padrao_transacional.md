@@ -423,9 +423,9 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 
 ## Questões em aberto (precisam de confirmação humana)
 
-1. **Prefixo de número multi-plataforma** (`SHP-`/`YMP-`) não existe em produção — adotar como padrão greenfield? [SEM EVIDÊNCIA DIRETA]
-2. **Token via credential vs hardcoded** — migrar a convenção pra credential do n8n? (mais seguro, mais fricção de auto-vínculo — ver quirk Veuske na mcp-builder).
+1. ~~**Prefixo de número multi-plataforma** (`SHP-`/`YMP-`)~~ — **descartado pelo dono em 2026-09-03**: `origem_pedido` já diz de qual plataforma veio, e o prefixo quebraria a busca na API da loja, que espera o número puro.
+2. ~~**Token via credential vs hardcoded**~~ — **decidido pelo dono em 2026-09-03**: **credencial nomeada do n8n** é o padrão. Custo aceito: conferir o vínculo depois de todo `update_workflow` (Quirk #22 e #3).
 3. **72 clientes `unreadable`** — habilitar `availableInMCP` neles pra completar a auditoria numa 2ª rodada?
 4. ~~**Enum de `status_pedido`**~~ — **fechado pelo dono em 2026-09-03**: `aprovado|enviado|entregue|cancelado|pronto_retirada|pix_gerado|pix_expirado` é o enum canônico (`campos_canonicos.md` §5 e §9).
-5. **Tipo de `flow_id`** (number ou string): a API aceita os dois no corpus, não há decisão oficial — **confirmar com o dono** qual fixar.
+5. ~~**Tipo de `flow_id`**~~ — **fechado pelo dono em 2026-09-03: string**, sempre (`"flow_id":"1788450035680"`). Id da NexTags passa de 2^53 e number perde precisão em JS. A sentinela do fail-safe continua sendo o número `0` no código — nunca a string `"0"`, que é truthy e fura o guard.
 6. **`/api/users` (AliveMed)** — é equivalente a `/api/contacts` ou outra API? Sem explicação na sticky; tratado como legado até o dono confirmar. [SEM EVIDÊNCIA DIRETA]

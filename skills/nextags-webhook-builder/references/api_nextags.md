@@ -17,7 +17,7 @@
 |---|---|---|
 | **Endpoint canônico de disparo é `POST /api/contacts`** | Um único POST atômico com `actions[]`. | 8 clientes do corpus (Nordmann, Degan BW, Meiskin, Alto Giro, WL, Otogama, Privilège) |
 | **`/api/users` é variante legada** | Só o AliveMed Dispatcher usa, sem explicação na sticky. **Não usar em projeto novo.** | AliveMed (único no corpus) |
-| **Header sempre `X-ACCESS-TOKEN`** | Formato do token: `<id numérico>.<string alfanumérica>`. Preferir **credencial nomeada** do n8n a hardcode (rotação sem editar N nodes); hardcoded é a convenção de fato e não é erro. | corpus de 21 workflows |
+| **Header sempre `X-ACCESS-TOKEN`** | Formato do token: `<id numérico>.<string alfanumérica>`. **Credencial nomeada do n8n é o padrão** (decisão do dono, 2026-09-03): rotaciona sem editar N nodes e não vaza em export. Hardcoded é o que existe em cliente antigo — não copiar em projeto novo. Conferir o vínculo depois de todo `update_workflow`. | corpus de 21 workflows |
 | **Token é por conta** | Token errado retorna `200` e escreve na **conta errada**, sem erro visível. Conferir a conta com `GET /accounts/me` antes de rodar setup. | Wazzu com token da Hebreus Doze |
 | **Rate limit ~100 req/60s** | Disparo em lote precisa de throttle ("pesca-e-marca": cron de baixa frequência, `limit: 1`, marca antes do próximo tick). | Privilège (`b9IJblHOEurFgj6o`) |
 | **Ordem de `actions[]`** | `set_field_value`… → `add_tag`… → `send_flow` **por último**, sem exceção em todo o corpus. | corpus de 21 workflows / DOLPS "Regra 16" |
@@ -213,7 +213,13 @@ GET /accounts/flows   → confere que cada flow_id do workflow existe de verdade
 
 Obrigatório porque `/send/{flow_id}` retorna `success:true` **até para id inexistente**
 (evidência: Alto Giro). O sticky note do workflow anota de onde veio cada `flow_id`.
-Enquanto o id real não existir: `flow_id = 0` + guard `if (!flow) return skip(base, 'flow_id_ausente')`
+No JSON, `flow_id` vai **sempre como string** (`"1788450035680"`) — id da NexTags passa de
+2^53 e number perde precisão em JS, silenciosamente.
+
+Enquanto o id real não existir: sentinela `flow_id = 0` **como número** no código, com guard
+`if (!flow) return skip(base, 'flow_id_ausente')`, e `String(flow)` só na hora de montar o
+payload. ⚠️ Não troque a sentinela pela string `"0"`: `"0"` é **truthy** em JS, o guard
+deixa passar e o disparo vira no-op silencioso.
 — nunca um id fictício "funcional" (`padrao_transacional.md` §5.3, `antipadroes.md` §19).
 
 ### 3.4 Disparo atômico — `POST /contacts` com `actions[]`
@@ -234,7 +240,7 @@ CUFs em `actions[]`:
     {"action": "set_field_value", "field_name": "rastreio_codigo","value": "AA123456789BR"},
     {"action": "add_tag", "tag_name": "transacional"},
     {"action": "add_tag", "tag_name": "Pedido Enviado"},
-    {"action": "send_flow", "flow_id": 1788450035680}
+    {"action": "send_flow", "flow_id": "1788450035680"}
   ]
 }
 ```

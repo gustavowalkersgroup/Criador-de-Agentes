@@ -329,6 +329,30 @@ acima de 15 MB é re-encodar e hospedar.
 Os limites entraram também no skeleton do creator (nova etapa de validação de mídia), na
 Regra 26 do fixer e no schema do json-fixer.
 
+### Decisões fechadas e recipe da BW Commerce
+
+- **`flow_id` é string no JSON**, sempre (`"1788450035680"`). Id da NexTags passa de 2^53 e
+  number perde precisão em JS, em silêncio. A sentinela do fail-safe continua sendo o número
+  `0` no código — **nunca** a string `"0"`, que é truthy e fura o `if (!flow)`.
+- **Credencial nomeada do n8n é o padrão** para token de tool, inclusive token estático. O
+  Quirk #22 deixa de recomendar hardcode e passa a descrever o custo aceito: conferir o
+  vínculo depois de todo `update_workflow`, e anotar no relatório a origem do token (nunca o
+  valor). Hardcode segue documentado como o que existe em cliente antigo, não como padrão.
+- **Prefixo `SHP-`/`YMP-` em número de pedido: descartado.** `origem_pedido` já carrega a
+  plataforma, e o prefixo quebraria a busca na API da loja, que espera o número puro.
+- **`api_recipes/bw.md` (nova).** A BW aparecia espalhada em quirk e antipadrão, sem recipe.
+  O que ela reúne: a BW responde **HTTP 200 até em erro**, com envelope
+  `{registros, erros, totalRegistros}` — daí as tools não usarem `dataField`, para o slim
+  poder olhar `erros[]` antes de `registros[]` (sem isso o agente diz "não encontrei seu
+  pedido" quando o que houve foi falha de credencial); status roteado por **id**, porque
+  "Em Entrega" (8) e "Entregue" (9) casam com o mesmo regex; enum de webhook só existe no
+  `example` do OpenAPI; não há HMAC documentado, então entrega-se sem validação e com o risco
+  registrado, nunca com validação chutada; `GET /webhooks` antes de criar, porque o webhook é
+  singleton e sobrescrever derruba a integração de outro sistema em silêncio; e os limites
+  (180 req/min, só Brasil/EUA, TLS 1.2+), que somam com o rate limit da NexTags num lote.
+  A base URL fica marcada como pendência a confirmar por cliente — não há host único, e rota
+  errada na BW volta 200, então o teste "parece que funcionou" mente.
+
 ### A confirmar com o dono
 
 Continuam abertas, **não resolvidas por chute**, marcadas nas skills como pendência:

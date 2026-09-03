@@ -772,7 +772,7 @@ Sempre que precisar enviar um JSON body que:
 
 ---
 
-## 22. Token hardcoded em `headerParameters` > credential `httpHeaderAuth` (padrão Naah Store)
+## 22. Credencial nomeada é o padrão — e o que quebra nela depois de todo `update_workflow`
 
 ### O que acontece
 
@@ -782,9 +782,22 @@ Configurar `httpRequestTool` com `authentication: 'genericCredentialType'` + `ne
 2. **Credencial errada auto-linkada** (Quirk #3) — n8n às vezes pega outra credencial httpHeaderAuth qualquer do projeto.
 3. **Valor da credencial desatualizado** — credencial foi criada com token X há 3 sessions; user e dev acham que está atualizada, mas continua com X. Erros de auth viram pesadelo de debug.
 
-### Como evitar
+### Decisão (2026-09-03)
 
-Quando o token/key é **estático** (não OAuth com refresh), bote direto em `headerParameters`:
+**Credencial nomeada do n8n é o padrão**, inclusive para token estático: o token não vaza em
+export/backup e rotaciona sem editar N nodes. As três portas acima são o **custo aceito**, e o
+jeito de pagar é procedimento, não gambiarra:
+
+- Depois de **todo** `update_workflow`, conferir se a credencial continua vinculada e se é a
+  certa (o n8n desvincula ao recriar nodes, e às vezes vincula outra do projeto — Quirk #3).
+- Conferir isso **antes** de dizer que a entrega está pronta; entra no runbook "PASSOS PRA
+  COLOCAR EM PÉ" do relatório.
+- Ao criar a credencial, anotar no relatório qual token foi usado (a **origem**, nunca o
+  valor) — o modo de falha nº 3 é credencial velha que todo mundo acha que está atualizada.
+
+O hardcode em `headerParameters` continua descrito abaixo porque é o que existe em vários
+clientes rodando — **não é para copiar em projeto novo**, e não se migra cliente em produção
+só por isso:
 
 ```ts
 {
@@ -1005,7 +1018,7 @@ A NexTags rejeita corpos com `tags: [...]` ou `custom_fields: {...}` diretos. Es
   "actions": [
     { "action": "add_tag", "tag_name": "verdena" },
     { "action": "set_field_value", "field_name": "martz_order_id", "value": "uuid" },
-    { "action": "send_flow", "flow_id": 12345 }
+    { "action": "send_flow", "flow_id": "12345" }
   ]
 }
 ```

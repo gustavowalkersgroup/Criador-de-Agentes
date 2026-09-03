@@ -325,6 +325,6 @@ const payload = {
 - [ ] HTTP Request tem `retryOnFail: true` + `waitBetweenTries: 5000` + `onError: continueErrorOutput`
 - [ ] Switch por `status.alias`/`status.name` do payload, não por `body.event`
 - [ ] CUFs com naming consistente (CamelCase+YMP ou snake_case+yampi_)
-- [ ] Token NexTags hardcoded em header (não credential — ver Quirk #22)
+- [ ] Token NexTags em **credencial nomeada** do n8n (padrão desde 2026-09-03) + vínculo conferido depois do último `update_workflow` (Quirk #22)
 - [ ] Pedido novo INSERT no banco; pedido existente UPDATE
 - [ ] Carrinho abandonado: workflow separado, sem dedup (cada cart é único)

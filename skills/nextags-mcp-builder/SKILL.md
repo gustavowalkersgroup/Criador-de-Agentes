@@ -555,6 +555,7 @@ nextags-mcp-builder/
 │       ├── bling.md      🟢
 │       ├── shopify.md    🟢
 │       ├── yampi.md      🟢
+│       ├── bw.md         🟢  ← pedido/cliente; responde 200 até em erro
 │       ├── yever.md      🟡
 │       ├── rd_station_crm.md  🟡
 │       ├── appmax.md     🟢
