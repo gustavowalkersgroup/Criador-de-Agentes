@@ -5,6 +5,20 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.5.1] - 2026-09-04
+
+Correção pontual de empacotamento — nenhuma mudança de conteúdo nas skills.
+
+### Corrigido
+
+- **`dist/nextags-mcp-builder.zip` e `dist/nextags-prompt-creator.zip` estavam sem a pasta
+  raiz `<skill>/`** (SKILL.md na raiz do zip, em vez de `<skill>/SKILL.md`) — diferente dos
+  outros 4 zips da suíte. Layout inconsistente quebra o upload de skill no claude.ai, que
+  espera uma única pasta de topo com o nome da skill. Os 6 zips agora seguem o mesmo layout.
+- `scripts/build_dist.sh` (novo, na raiz do repo): sempre empacota com pasta raiz — sem essa
+  trava, o script antigo preservava o layout de cada zip existente, perpetuando a
+  inconsistência em vez de corrigi-la.
+
 ## [1.5.0] - 2026-09-03
 
 Rodada de **padronização canônica** das 6 skills, a partir de decisões formais do dono do
