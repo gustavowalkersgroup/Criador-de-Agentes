@@ -1,6 +1,6 @@
 ---
 name: nextags-webhook-builder
-description: Constrói e audita webhooks/disparos TRANSACIONAIS NexTags no n8n — notificação proativa de pedido (pago/aprovado, enviado, entregue, pronto p/ retirada) e carrinho abandonado, via webhook nativo, polling/cron ou Gateway Proxy NexTags, roteando pra NexTags com dedup, CUFs canônicos e send_flow. Use quando o usuário diz "criar transacional", "webhook de pedido pago/enviado/entregue", "notificação de carrinho abandonado", "disparo proativo", "plugar Yampi/Shopify/Nuvemshop/Bling/Tray/Martz/VTEX/Bagy no NexTags". Padrão validado por auditoria de produção. Foco em disparo proativo — NÃO cobre backend de atendimento sob demanda (isso é da nextags-mcp-builder). Complementar à mcp-builder; use as duas juntas.
+description: Constrói e audita webhooks/disparos TRANSACIONAIS NexTags no n8n — notificação proativa de pedido (pago/aprovado, enviado, entregue, pronto p/ retirada) e carrinho abandonado, via webhook nativo, polling/cron ou Gateway Proxy NexTags, roteando pra NexTags com dedup, CUFs canônicos e send_flow. Use quando o usuário diz "criar transacional", "webhook de pedido pago/enviado/entregue", "notificação de carrinho abandonado", "disparo proativo", "plugar Yampi/Shopify/Nuvemshop/Bling/Tray/Martz/VTEX/Bagy/FácilZap no NexTags". Padrão validado por auditoria de produção. Foco em disparo proativo — NÃO cobre backend de atendimento sob demanda (isso é da nextags-mcp-builder). Complementar à mcp-builder; use as duas juntas.
 type: tool
 ---
 
@@ -190,6 +190,7 @@ Leia `references/padrao_transacional.md` §1. Regra:
 
 ### Fase 2 — Escolher o gatilho e a fonte de dados
 Leia §2 (tabela por plataforma). **Não invente webhook onde não existe** (Magazord, Conecta Venda = só polling) nem faça cron onde há push (Yampi emite webhook de carrinho).
+Plataforma nova sem cliente em produção (ex.: **FácilZap**)? Leia §2.1 do padrão antes de desenhar: pode ter só evento de criação (o resto vira polling), config de webhook só no painel e ausência de HMAC.
 Sem credencial nativa da loja? Confira se a loja está no integrador NexTags e use o **Gateway Proxy** (`references/gateway_proxy_nextags.md`) — evidência de produção: Cantarola Backend consome `…/v1/gateway/stores/{storeId}/products`.
 
 ### Fase 3 — Gerar o workflow a partir do template

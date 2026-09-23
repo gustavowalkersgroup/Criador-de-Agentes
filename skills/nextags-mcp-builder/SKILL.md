@@ -1,6 +1,6 @@
 ---
 name: nextags-mcp-builder
-description: Constrói o servidor MCP no n8n (NexTags) que liga um agente IA às APIs do cliente (Tray, VTEX, Shopify, Nuvemshop, Bling, Martz, Yampi, Yever, RD Station, etc.). Foco EXCLUSIVO em infraestrutura — não toca em prompt, persona, flow_ids nem regras de atendimento (responsabilidade da skill nextags-prompt-creator). Use quando o usuário diz "criar MCP", "plugar API no agente", "configurar n8n pra cliente novo" ou similar.
+description: Constrói o servidor MCP no n8n (NexTags) que liga um agente IA às APIs do cliente (Tray, VTEX, Shopify, Nuvemshop, Bling, Martz, Yampi, Yever, FácilZap, RD Station, etc.). Foco EXCLUSIVO em infraestrutura — não toca em prompt, persona, flow_ids nem regras de atendimento (responsabilidade da skill nextags-prompt-creator). Use quando o usuário diz "criar MCP", "plugar API no agente", "configurar n8n pra cliente novo" ou similar.
 type: tool
 ---
 
@@ -561,6 +561,7 @@ nextags-mcp-builder/
 │       ├── appmax.md     🟢
 │       ├── troquecommerce.md  🟡
 │       ├── zoppy.md      🟢
+│       ├── facilzap.md  🟡  ← OpenAPI oficial; 2 req/s, update via POST /{id}, sem POST /pedidos
 │       └── zoppy_docs_oficial.md      ← doc oficial da Zoppy (apoio ao zoppy.md, sem status próprio)
 ├── assets/
 │   ├── mcp_v2_template.ts                ← SDK do MCP Trigger v2

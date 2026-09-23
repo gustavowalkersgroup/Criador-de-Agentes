@@ -12,6 +12,17 @@
 // ⚠️ CUF que já existe com tipo != 0 (Número) DESCARTA o valor em
 //    silêncio quando recebe set_field_value (Mayuí; reincidente em Degan).
 //    O laudo marca isso como FALHA, não como "já existe".
+// ⚠️ GET /accounts/custom_fields RETORNA NO MÁXIMO 25 ITENS e ignora
+//    limit, per_page e page (confirmado em Vitória Régia Shoes, 2026-09-23).
+//    Em conta com >25 CUFs o diff é INCOMPLETO: lista como "faltante" campo
+//    que já existe. O POST nesse caso é inofensivo (a API rejeita duplicata),
+//    mas o laudo mente. NUNCA use o GET como prova de que criou —
+//    confira no PAINEL. O BLOCO A marca isso em `get_truncado`.
+// ⚠️ NÃO use options.batching no node HTTP Request para throttle. Com
+//    { batching: { batch: { batchSize, batchInterval } } } o node executa,
+//    não dá erro, e NÃO ENVIA REQUEST NENHUM (n8n httpRequest v4.2,
+//    2026-09-23 — 17 POSTs "sucesso", zero campo criado). Para throttle real
+//    use Loop Over Items (splitInBatches) + Wait.
 //
 // WIRING no n8n:
 //   Manual Trigger
@@ -22,6 +33,8 @@
 //          ├─ true  → NoOp "LAUDO DRY-RUN"   ← PARE AQUI, humano confere a lista
 //          └─ false → Split Out (faltantes)
 //                     → HTTP POST /accounts/custom_fields  (um por campo)
+//                       (fullResponse + neverError p/ ver status no laudo;
+//                        SEM options.batching — ver aviso acima)
 //                     → Code "Laudo" (BLOCO B)
 //   Header em todos: X-ACCESS-TOKEN: <NEXTAGS_ACCESS_TOKEN>
 //   (preferir credencial nomeada do n8n — permite rotação sem editar nodes)
@@ -104,8 +117,12 @@ const legadoSuspeito = existentes
 
 return [{ json: {
   dry_run: DRY_RUN,
-  conta: { id: conta.id, nome: conta.name },     // ⚠️ CONFIRA que é a conta certa antes de seguir
+  // /accounts/me devolve page_id + name (NAO tem campo 'id')
+  conta: { page_id: conta.page_id, nome: conta.name },  // ⚠️ CONFIRA a conta antes de seguir
   total_desejados: DESEJADOS.length,
+  total_existentes_na_conta: existentes.length,
+  // GET trunca em 25 e ignora limit/page. >=25 => diff nao confiavel.
+  get_truncado: existentes.length >= 25,
   ja_existem: jaExistem.length,
   faltantes,                                     // → Split Out alimenta o POST
   tipo_errado: tipoErrado,                       // ⚠️ FALHA: set_field_value descarta em silêncio
@@ -119,8 +136,12 @@ return [{ json: {
 // URL:    https://app.nextagsai.com.br/api/accounts/custom_fields
 // Body:   specifyBody:'json'  →  { "name": "={{ $json.name }}", "type": {{ $json.type }} }
 // Header: X-ACCESS-TOKEN: <NEXTAGS_ACCESS_TOKEN>
-// Opções: retryOnFail:true, waitBetweenTries:5000, onError:continueErrorOutput
-//         batchSize 1 + intervalo — rate limit NexTags ~100 req/60s (Privilège).
+// Opções: retryOnFail:true, waitBetweenTries:5000, onError:continueRegularOutput,
+//         options.response.response = { fullResponse: true, neverError: true }
+//         — assim o laudo vê statusCode + body de cada POST em vez de item vazio.
+// ⚠️ NADA de options.batching. Ele silencia o node inteiro (ver aviso no topo).
+//    Rate limit NexTags ~100 req/60s (Privilège); 28 POSTs cabem sem throttle.
+//    Se precisar throttle: Loop Over Items + Wait, nunca options.batching.
 // ⚠️ Campos tipo 6 (Seleção única: tipo_setor, prioridade_pipeline) podem precisar das
 //    OPÇÕES cadastradas no painel; conferir depois de criar. O valor gravado tem que
 //    bater EXATAMENTE com a opção (minúsculas).
