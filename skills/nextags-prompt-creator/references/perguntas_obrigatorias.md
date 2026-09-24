@@ -69,6 +69,10 @@ options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
 **Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom —
 e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
 há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
+Há **caso de sucesso, depoimento ou dado autorizado** pra usar como prova social
+(cliente, contexto, resultado)? E alguma **credencial real** (tempo de mercado,
+certificação) pra usar como autoridade? Sem resposta aqui, o agente NÃO pode citar
+prova social/autoridade — ver `references/metodologia_vendas_consultivas.md` §5.
 
 **Se SAC:** quais MOTIVOS de contato atende? O padrão canônico do SAC é
 `rastreio` / `devolucao` / `troca` / `duvida` (catch-all) — confirme se serve ou se
