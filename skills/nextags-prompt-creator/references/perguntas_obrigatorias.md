@@ -74,6 +74,14 @@ Há **caso de sucesso, depoimento ou dado autorizado** pra usar como prova socia
 certificação) pra usar como autoridade? Sem resposta aqui, o agente NÃO pode citar
 prova social/autoridade — ver `references/metodologia_vendas_consultivas.md` §5.
 
+**Se E-COMMERCE:** quais campos de estado devem ser persistidos ou apenas
+calculados no turno (`intencao`, `etapa_funil`, `produto_considerado`,
+`criterio_principal`, `encaixe`, `proximo_passo`)? Preço, estoque, frete e prazo
+vêm de MCP/API ou de base estática? Quais claims comerciais têm fonte, validade
+e escopo? Quais categorias e cenários adversariais devem entrar no stress test?
+Não peça um campo só para preencher CRM: cada dado deve mudar recomendação,
+compatibilidade, logística, consentimento ou encaminhamento.
+
 **Se SAC:** quais MOTIVOS de contato atende? O padrão canônico do SAC é
 `rastreio` / `devolucao` / `troca` / `duvida` (catch-all) — confirme se serve ou se
 falta algum. Qual a tool/sistema que é fonte de verdade de ENVIO (≠ e-commerce)?
