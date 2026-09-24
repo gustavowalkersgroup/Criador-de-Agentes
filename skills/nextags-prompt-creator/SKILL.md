@@ -593,6 +593,21 @@ Leia o `findings.json`. Se ele reportar:
 Re-rode o analyzer no prompt corrigido. Repita até **0 violações reais**
 (idempotência).
 
+### 6.5 Usa o inventário de fluxos canônicos da conta Walkers
+
+Quando o projeto for da conta Walkers `1512865`, leia
+`references/fluxos_canonicos_walkers.md` antes de escolher qualquer `flow_id`.
+Separe **Disparos**, **Instagram**, **Padrões** e **Transacionais**. Não trate
+um fluxo transacional como ação manual da IA, não inicie um disparo proativo sem
+autorização e não use IDs por precaução: inclua somente o fluxo necessário ao
+agente e ao gatilho descrito no briefing.
+
+No relatório, registre o nome, ID, pasta, finalidade e condição de uso de cada
+fluxo escolhido. Valide o ID em `GET /accounts/flows` antes de escrever o prompt;
+o endpoint de envio pode aceitar um ID inexistente sem provar que a execução
+funcionará. Para handoff, use o fluxo de transferência humana confirmado pela
+conta e grave o trio canônico antes do `send_flow`.
+
 ### 7. Gera o relatório de auditoria
 
 Use `assets/relatorio_template.md` como base. **Relatório ENXUTO** — só o que o
