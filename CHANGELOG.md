@@ -5,6 +5,25 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.7.0] - 2026-09-24
+
+Inventário dos fluxos canônicos da conta Walkers integrado ao `nextags-prompt-creator`.
+
+### Adicionado
+
+- Referência `fluxos_canonicos_walkers.md` com 17 fluxos observados na conta NexTags `1512865`.
+- Classificação operacional entre Disparos, Instagram, Padrões e Transacionais.
+- IDs, pastas, finalidade, gatilhos e limites de uso para campanhas, carrinho, pedidos,
+  boas-vindas, NPS, listas, carteira comercial e transferência humana.
+- Regra explícita para a IA não iniciar disparos, não disparar transacionais manualmente e
+  não usar fluxo de transferência sem gravar o trio canônico de handoff.
+
+### Alterado
+
+- O prompt creator agora consulta o inventário account-specific antes de escolher `flow_id`.
+- O relatório de geração deve registrar nome, ID, pasta, finalidade e condição de uso de cada
+  fluxo selecionado, com validação posterior em `GET /accounts/flows`.
+
 ## [1.6.0] - 2026-09-24
 
 Fortalecimento do `nextags-prompt-creator` para agentes de vendas e e-commerce,
