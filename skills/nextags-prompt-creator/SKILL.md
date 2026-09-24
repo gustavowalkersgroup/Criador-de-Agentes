@@ -1,6 +1,6 @@
 ---
 name: nextags-prompt-creator
-description: "Generate production-ready customer service AI prompts for the NexTags Messenger Messaging Platform from a human briefing plus a company URL. Use whenever the user wants to CREATE a new agent prompt from scratch — triggers in Portuguese ('criar prompt', 'gerar prompt', 'novo agente', 'fazer prompt do bot', 'criar atendente IA') and English ('create nextags prompt', 'build agent prompt'). The skill scrapes the site with web_fetch, asks the obligatory questions (tools/MCP, tom de voz, flow_id do pipeline, mídias, restrições), and generates the complete prompt: identity, AVISOS ATIVOS, DADOS DESTA CONVERSA, anti-hallucination, JSON format, and handoff to human via motivo_transferencia + prioridade_pipeline + resumo_pipeline + send_flow (campos canônicos). In projects with 2+ AIs it also writes the ROTEADOR and REVALIDADOR prompts. Then chains into the auditor (analyze_prompt.py) and outputs the `.md` plus a Portuguese report. Trigger any time NexTags agent prompt creation comes up, even without 'create'."
+description: "Generate production-ready NexTags customer-service and e-commerce AI prompts from a human briefing plus company URL. Use for creating agents, sales consultants, lead qualification, catalog conversations, tone-of-voice rules, canonical conversation state, adversarial testing, and human handoff. Triggers in Portuguese ('criar prompt', 'gerar prompt', 'novo agente', 'fazer prompt do bot', 'criar atendente IA', 'prompt de vendas', 'agente de e-commerce') and English ('create nextags prompt', 'build agent prompt'). Scrape the site, ask obligatory questions about tools/MCP, voice, pipeline flow, media, commercial restrictions, dynamic data, and claims, then generate the prompt, e-commerce references, adversarial test plan, auditor report, and versioned deliverables."
 ---
 
 # NexTags Prompt Creator
@@ -248,7 +248,28 @@ e `send_flow_antes_de_set_field` (warn).
 
 **Eixo ortogonal — o agente tem MCP/tools de catálogo?** Decida junto com o tipo:
 - **Com MCP:** preço/estoque/disponibilidade vêm da tool (fonte de verdade); placeholder `R$ 0,00` nos exemplos.
-- **Sem MCP ("Estática Pura", ~38% dos casos reais):** NÃO prometa consulta dinâmica. Para preço/estoque/frete sem fonte: remeta ao site ou transfira — NUNCA fabrique. Gere link de busca por regra (ex.: `/search/?q=<termo>`) em vez de hardcodar URL por SKU. NUNCA hardcode preço/cupom com validade fixa ("até 28/02", "válido só hoje") — apodrece.
+- **Sem MCP ("Estática Pura", ~38% dos casos reais):** NÃO prometa consulta dinâmica. Para preço/estoque/frete sem fonte: remeta ao site ou transfira — NUNCA fabrique. Gere link de busca por regra (ex.: `/search/?q=<termo>`) em vez de hardcodear URL por SKU. NUNCA hardcode preço/cupom com validade fixa ("até 28/02", "válido só hoje") — apodrece.
+
+**E-commerce — estado canônico e qualidade comercial:** quando o agente vende,
+qualifica lead, consulta catálogo/carrinho ou atende pós-venda, leia
+`references/contrato_canonico_ecommerce.md` e inclua no prompt as regras de estado
+que a infraestrutura suporta. O contrato deve separar intenção, etapa, produto,
+critério, encaixe, incertezas, fonte e próximo passo; não invente valores para
+preencher campos. Se a conta não persiste estado, use o contrato como formato
+interno e não prometa memória entre mensagens.
+
+Para prompts de e-commerce, consulte também:
+
+- `references/testes_adversariais_ecommerce.md` e inclua no relatório a bateria
+  aplicável, com prioridade para preço, estoque, frete, prazo, desconto, prova
+  social, privacidade, recusa, reclamação e handoff.
+- `references/auditoria_tom_e_claims.md` para auditar tom separadamente de
+  conversão e rastrear claims comerciais sem fonte ou validade.
+
+O gerador deve produzir, junto do prompt, uma seção do relatório chamada
+**Contrato e testes de qualidade** com: campos usados, modo com/sem MCP,
+claims que precisam de fonte, cenários adversariais selecionados e critérios
+de aprovação. Não coloque esse relatório dentro do prompt de runtime.
 
 Seções universais (TODOS os tipos, bloqueantes): Identidade, **AVISOS ATIVOS**,
 **DADOS DESTA CONVERSA**, Tom de Voz, Escopo (com fora-de-escopo → transferência),

@@ -5,6 +5,30 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.6.0] - 2026-09-24
+
+Fortalecimento do `nextags-prompt-creator` para agentes de vendas e e-commerce,
+com estado conversacional explícito, testes adversariais e auditoria comercial.
+
+### Adicionado
+
+- Referência `contrato_canonico_ecommerce.md` com schema, enums, regras de atualização,
+  critérios de etapa e distinção entre dados confirmados, inferidos e desconhecidos.
+- Referência `testes_adversariais_ecommerce.md` com 24 cenários para preço, estoque,
+  frete, prazo, descontos, prova social, privacidade, reclamações, opt-out e handoff.
+- Referência `auditoria_tom_e_claims.md` com rubrica de tom e validação de claims
+  comerciais por fonte, validade e escopo.
+- Perguntas obrigatórias específicas para e-commerce: estado a persistir, modo com/sem
+  MCP, claims autorizados e seleção de cenários adversariais.
+- Contrato canônico e cenários mínimos incorporados ao esqueleto e à bateria de stress tests.
+
+### Alterado
+
+- O prompt creator agora orienta a produzir relatório separado de contrato, claims e testes,
+  sem poluir o prompt de runtime com auditoria ou histórico.
+- A descrição da skill passou a cobrir vendas, qualificação, catálogo, tom de voz e testes
+  adversariais para e-commerce.
+
 ## [1.5.1] - 2026-09-04
 
 Correção pontual de empacotamento — nenhuma mudança de conteúdo nas skills.

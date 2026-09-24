@@ -66,9 +66,15 @@ options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
 
 ## 1.5 Perguntas condicionais por tipo
 
-**Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom —
-e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
-há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
+**Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom — e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico? há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
+
+**Se E-COMMERCE:** quais campos de estado devem ser persistidos ou apenas
+calculados no turno (`intencao`, `etapa_funil`, `produto_considerado`,
+`criterio_principal`, `encaixe`, `proximo_passo`)? Preço, estoque, frete e prazo
+vêm de MCP/API ou de base estática? Quais claims comerciais têm fonte, validade
+e escopo? Quais categorias e cenários adversariais devem entrar no stress test?
+Não peça um campo só para preencher CRM: cada dado deve mudar recomendação,
+compatibilidade, logística, consentimento ou encaminhamento.
 
 **Se SAC:** quais MOTIVOS de contato atende? O padrão canônico do SAC é
 `rastreio` / `devolucao` / `troca` / `duvida` (catch-all) — confirme se serve ou se
