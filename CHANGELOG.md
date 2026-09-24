@@ -5,6 +5,54 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.6.1] - 2026-09-24
+
+Metodologia de vendas consultiva para a CAMADA DE VENDAS (§6B) do
+`nextags-prompt-creator` — a seção estava saindo genérica ("cumprimenta →
+empurra produto → menciona cupom"), sem critério de avanço por etapa nem
+regra de gatilho ético. Síntese aplicada de SPIN Selling, The Challenger Sale,
+Influence (Cialdini), Never Split the Difference (Voss), Building a
+StoryBrand e Inbound Selling — frameworks profissionais, não citação literal
+nem garantia de conversão.
+
+### Adicionado
+
+**Referência nova `references/metodologia_vendas_consultivas.md`**
+(`nextags-prompt-creator`) — leitura obrigatória antes de escrever a seção 6B
+em agentes Vendas/consultora, Comercial/SDR e Misto. Contém: princípio
+"diagnosticar antes de demonstrar"; tabela de quando usar cada framework;
+funil de 7 etapas (Abertura, Diagnosticar, Aprofundar, Validar, Indicar,
+Conduzir, Follow-up) com objetivo e **critério de avanço observável** por
+etapa, adaptado a resposta turno-a-turno em JSON; biblioteca de ganchos por
+etapa; tabela de gatilhos de influência com a fonte permitida no prompt
+gerado (prova social só de caso autorizado na base, escassez só de AVISOS
+ATIVOS/regra real do site — nunca fabricados); técnica de rotulagem de
+objeção (Voss: nomear a preocupação antes do contorno); 7 exemplos
+Antes/Depois adaptados a bot de e-commerce; checklist rápido pré-resposta.
+
+### Alterado
+
+**`references/prompt_skeleton.md` §6B** (`nextags-prompt-creator`)
+- 6B.2 (Framework de Conversa) ganha tabela de critério de avanço por etapa,
+  em vez de só nomes de etapa com microcopy solta.
+- 6B.4 (Objeções) reescrita com a técnica de rotulagem antes do contorno.
+- Novas subseções: 6B.7 (CTA bilateral — nunca fechamento presumido) e 6B.9
+  (gatilhos de influência só verdadeiros e verificáveis).
+- 6B.3 e 6B.6 ganham nota ligando ao princípio central e à Etapa 7 do funil.
+
+**`references/perguntas_obrigatorias.md`** (`nextags-prompt-creator`) — a
+pergunta condicional "Se VENDAS" agora cobre caso de sucesso/depoimento
+autorizado e credencial real, para que o agente tenha fonte legítima de prova
+social/autoridade em vez de inventar.
+
+**`SKILL.md`** (`nextags-prompt-creator`) — passo 5.0 (classificação de tipo)
+aponta a leitura obrigatória da nova referência antes da seção 6B; árvore de
+arquivos atualizada.
+
+Esta versão convive com a v1.6.0 (hardening de e-commerce, lançada em paralelo
+no `main`): as duas mexem em arquivos adjacentes de `nextags-prompt-creator`
+(seção 6B, `perguntas_obrigatorias.md`, `SKILL.md`) sem se sobrepor em conteúdo.
+
 ## [1.6.0] - 2026-09-24
 
 Fortalecimento do `nextags-prompt-creator` para agentes de vendas e e-commerce,

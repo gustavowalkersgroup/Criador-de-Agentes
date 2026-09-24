@@ -66,7 +66,13 @@ options: ["Vendas/consultora", "SAC/pós-venda", "Triagem/roteador",
 
 ## 1.5 Perguntas condicionais por tipo
 
-**Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom — e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico? há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
+**Se VENDAS:** frase de abertura assinatura? produto-hero a priorizar? há cupom —
+e em que momento mencionar? lead de anúncio entra direto no produto ou diagnóstico?
+há léxico de marca (palavras preferidas / a evitar / PROIBIDAS — ex.: nunca dizer "defeito")?
+Há **caso de sucesso, depoimento ou dado autorizado** pra usar como prova social
+(cliente, contexto, resultado)? E alguma **credencial real** (tempo de mercado,
+certificação) pra usar como autoridade? Sem resposta aqui, o agente NÃO pode citar
+prova social/autoridade — ver `references/metodologia_vendas_consultivas.md` §5.
 
 **Se E-COMMERCE:** quais campos de estado devem ser persistidos ou apenas
 calculados no turno (`intencao`, `etapa_funil`, `produto_considerado`,

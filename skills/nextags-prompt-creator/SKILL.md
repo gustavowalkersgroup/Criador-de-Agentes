@@ -124,6 +124,14 @@ Decida (pelo briefing + perguntas) entre:
   set_field_value (stage monotônico + resumo acumulativo) + checklist final.
 - **Misto (vendas + SAC)** → inclua 6B e 8B com uma regra de troca de modo.
 
+⚠️ **Vendas/consultora, Comercial/SDR e Misto: leia
+`references/metodologia_vendas_consultivas.md` inteiro ANTES de escrever a
+seção 6B.** É de lá que vem o funil de 7 etapas com critério de avanço, a
+biblioteca de ganchos por etapa, a técnica de rotulagem de objeção e a regra
+de gatilho ético (prova social/autoridade/escassez só verdadeiros e
+verificáveis) — sem essa leitura o 6B tende a sair genérico, que é exatamente
+o problema que essa referência existe para resolver.
+
 **5.1 — Projetos com 2+ IAs: crie o Roteador E o Revalidador automaticamente.**
 
 Quando o projeto tem 2 ou mais agentes (ex.: SAC + Vendas, Vendas + Parcerias),
@@ -707,6 +715,7 @@ nextags-prompt-creator/
 │   ├── campos_canonicos.md           🔒 fonte de verdade: roteamento, handoff, CUFs, tags
 │   ├── prompt_skeleton.md            esqueleto + guia por seção (§8F roteador, §8G revalidador)
 │   ├── prompt_template.md            template parametrizado <CHAVE> por cliente
+│   ├── metodologia_vendas_consultivas.md  funil de 7 etapas, ganchos, gatilhos éticos (ler antes da seção 6B)
 │   ├── perguntas_obrigatorias.md     checklist de perguntas
 │   ├── cufs_nextags.md               ~80 CUFs nativos por canal + CUFs de escrita
 │   └── regras_absolutas.md           regras + padrões de fix (compartilhado com o fixer)
