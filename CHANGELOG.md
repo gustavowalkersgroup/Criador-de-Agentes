@@ -5,6 +5,31 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.8.0] - 2026-09-24
+
+Integração da **Arquitetura Suprema V7** e refatoração do núcleo do
+`nextags-prompt-creator`.
+
+### Adicionado
+
+- `references/arquitetura_suprema_v7.md` como fonte metodológica consolidada.
+- Hierarquias separadas para intenção de projeto e verdade em runtime.
+- Classificação formal de prioridade P0–P4 e ação A0–A5.
+- Contratos mínimos para estado, ferramentas, fontes, autorização, confirmação e falhas.
+- Segurança em camadas contra prompt injection direta e indireta.
+- Seleção modular com justificativa interna e arquitetura proporcional ao problema.
+- Observabilidade, métricas de conversão saudável, critérios mínimos e testes L0–L5.
+
+### Alterado
+
+- `SKILL.md` reduzido de 755 para 215 linhas, respeitando progressive disclosure e
+  mantendo detalhes operacionais nas referências canônicas.
+- Corrigida a regra de conflito: o briefing define intenção, mas não vence fatos
+  atuais de política, privacidade, segurança ou ferramentas oficiais.
+- Reforçada a suspensão de vendas em P0/P1 e a confirmação proporcional para A3–A5.
+- Mantida a compatibilidade com o contrato NexTags, CUFs, handoff, e-commerce e
+  inventário account-specific de fluxos Walkers.
+
 ## [1.7.0] - 2026-09-24
 
 Inventário dos fluxos canônicos da conta Walkers integrado ao `nextags-prompt-creator`.

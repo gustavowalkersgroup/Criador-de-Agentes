@@ -4,7 +4,7 @@ Coleção de 6 skills profissionais para acelerar a criação, auditoria e corre
 
 | Skill | O que faz |
 |---|---|
-| `nextags-prompt-creator` | Gera prompts de atendimento NexTags do zero a partir de briefing + URL da empresa. Faz scraping, faz perguntas obrigatórias, gera roteador/revalidador quando o projeto tem 2+ IAs, escreve os campos canônicos de handoff, contrato de estado para e-commerce, inventário dos fluxos Walkers, bateria adversarial e audita automaticamente. |
+| `nextags-prompt-creator` | Gera pacotes de agentes NexTags a partir de briefing + URL. Usa a Arquitetura Suprema V7, separa intenção de projeto da verdade de runtime, classifica risco e módulos, gera roteador/revalidador quando necessário, define estado/tools/handoff, inclui inventário Walkers, bateria adversarial e audita automaticamente. |
 | `nextags-prompt-fixer` | Audita/corrige prompts existentes contra as Regras Absolutas da plataforma. Detecta JSON inválido, ações proibidas, markdown vazado, placeholders genéricos, seções de meta-documentação, campo de roteamento gravado pela IA (deveria ser só do roteador/revalidador) e enum de transferência fora do canônico. |
 | `nextags-json-fixer` | Valida e corrige a SAÍDA JSON gerada pelo agente em runtime. Útil quando o bot retorna JSON quebrado, com fence ```json em volta, sem `messages`, etc. |
 | `nextags-mcp-builder` | Constrói o servidor MCP no n8n que liga o agente IA às APIs do cliente (Tray, VTEX, Shopify, Bling, Martz, etc.) — atendimento sob demanda. Garante a infra dos campos canônicos (roteador/revalidador/handoff) sem decidir prompt. |
