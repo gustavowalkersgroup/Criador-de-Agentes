@@ -1,6 +1,6 @@
-# NexTags Tools — Suite de Skills para Claude Code
+# NexTags Tools — Suite de Skills para Claude Code e Codex
 
-Coleção de 6 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
+Coleção de 7 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
 
 | Skill | O que faz |
 |---|---|
@@ -9,6 +9,7 @@ Coleção de 6 skills profissionais para acelerar a criação, auditoria e corre
 | `nextags-json-fixer` | Valida e corrige a SAÍDA JSON gerada pelo agente em runtime. Útil quando o bot retorna JSON quebrado, com fence ```json em volta, sem `messages`, etc. |
 | `nextags-mcp-builder` | Constrói o servidor MCP no n8n que liga o agente IA às APIs do cliente (Tray, VTEX, Shopify, Bling, Martz, etc.) — atendimento sob demanda. Garante a infra dos campos canônicos (roteador/revalidador/handoff) sem decidir prompt. |
 | `nextags-webhook-builder` | Constrói e audita webhooks/disparos **transacionais** (pedido pago/enviado/entregue, carrinho abandonado) no n8n, com CUFs canônicos, dedup e `send_flow`. Irmã da mcp-builder (disparo proativo). Padrão validado por auditoria de produção. |
+| `nextags-prompt-octobercut` | Adapta prompts (e atendimento humano) à cobrança da Meta por mensagem de serviço, vigente desde 01/10/2026: uma resposta = uma mensagem, abertura proativa, perguntas agrupadas, vitrine com 1 foto + 1 mensagem com botão. Audita o prompt, funde o JSON de runtime e estima a economia. |
 | `nextags-webchat-tester` | Testa o agente PUBLICADO ao vivo, dirigindo o WebSocket do webchat por Python (sem extensão de browser). Exercita a stack real (NexTags + MCP + backend); pega erro de MCP, handoff, transferência fantasma, renderização de card. |
 
 Todas as skills compartilham a mesma referência de **campos canônicos** (`campos_canonicos.md` — roteador, revalidador, handoff e CUFs transacionais), replicada de forma idêntica entre `nextags-prompt-creator`, `nextags-prompt-fixer`, `nextags-mcp-builder` e `nextags-webhook-builder`.
@@ -23,7 +24,7 @@ Todas as skills compartilham a mesma referência de **campos canônicos** (`camp
 # Adiciona o marketplace
 /plugin marketplace add gustavowalkersgroup/Criador-de-Agentes
 
-# Instala todas as 6 skills de uma vez
+# Instala todas as 7 skills de uma vez
 /plugin install nextags-tools@nextags-marketplace
 ```
 
@@ -41,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agen
 irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 ```
 
-Os scripts copiam as 6 skills pra `~/.claude/skills/` e fazem backup das versões anteriores (se existirem) com sufixo `.bak`.
+Os scripts copiam as 7 skills pra `~/.claude/skills/` e, se o Codex estiver instalado (`~/.codex`), também pra `~/.codex/skills/`. Versões anteriores vão pra `skills-backup/` ao lado de cada destino. Para forçar a instalação no Codex: `INSTALL_CODEX=1` (bash) ou `$env:INSTALL_CODEX = '1'` (PowerShell).
 
 ### Opção 3 — Instalação manual (controle total)
 
@@ -49,7 +50,12 @@ Os scripts copiam as 6 skills pra `~/.claude/skills/` e fazem backup das versõe
 git clone https://github.com/gustavowalkersgroup/Criador-de-Agentes.git
 cd Criador-de-Agentes
 cp -r skills/* ~/.claude/skills/
+cp -r skills/* ~/.codex/skills/   # Codex (opcional)
 ```
+
+### Codex
+
+As skills usam o formato padrão `SKILL.md` (frontmatter `name` + `description`), lido também pelo Codex. Depois de instalar em `~/.codex/skills/`, reinicie o Codex e chame com `$nextags-prompt-octobercut` (ou descreva a tarefa).
 
 ---
 
@@ -63,7 +69,7 @@ cp -r skills/* ~/.claude/skills/
 
 ## 🎯 Como usar
 
-Após instalar, reinicia o Claude Code e usa qualquer uma das 6 skills:
+Após instalar, reinicia o Claude Code e usa qualquer uma das 7 skills:
 
 ```bash
 /nextags-prompt-creator   # gerar prompt do zero
@@ -72,7 +78,10 @@ Após instalar, reinicia o Claude Code e usa qualquer uma das 6 skills:
 /nextags-mcp-builder      # construir MCP no n8n pra ligar APIs (atendimento)
 /nextags-webhook-builder  # construir/auditar webhooks transacionais (disparo proativo)
 /nextags-webchat-tester   # testar o agente publicado ao vivo no webchat
+/nextags-prompt-octobercut # agrupar respostas (cobrança Meta por mensagem de serviço)
 ```
+
+Para alinhar as skills antigas ao OctoberCut, use o prompt pronto em [`prompts/ajustar-skills-octobercut.md`](prompts/ajustar-skills-octobercut.md).
 
 Cada skill responde a triggers em português e inglês — pode chamar diretamente ou descrever a tarefa naturalmente.
 
@@ -87,6 +96,7 @@ As skills compartilham princípios comuns:
 - **CUFs do sistema** — placeholders devem usar `{{first_name}}` etc., nunca `[nome]`.
 - **Prompts enxutos, meta por tipo** — consultivo (Vendas) mira 30-45 KB; SAC/triagem mira 10-20 KB. Auditoria/changelog/pendências vão pro RELATÓRIO, não pro prompt.
 - **IA nunca roteia entre agentes** — o roteador (1 palavra, roda a cada mensagem) grava `setor_agente`; a IA só transfere para humano, e faz isso gravando `motivo_transferencia` + `prioridade_pipeline` + `resumo_pipeline` e disparando UM fluxo de pipeline (`send_flow`).
+- **OctoberCut** — desde 01/10/2026 a Meta cobra cada mensagem de serviço. Cada bolha custa: uma resposta = uma mensagem, sem typing `4` entre textos.
 - **Campos canônicos compartilhados** (`campos_canonicos.md`) — nome exato, minúsculas, snake_case, sem acento; o mesmo em qualquer cliente, salvo exceção registrada no relatório.
 
 ---
@@ -104,7 +114,10 @@ Criador-de-Agentes/
 │   ├── nextags-json-fixer/
 │   ├── nextags-mcp-builder/
 │   ├── nextags-webhook-builder/
-│   └── nextags-webchat-tester/
+│   ├── nextags-webchat-tester/
+│   └── nextags-prompt-octobercut/
+├── prompts/
+│   └── ajustar-skills-octobercut.md  # prompt p/ alinhar as skills ao OctoberCut
 ├── install.sh                   # instalador Linux/macOS
 ├── install.ps1                  # instalador Windows
 └── README.md

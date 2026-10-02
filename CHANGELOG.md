@@ -5,6 +5,28 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.9.0] - 2026-10-02
+
+Nova skill **`nextags-prompt-octobercut`**: adapta os agentes à cobrança da Meta
+por mensagem de serviço, vigente desde 01/10/2026.
+
+### Adicionado
+
+- `skills/nextags-prompt-octobercut/` com as 8 regras OC (uma resposta = uma
+  mensagem, abertura proativa, perguntas agrupadas, sem pedir nome por pedir,
+  vitrine enxuta, link dentro do botão, sem mensagem de espera, fechamento
+  embutido), bloco canônico para colar nos prompts, exemplos antes/depois,
+  guia de reescrita, guia para atendimento humano e template de relatório.
+- `scripts/octobercut.py` (`audit`, `merge`, `estimate`) e 13 testes.
+- `prompts/ajustar-skills-octobercut.md`: prompt pronto para alinhar as
+  skills existentes ao OctoberCut.
+- Instaladores passam a copiar as skills também para `~/.codex/skills/`
+  quando o Codex está instalado (ou com `INSTALL_CODEX=1`).
+
+### Alterado
+
+- Backups dos instaladores vão para `skills-backup/` ao lado de cada destino.
+
 ## [1.8.0] - 2026-09-24
 
 Integração da **Arquitetura Suprema V7** e refatoração do núcleo do
