@@ -5,6 +5,26 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.9.2] - 2026-10-02
+
+Legibilidade do prompt vira bloqueio. O fixer empilhava, a cada edição, um
+cabeçalho de "mudanças" cada vez maior dentro do prompt, e enchia de `#####`
+e `=====`.
+
+### Alterado
+
+- `analyze_prompt.py` (2 cópias): seções de meta-documentação passam de warn
+  para **block** e ganham os padrões `mudancas_versao`, `o_que_mudou`,
+  `resumo_alteracoes`; metadado `**Versão:**`/`**Data:**` bloqueia nas 25
+  primeiras linhas; novo check `decoracao` (**block**: linhas só de `=====`,
+  `#####`, `*****`, exceto os marcadores de AVISOS ATIVOS), `cabecalho_profundo`
+  (warn, 4+ `#`) e `cabecalho_longo` (warn, >20 linhas antes do 1º `##`).
+  +7 testes (87 no total).
+- Regra 15 (ambas as cópias): versão só no nome do arquivo e no relatório;
+  corrigir é trocar a regra errada, não acrescentar por cima.
+- `nextags-prompt-fixer/SKILL.md`: seção de versionamento e tabela de correções.
+- `nextags-prompt-creator/SKILL.md`: princípio 5 inclui legibilidade.
+
 ## [1.9.1] - 2026-10-02
 
 Enforcement do que antes era só documentação: prompts gerados saíam sem

@@ -463,6 +463,23 @@ normalizar/resetar.
 
 **Regra:** o prompt do agente NUNCA pode conter seções de meta-documentação (auditoria, changelog, pendências internas, TODOs, notas técnicas pra dev, justificativas de decisões passadas, métricas). Tudo isso vai pro **relatório de auditoria**, não pro prompt.
 
+**Bloqueante desde a 1.9.2.** Caso recorrente: a cada edição o fixer empilhava no
+topo do prompt um cabeçalho "Mudanças nesta versão / O que mudou / Correções da
+v2.3", cada vez maior. A versão vai **no nome do arquivo** (`-v1.1.md`, `-v1.2.md`)
+e no relatório; dentro do prompt, nada. O analisador bloqueia os cabeçalhos de
+meta-doc (`mudancas_versao`, `o_que_mudou`, `resumo_alteracoes`, `changelog`,
+`auditoria`…), o metadado expandido (`**Versão:**`, `**Data:**`) e linhas só de
+decoração (`=====`, `#####`: `decoracao`); avisa em cabeçalho de 4+ `#`
+(`cabecalho_profundo`) e em mais de 20 linhas antes da primeira seção
+(`cabecalho_longo`).
+
+**Legibilidade é requisito, não estilo:** o prompt é lido pela IA a cada turno e
+depois editado por qualquer IA (Claude, Codex) ou pessoa. Estrutura que funciona:
+1 título, seções `##` com nome do assunto, `###` só quando precisa, prosa curta,
+listas simples, exemplos JSON crus. Nenhuma regra entra sem mudar comportamento;
+corrigir um prompt é **trocar** a regra errada pela certa, não acrescentar mais
+uma por cima.
+
 **Por quê:** o prompt é lido pelo LLM A CADA TURNO em runtime. Cada parágrafo que o LLM lê:
 - Consome janela de contexto (compartilhada com histórico + tool returns)
 - Dilui a atenção do modelo entre o que importa (regras de atendimento) e o que não importa (versões antigas)

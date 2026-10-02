@@ -16,6 +16,12 @@ Checks de roteamento/handoff canônico (references/campos_canonicos.md):
   warn  — avisos_ativos (bloco 📣 AVISOS ATIVOS ausente ou sem marcadores)
   warn  — nota_editor_longa (`> 🔧 NOTA PARA EDITORES:` acima de 220 chars)
 
+Checks de legibilidade (regras_absolutas.md §15 — prompt enxuto, editável por qualquer IA):
+  block — seções de meta-documentação (auditoria, changelog, "mudanças da v2", TODO…)
+  block — metadado expandido no cabeçalho (**Versão:** / **Data:** / **Responsável:**)
+  block — decoracao (linhas só de =====, #####, *****)
+  warn  — cabecalho_profundo (#### ou mais fundo), cabecalho_longo (>20 linhas antes do 1º ##)
+
 Checks estruturais (regras_absolutas.md §14 e §22 — o que o creator SEMPRE gera):
   block — avisos_ativos_ausente / avisos_ativos_sem_marcadores
   block — dados_conversa_ausente (bloco `## DADOS DESTA CONVERSA`)
@@ -584,6 +590,10 @@ FORBIDDEN_META_HEADER_PATTERNS = [
     (re.compile(r"^#{1,6}\s+.*bug(s)?\s+(observad|conhecid|encontrad)", re.IGNORECASE | re.MULTILINE), "bugs_observados"),
     (re.compile(r"^#{1,6}\s+.*m[ée]tric(a|as)\s+do\s+prompt", re.IGNORECASE | re.MULTILINE), "metricas_prompt"),
     (re.compile(r"^#{2,6}\s+v\d+\.\d+\s*(\([^)]+\)|\s+\(|\s+→)", re.IGNORECASE | re.MULTILINE), "cabecalho_versionado"),
+    # cabeçalho "o que mudou nesta versão" que o fixer ia empilhando a cada edição
+    (re.compile(r"^#{1,6}\s+.*\b(mudan[çc]as?|altera[çc][õo]es|atualiza[çc][õo]es|ajustes|melhorias|revis[ãa]o)\b.*\b(v\d|vers[ãa]o|nesta|desta|aplicad|realizad|recent)", re.IGNORECASE | re.MULTILINE), "mudancas_versao"),
+    (re.compile(r"^#{1,6}\s+.*\bo\s+que\s+mudou\b", re.IGNORECASE | re.MULTILINE), "o_que_mudou"),
+    (re.compile(r"^#{1,6}\s+.*resumo\s+d[aeo]s?\s+(altera|mudan|corre|ajust)", re.IGNORECASE | re.MULTILINE), "resumo_alteracoes"),
 ]
 
 FORBIDDEN_HEADER_METADATA = [
@@ -617,18 +627,75 @@ def check_forbidden_meta_sections(content: str) -> list[dict]:
                 continue
             line_num = content[:m.start()].count("\n") + 1
             issues.append({"kind": kind, "line": line_num,
-                           "severity": "warn",
+                           "severity": "block",
                            "snippet": m.group(0).strip()[:120]})
-    head = "\n".join(content.split("\n")[:10])
+    head = "\n".join(content.split("\n")[:25])
     for pattern, kind in FORBIDDEN_HEADER_METADATA:
         for m in pattern.finditer(head):
             if is_editor_note_line(_line_containing(head, m.start())):
                 continue
             line_num = head[:m.start()].count("\n") + 1
             issues.append({"kind": kind, "line": line_num,
-                           "severity": "warn",
+                           "severity": "block",
                            "snippet": m.group(0).strip()[:120]})
             break
+    return issues
+
+
+# ----------------------------------------------------------------------
+# Legibilidade (Regra 15): o prompt é lido pelo LLM a cada turno e editado
+# por qualquer IA depois. Decoração e cabeçalho inchado atrapalham os dois.
+# ----------------------------------------------------------------------
+
+DECORATION_LINE_RE = re.compile(r"^\s*([=#*_])\1{4,}\s*$")
+AVISOS_MARKER_LINE_RE = re.compile(r"^\s*=+\s*(IN[ÍI]CIO|FIM)\s+DOS\s+AVISOS\s*=+\s*$", re.IGNORECASE)
+DEEP_HEADING_RE = re.compile(r"^#{4,}\s+\S")
+HEADING_RE = re.compile(r"^#{1,3}\s+\S")
+HEADER_MAX_LINES = 20
+
+
+def check_readability(content: str, json_blocks: list[dict]) -> list[dict]:
+    covered = set()
+    for b in json_blocks:
+        covered.update(range(b["start_line"], b["end_line"] + 1))
+    lines = content.split("\n")
+    issues: list[dict] = []
+    decor = [i + 1 for i, l in enumerate(lines)
+             if (i + 1) not in covered and DECORATION_LINE_RE.match(l) and not AVISOS_MARKER_LINE_RE.match(l)]
+    if decor:
+        issues.append({
+            "kind": "decoracao",
+            "severity": "block",
+            "lines": decor[:20],
+            "count": len(decor),
+            "problem": (f"{len(decor)} linha(s) só de decoração (`=====`, `#####`, `*****`). "
+                        "Separe seções com um cabeçalho `##` ou uma linha em branco; "
+                        "`---` sozinho é aceito. Os únicos `===` permitidos são os "
+                        "marcadores de AVISOS ATIVOS."),
+        })
+    deep = [i + 1 for i, l in enumerate(lines) if (i + 1) not in covered and DEEP_HEADING_RE.match(l)]
+    if deep:
+        issues.append({
+            "kind": "cabecalho_profundo",
+            "severity": "warn",
+            "lines": deep[:20],
+            "count": len(deep),
+            "problem": (f"{len(deep)} cabeçalho(s) com 4+ `#`. Prompt legível usa no máximo "
+                        "3 níveis (`#`, `##`, `###`); mais fundo que isso vira árvore que a "
+                        "IA não acompanha."),
+        })
+    first_section = next((i for i, l in enumerate(lines) if i > 0 and HEADING_RE.match(l) and l.startswith("##")), None)
+    if first_section is not None:
+        header = [l for l in lines[:first_section] if l.strip() and not is_editor_note_line(l)]
+        if len(header) > HEADER_MAX_LINES:
+            issues.append({
+                "kind": "cabecalho_longo",
+                "severity": "warn",
+                "count": len(header),
+                "problem": (f"{len(header)} linhas antes da primeira seção `##`. Cabeçalho de "
+                            "prompt é 1 título + identidade; histórico, versão, data e "
+                            "justificativa vão no nome do arquivo e no relatório."),
+            })
     return issues
 
 
@@ -1418,6 +1485,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
             "generic_placeholders_count": 0,
             "style_lints_count": 0,
             "forbidden_meta_sections_count": 0,
+            "legibilidade_count": 0,
             "missing_sections_count": 0,
             "negative_examples_skipped": 0,
             # roteamento / handoff canônico (campos_canonicos.md §2 e §3)
@@ -1440,6 +1508,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
         "advisory_actions_in_prose": [],
         "missing_sections": [],
         "forbidden_meta_sections": [],
+        "legibilidade": [],
         "avisos_ativos": [],
         "avisos_ativos_presente": False,
         "nota_editor_longa": [],
@@ -1538,6 +1607,12 @@ def analyze(content: str, mode: str = "creator") -> dict:
     findings["summary"]["forbidden_meta_sections_count"] = len(forbidden_meta)
     for fm in forbidden_meta:
         bump(fm.get("severity", "warn"))
+
+    legib = check_readability(content, valid_blocks)
+    findings["legibilidade"] = legib
+    findings["summary"]["legibilidade_count"] = len(legib)
+    for lg in legib:
+        bump(lg.get("severity", "warn"))
 
     avisos = [] if is_router_prompt(content, valid_blocks) else check_avisos_ativos(content)
     findings["avisos_ativos"] = avisos

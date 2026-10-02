@@ -715,6 +715,50 @@ def test_skeleton_e_template_passam_na_estrutura():
         assert not bad, (name, bad)
 
 
+# ---- Legibilidade (Regra 15): meta-doc e decoração agora BLOCK ---------------
+
+def _legib(f):
+    return {e["kind"]: e["severity"] for e in f["legibilidade"]}
+
+
+def test_meta_doc_header_bloqueia():
+    f = ap.analyze("# Agente\n\n## Mudanças nesta versão (v2.3)\n- ajustado X\n\n## Changelog\n")
+    kinds = {m["kind"]: m["severity"] for m in f["forbidden_meta_sections"]}
+    assert kinds.get("mudancas_versao") == "block"
+    assert kinds.get("changelog") == "block"
+
+
+def test_o_que_mudou_bloqueia():
+    f = ap.analyze("# Agente\n\n### O que mudou\n- x\n")
+    assert any(m["kind"] == "o_que_mudou" and m["severity"] == "block" for m in f["forbidden_meta_sections"])
+
+
+def test_metadata_versao_no_cabecalho_bloqueia():
+    f = ap.analyze("# Agente\n" + "linha\n" * 15 + "**Versão:** v3.0 | **Data:** out/2026\n")
+    assert any(m["kind"] == "versao_metadata" and m["severity"] == "block" for m in f["forbidden_meta_sections"])
+
+
+def test_decoracao_bloqueia_mas_marcador_de_avisos_nao():
+    f = ap.analyze("# Agente\n==========\n## A\n######\n=== INÍCIO DOS AVISOS ===\n(nenhum)\n=== FIM DOS AVISOS ===\n---\n")
+    lg = _legib(f)
+    assert lg.get("decoracao") == "block"
+    assert [e for e in f["legibilidade"] if e["kind"] == "decoracao"][0]["count"] == 2
+
+
+def test_cabecalho_profundo_warna():
+    assert _legib(ap.analyze("# A\n## B\n#### C\n")).get("cabecalho_profundo") == "warn"
+
+
+def test_cabecalho_longo_warna():
+    f = ap.analyze("# Agente\n" + "linha de texto\n" * 25 + "## Identidade\n")
+    assert _legib(f).get("cabecalho_longo") == "warn"
+
+
+def test_prompt_limpo_sem_legibilidade():
+    f = ap.analyze("# Agente\n\n## Identidade\nVocê é a Ana.\n\n---\n\n## Regras\n### Tom\n")
+    assert f["legibilidade"] == []
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
