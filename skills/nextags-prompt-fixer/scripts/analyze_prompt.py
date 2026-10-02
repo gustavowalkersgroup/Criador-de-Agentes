@@ -16,6 +16,15 @@ Checks de roteamento/handoff canônico (references/campos_canonicos.md):
   warn  — avisos_ativos (bloco 📣 AVISOS ATIVOS ausente ou sem marcadores)
   warn  — nota_editor_longa (`> 🔧 NOTA PARA EDITORES:` acima de 220 chars)
 
+Checks estruturais (regras_absolutas.md §14 e §22 — o que o creator SEMPRE gera):
+  block — avisos_ativos_ausente / avisos_ativos_sem_marcadores
+  block — dados_conversa_ausente (bloco `## DADOS DESTA CONVERSA`)
+  block — first_name_sem_regra ({{first_name}} usado sem a regra de Guest/vazio)
+  block — saudacao_por_username ({{ig_user_name}}/{{page_user_name}} como vocativo)
+  block — cufs_de_canal (canal declarado sem o CUF do canal, ou CUF de outro canal)
+  warn  — canal_nao_declarado (sem linha `Canal:` no bloco de dados)
+  (Roteador/Revalidador — saída de 1 palavra, sem JSON — ficam de fora, Regra 23.)
+
 Checks OctoberCut (regras_absolutas.md §28 — Meta cobra cada mensagem):
   warn  — octobercut_bolhas (exemplo JSON com typing `4` ou bolhas fundíveis)
   warn  — octobercut_instrucao (prosa manda dividir resposta / perguntar nome…)
@@ -655,13 +664,14 @@ AVISOS_MARKERS_RE = re.compile(
 
 
 def check_avisos_ativos(content: str) -> list[dict]:
-    """Bloco AVISOS ATIVOS ausente → WARN (o creator é obrigado a gerar).
-    Presente sem os marcadores `=== INÍCIO/FIM DOS AVISOS ===` → WARN separado:
-    sem delimitador o cliente edita no lugar errado."""
+    """Bloco AVISOS ATIVOS ausente → BLOCK (o creator é obrigado a gerar; era warn
+    e os prompts saíam sem ele). Presente sem os marcadores
+    `=== INÍCIO/FIM DOS AVISOS ===` → BLOCK separado: sem delimitador o cliente
+    edita no lugar errado."""
     if not AVISOS_ATIVOS_RE.search(content):
         return [{
             "kind": "avisos_ativos_ausente",
-            "severity": "warn",
+            "severity": "block",
             "problem": ("bloco `📣 AVISOS ATIVOS` ausente. É obrigatório em todo prompt "
                         "gerado (mesmo vazio): é o espaço que o cliente edita à mão para "
                         "promoção/feriado/horário. Formato em campos_canonicos.md §6.1."),
@@ -669,7 +679,7 @@ def check_avisos_ativos(content: str) -> list[dict]:
     if not AVISOS_MARKERS_RE.search(content):
         return [{
             "kind": "avisos_ativos_sem_marcadores",
-            "severity": "warn",
+            "severity": "block",
             "problem": ("bloco AVISOS ATIVOS sem os marcadores `=== INÍCIO DOS AVISOS ===` "
                         "/ `=== FIM DOS AVISOS ===`. Sem delimitador explícito o cliente "
                         "edita fora do bloco e mexe em regra do prompt."),
@@ -934,6 +944,172 @@ def check_send_flow_action_order(parsed) -> list[dict]:
                                 "por último."),
                 })
                 break
+    return issues
+
+
+# ----------------------------------------------------------------------
+# Blocos estruturais obrigatórios (regras_absolutas.md §14 e §22)
+# ----------------------------------------------------------------------
+
+ROUTER_PROMPT_RE = re.compile(
+    r"(apenas|somente|exatamente|s[óo])\s+(uma|1)\s+palavra|\bone\s+word\b|"
+    r"responda\s+(apenas|somente|s[óo])\s+com\s+(uma|1)\s+(das\s+)?palavras?",
+    re.IGNORECASE)
+DADOS_CONVERSA_RE = re.compile(r"DADOS\s+DESTA\s+CONVERSA", re.IGNORECASE)
+FIRST_NAME_RE = re.compile(r"\{\{\s*first_name\s*\}\}")
+FIRST_NAME_RULE_RE = re.compile(
+    r"first_name[^\n]{0,160}(guest|vazi[oa])|(guest|vazi[oa])[^\n]{0,160}first_name|"
+    r"sauda[çc][ãa]o\s+neutra", re.IGNORECASE)
+USERNAME_CUF_RE = re.compile(r"\{\{\s*(ig_user_name|page_user_name|username)\s*\}\}")
+GREETING_BEFORE_USERNAME_RE = re.compile(
+    r"\b(oi|ol[áa]|bem[- ]vind[oa]|e a[íi])\b[^\n{]{0,30}\{\{\s*(ig_user_name|page_user_name|username)\s*\}\}",
+    re.IGNORECASE)
+CANAL_LINE_RE = re.compile(r"^\s*(?:[-*>]\s*)?canal\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+
+# CUF que precisa estar escrito no prompt para cada canal declarado, e CUFs de
+# OUTRO canal que aparecem vazios/literais nele (cufs_nextags.md, "Instagram" /
+# "Facebook Messenger"). Chaves = canal normalizado.
+CHANNEL_CUFS = {
+    "instagram": {
+        "required": ["ig_user_name"],
+        "surface": ["last_commented_post_text", "last_story_id", "last_fb_comment", "last_post_id"],
+        "forbidden": ["total_tagged", "total_new_tagged", "page_user_name", "fb_chat_link"],
+    },
+    "messenger": {
+        "required": ["page_user_name"],
+        "surface": ["last_commented_post_text", "last_fb_comment", "last_ad", "last_post_id"],
+        "forbidden": ["ig_user_name", "ig_followers", "ig_verified", "last_story_id"],
+    },
+    "whatsapp": {
+        "required": ["phone"],
+        "surface": [],
+        "forbidden": ["ig_user_name", "page_user_name", "total_tagged", "total_new_tagged",
+                      "last_story_id", "fb_chat_link"],
+    },
+    "webchat": {"required": [], "surface": [], "forbidden": ["ig_user_name", "page_user_name"]},
+}
+CHANNEL_ALIASES = [
+    ("instagram", r"instagram|\big\b|direct"),
+    ("messenger", r"messenger|facebook|\bfb\b"),
+    ("whatsapp", r"whatsapp|\bwa\b|zap"),
+    ("webchat", r"webchat|site|web\s*chat|chat\s+do\s+site"),
+]
+
+
+def is_router_prompt(content: str, json_blocks: list[dict]) -> bool:
+    """Roteador/Revalidador (Regra 23): saída de 1 palavra, sem JSON. Esses
+    prompts não levam AVISOS ATIVOS, DADOS DESTA CONVERSA nem saudação."""
+    return not json_blocks and bool(ROUTER_PROMPT_RE.search(content))
+
+
+def declared_channels(content: str) -> list[str]:
+    """Canais declarados numa linha `Canal: ...` (bloco DADOS DESTA CONVERSA)."""
+    found: list[str] = []
+    for m in CANAL_LINE_RE.finditer(content):
+        value = m.group(1)
+        if "<" in value:  # placeholder do template (`Canal: <WhatsApp | ...>`) não declara nada
+            continue
+        for name, rx in CHANNEL_ALIASES:
+            if re.search(rx, value, re.IGNORECASE) and name not in found:
+                found.append(name)
+    return found
+
+
+def _cuf_present(content: str, cuf: str) -> bool:
+    return re.search(r"\{\{\s*" + re.escape(cuf) + r"\s*\}\}", content) is not None
+
+
+def check_structural_blocks(content: str, json_blocks: list[dict]) -> list[dict]:
+    """Blocos que todo prompt de agente gerado precisa ter (Regras 14 e 22).
+    Eram só documentação: os prompts saíam sem eles. Agora é block."""
+    if is_router_prompt(content, json_blocks):
+        return []
+    issues: list[dict] = []
+    if not DADOS_CONVERSA_RE.search(content):
+        issues.append({
+            "kind": "dados_conversa_ausente",
+            "severity": "block",
+            "problem": ("bloco `## DADOS DESTA CONVERSA` ausente. Sem ele a IA não enxerga "
+                        "{{first_name}} nem os CUFs do canal (a plataforma só interpola o que "
+                        "está escrito no prompt). Copiar a variante do canal em "
+                        "prompt_skeleton.md §1.7."),
+        })
+    if FIRST_NAME_RE.search(content) and not FIRST_NAME_RULE_RE.search(content):
+        issues.append({
+            "kind": "first_name_sem_regra",
+            "severity": "block",
+            "problem": ("{{first_name}} é usado mas falta a regra do nome (vazio/\"Guest\"/não "
+                        "parece nome → saudação neutra). Sem ela o cliente recebe \"Oi, Guest!\" "
+                        "ou \"Oi, !\". Ver prompt_skeleton.md §1.7.1."),
+        })
+    greet = GREETING_BEFORE_USERNAME_RE.search(content)
+    in_json_text = False
+    for b in json_blocks:
+        parsed = b.get("_parsed")
+        if parsed is None:
+            continue
+        for path, node in walk_json(parsed):
+            if isinstance(node, dict):
+                for field in ("text", "title", "subtitle"):
+                    val = node.get(field)
+                    if isinstance(val, str) and USERNAME_CUF_RE.search(val):
+                        in_json_text = True
+    if greet or in_json_text:
+        issues.append({
+            "kind": "saudacao_por_username",
+            "severity": "block",
+            "problem": ("{{ig_user_name}}/{{page_user_name}}/{{username}} usado como vocativo "
+                        "ou dentro de texto ao cliente. Username é identificador (\"Oi, "
+                        "maria_silva_123!\") e texto livre do próprio usuário (vetor de injeção). "
+                        "Saudar por {{first_name}} validado; username só em uso interno."),
+        })
+    channels = declared_channels(content)
+    if not channels:
+        issues.append({
+            "kind": "canal_nao_declarado",
+            "severity": "warn",
+            "problem": ("sem linha `Canal: WhatsApp|Instagram|Messenger|Webchat` no bloco DADOS "
+                        "DESTA CONVERSA. Sem o canal declarado não dá para conferir se os CUFs "
+                        "certos foram incluídos (cufs_nextags.md)."),
+        })
+        return issues
+    for ch in channels:
+        spec = CHANNEL_CUFS[ch]
+        missing = [c for c in spec["required"] if not _cuf_present(content, c)]
+        if missing:
+            issues.append({
+                "kind": "cufs_de_canal",
+                "severity": "block",
+                "channel": ch,
+                "problem": (f"canal {ch} declarado sem o CUF obrigatório do canal: "
+                            + ", ".join("{{" + c + "}}" for c in missing)
+                            + ". Ver cufs_nextags.md e prompt_skeleton.md §1.7."),
+            })
+        if spec["surface"] and not any(_cuf_present(content, c) for c in spec["surface"]):
+            issues.append({
+                "kind": "cufs_de_canal",
+                "severity": "warn",
+                "channel": ch,
+                "problem": (f"canal {ch} sem nenhum CUF de superfície ("
+                            + ", ".join("{{" + c + "}}" for c in spec["surface"])
+                            + "): a IA não sabe de que post/story/anúncio o cliente veio."),
+            })
+    # CUF de outro canal: só é erro se o canal dele NÃO foi declarado também.
+    for ch in channels:
+        for c in CHANNEL_CUFS[ch]["forbidden"]:
+            if not _cuf_present(content, c):
+                continue
+            owner = next((o for o, sp in CHANNEL_CUFS.items() if c in sp["required"] + sp["surface"]), None)
+            if owner and owner in channels:
+                continue
+            issues.append({
+                "kind": "cufs_de_canal",
+                "severity": "block",
+                "channel": ch,
+                "problem": (f"{{{{{c}}}}} não existe no canal {ch}: chega vazio ou literal "
+                            "para o cliente. Remover ou declarar o canal certo."),
+            })
+            break
     return issues
 
 
@@ -1251,6 +1427,8 @@ def analyze(content: str, mode: str = "creator") -> dict:
             "trio_handoff_incompleto_count": 0,
             "send_flow_antes_de_set_field_count": 0,
             "promessa_sem_entrega_count": 0,
+            # blocos estruturais (regras_absolutas.md §14 e §22)
+            "estrutura_count": 0,
             # OctoberCut (regras_absolutas.md §28)
             "octobercut_bolhas_count": 0,
             "octobercut_instrucao_count": 0,
@@ -1266,6 +1444,9 @@ def analyze(content: str, mode: str = "creator") -> dict:
         "avisos_ativos_presente": False,
         "nota_editor_longa": [],
         "octobercut_instrucao": [],
+        "estrutura": [],
+        "is_router_prompt": False,
+        "canais_declarados": [],
         "prompt_uses_actions": False,
         "json_only_instruction_present": False,
     }
@@ -1358,7 +1539,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
     for fm in forbidden_meta:
         bump(fm.get("severity", "warn"))
 
-    avisos = check_avisos_ativos(content)
+    avisos = [] if is_router_prompt(content, valid_blocks) else check_avisos_ativos(content)
     findings["avisos_ativos"] = avisos
     findings["avisos_ativos_presente"] = bool(AVISOS_ATIVOS_RE.search(content))
     findings["summary"]["avisos_ativos_missing_count"] = len(avisos)
@@ -1370,6 +1551,14 @@ def analyze(content: str, mode: str = "creator") -> dict:
     findings["summary"]["nota_editor_longa_count"] = len(notas_longas)
     for nt in notas_longas:
         bump(nt.get("severity", "warn"))
+
+    findings["is_router_prompt"] = is_router_prompt(content, valid_blocks)
+    findings["canais_declarados"] = declared_channels(content)
+    estrutura = check_structural_blocks(content, valid_blocks)
+    findings["estrutura"] = estrutura
+    findings["summary"]["estrutura_count"] = len(estrutura)
+    for es in estrutura:
+        bump(es.get("severity", "block"))
 
     octo = check_octobercut_prose(content, all_blocks)
     findings["octobercut_instrucao"] = octo

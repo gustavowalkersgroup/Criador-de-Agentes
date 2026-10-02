@@ -76,8 +76,12 @@
       anti-alucinação, não-revelar-IA, JSON obrigatório, transferência via
       `send_flow`, texto como padrão, manter-se no escopo.
 - [x] Menções a ações proibidas em prosa fora de blocos JSON.
-- [x] Bloco `📣 AVISOS ATIVOS` presente no formato canônico
-      (`avisos_ativos_presente`).
+- [x] Bloco `📣 AVISOS ATIVOS` presente no formato canônico, com marcadores
+      (`avisos_ativos_ausente` / `avisos_ativos_sem_marcadores` — bloqueantes).
+- [x] Bloco `## DADOS DESTA CONVERSA` com linha `Canal:` e CUFs do canal
+      (`dados_conversa_ausente`, `cufs_de_canal` — bloqueantes; `canal_nao_declarado` — aviso).
+- [x] Regra do nome presente onde `{{first_name}}` é usado; username nunca como
+      vocativo (`first_name_sem_regra`, `saudacao_por_username` — bloqueantes).
 - [x] Notas `> 🔧 NOTA PARA EDITORES:` dentro do limite de 1 linha
       (`nota_editor_longa`).
 - [x] A IA nunca grava `setor_agente`/`tipo_setor`

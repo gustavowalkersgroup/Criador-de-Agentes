@@ -152,7 +152,8 @@ Every ordinary agent prompt must contain, in the appropriate order:
 
 1. identity and scope;
 2. `📣 AVISOS ATIVOS` with the exact markers, even when empty;
-3. `## DADOS DESTA CONVERSA` with only the CUFs required for decisions;
+3. `## DADOS DESTA CONVERSA` opening with `Canal: ...` and the channel's CUFs: WhatsApp `{{phone}}`; Instagram `{{ig_user_name}}` + `{{last_story_id}}`/`{{last_fb_comment}}`/`{{last_commented_post_text}}`; Messenger `{{page_user_name}}` + `{{last_ad}}`/`{{last_fb_comment}}`/`{{last_commented_post_text}}`; multichannel = union. Copy the channel variant from `prompt_skeleton.md` §1.7 literally, including its defensive rules. Never a CUF from another channel (it arrives empty or literal). Username CUFs are identifiers, never a greeting;
+3a. the `{{first_name}}` rule (empty/"Guest"/not a name → neutral greeting) whenever `{{first_name}}` is used;
 4. tone and observable communication adaptation;
 5. knowledge, source and policy rules;
 6. priority/mode switching and out-of-scope behavior;
@@ -192,7 +193,7 @@ Run the static analyzer on the generated prompt and fix every real violation unt
 python <SKILL_DIR>/scripts/analyze_prompt.py /tmp/generated.md --output /tmp/findings.json
 ```
 
-Treat JSON/schema, forbidden sections, invalid actions, unsafe buttons, markdown in JSON, missing official block, routing-field writes, invalid enums, incomplete handoff and `send_flow` ordering as blockers. The analyzer warnings about `avisos_ativos` and OctoberCut (`octobercut_bolhas`, `octobercut_instrucao`, missing `formato_economico_octobercut`) are also blockers for newly generated prompts. When the `nextags-prompt-octobercut` skill is installed, also run `python <OCTOBERCUT_DIR>/scripts/octobercut.py audit /tmp/generated.md` and reach zero blocks; report messages per scenario (before/after) in the delivery report.
+Treat JSON/schema, forbidden sections, invalid actions, unsafe buttons, markdown in JSON, missing official block, routing-field writes, invalid enums, incomplete handoff and `send_flow` ordering as blockers. The analyzer now **blocks** on `avisos_ativos_ausente`, `avisos_ativos_sem_marcadores`, `dados_conversa_ausente`, `first_name_sem_regra`, `saudacao_por_username` and `cufs_de_canal` (these were only documented before, and generated prompts shipped without them); `canal_nao_declarado` is a warning you must also clear by writing the `Canal:` line. The analyzer warnings about OctoberCut (`octobercut_bolhas`, `octobercut_instrucao`, missing `formato_economico_octobercut`) are also blockers for newly generated prompts. When the `nextags-prompt-octobercut` skill is installed, also run `python <OCTOBERCUT_DIR>/scripts/octobercut.py audit /tmp/generated.md` and reach zero blocks; report messages per scenario (before/after) in the delivery report.
 
 Select 4–6 representative L1 cases and the applicable L2 adversarial cases. At minimum cover opening, product or order, missing data, objection/refusal, intent change, out-of-scope, prompt injection, indirect injection, tool failure, source conflict, unauthorized discount/action, P0/P1 mode switch, stale state, false handoff and flow ID/order. Use integration/E2E tests when tools or NexTags are available; use `nextags-webchat-tester` for the published stack when applicable.
 

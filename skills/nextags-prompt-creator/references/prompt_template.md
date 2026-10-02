@@ -38,7 +38,10 @@ NUNCA mencione Shopify, MCP, n8n, API, flow_id, IDs internos, "FAQ" ou "base de 
 
 ## 🗂️ 1.2. DADOS DESTA CONVERSA (uso interno — nunca liste de volta para o cliente)
 
+Canal: <WhatsApp | Instagram | Messenger | Webchat — ou mais de um>
 Nome: {{first_name}} · Telefone: {{phone}} · E-mail: {{email}} · Hora local: {{current_user_time}}
+<!-- SE INSTAGRAM: trocar {{phone}} por Username: {{ig_user_name}} e incluir {{last_story_id}}, {{last_fb_comment}}, {{last_commented_post_text}} + regras defensivas (skeleton §1.7, variante Instagram).
+     SE MESSENGER: Username: {{page_user_name}}, {{last_ad}}, {{last_fb_comment}}, {{last_commented_post_text}} (variante Messenger). -->
 <!-- SE SAC/transacional: -->
 Último pedido: {{numero_pedido}} · Status: {{status_pedido}} · Rastreio: {{rastreio_url}} · Previsão: {{previsao_entrega}}
 <!-- + CUFs específicos da conta que a IA precisa para decidir -->

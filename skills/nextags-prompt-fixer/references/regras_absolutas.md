@@ -613,6 +613,20 @@ Abertura sem nome: {"messages":[{"message":{"text":"Oi! Tudo bem? Como posso te 
    fallback do item 5 (vazio/"Guest"/não-nome → saudação neutra, sem pedir o nome).
    - `{{phone}}` em SAC: quando preenchido, pode consultar pedidos na tool sem pedir ao cliente. Se o prompt de SAC tem tool de pedidos mas não usa `{{phone}}`, sugerir como melhoria (pendência opcional).
 
+   **Enforcement (1.9.1):** o analisador bloqueia `first_name_sem_regra`
+   (`{{first_name}}` usado sem a regra de vazio/"Guest") e `saudacao_por_username`
+   (username em saudação ou em texto ao cliente).
+
+8. **CUFs do canal declarado (bloqueante):** o bloco `## DADOS DESTA CONVERSA`
+   abre com `Canal: WhatsApp | Instagram | Messenger | Webchat` (ou mais de um).
+   Instagram exige `{{ig_user_name}}` e pelo menos um de `{{last_story_id}}`,
+   `{{last_fb_comment}}`, `{{last_commented_post_text}}`; Messenger exige
+   `{{page_user_name}}` e um de `{{last_ad}}`, `{{last_fb_comment}}`,
+   `{{last_commented_post_text}}`; WhatsApp exige `{{phone}}`. CUF de outro canal
+   (`{{total_tagged}}` no Instagram, `{{ig_user_name}}` no WhatsApp) chega vazio ou
+   literal e é bloqueado (`cufs_de_canal`). Sem a linha `Canal:` o analisador
+   avisa (`canal_nao_declarado`). Variantes prontas: `prompt_skeleton.md` §1.7.
+
 7. **Prompt manda "usar dados do cliente" sem `{{campo}}` escrito no texto
    (padrão de fix):** se o prompt tem instrução tipo "use os dados do cliente
    pra personalizar" ou "considere o histórico do cliente" mas nenhum
@@ -1070,7 +1084,11 @@ precisa de correção.
 tem, no topo, um bloco `📣 AVISOS ATIVOS` no formato canônico, e pode conter
 notas curtas `> 🔧 NOTA PARA EDITORES:` nos pontos de edição futura provável.
 Inserir/normalizar esse bloco é uma correção **estrutural** — cria um espaço
-editável, não muda nenhum comportamento do agente.
+editável, não muda nenhum comportamento do agente. **Bloqueante** desde a 1.9.1
+(`avisos_ativos_ausente`, `avisos_ativos_sem_marcadores`): era só aviso e os
+prompts saíam sem o bloco. O mesmo vale para `## DADOS DESTA CONVERSA`
+(`dados_conversa_ausente`), que abre com a linha `Canal:` e os CUFs do canal
+(Regra 14, itens 5-6 e 8).
 
 ### Formato canônico (`references/campos_canonicos.md` §6.1)
 
