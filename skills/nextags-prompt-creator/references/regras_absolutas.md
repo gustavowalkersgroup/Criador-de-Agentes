@@ -325,6 +325,29 @@ Se uma correção exigiria tocar em qualquer uma dessas coisas, ela vira
 
 ---
 
+## 15. Meta-documentação e legibilidade do prompt
+
+**Regra:** o prompt NUNCA contém auditoria, changelog, "mudanças nesta versão", pendências, TODO, `**Versão:**`/`**Data:**` nem linhas de decoração (`=====`, `#####`). Tudo isso vai no relatório e no nome do arquivo.
+
+**Bloqueante desde a 1.9.2.** Caso recorrente: a cada edição o fixer empilhava no
+topo do prompt um cabeçalho "Mudanças nesta versão / O que mudou / Correções da
+v2.3", cada vez maior. A versão vai **no nome do arquivo** (`-v1.1.md`, `-v1.2.md`)
+e no relatório; dentro do prompt, nada. O analisador bloqueia os cabeçalhos de
+meta-doc (`mudancas_versao`, `o_que_mudou`, `resumo_alteracoes`, `changelog`,
+`auditoria`…), o metadado expandido (`**Versão:**`, `**Data:**`) e linhas só de
+decoração (`=====`, `#####`: `decoracao`); avisa em cabeçalho de 4+ `#`
+(`cabecalho_profundo`) e em mais de 20 linhas antes da primeira seção
+(`cabecalho_longo`).
+
+**Legibilidade é requisito, não estilo:** o prompt é lido pela IA a cada turno e
+depois editado por qualquer IA (Claude, Codex) ou pessoa. Estrutura que funciona:
+1 título, seções `##` com nome do assunto, `###` só quando precisa, prosa curta,
+listas simples, exemplos JSON crus. Nenhuma regra entra sem mudar comportamento;
+corrigir um prompt é **trocar** a regra errada pela certa, não acrescentar mais
+uma por cima.
+
+---
+
 ## 21. Campos canônicos de handoff (motivo_transferencia · prioridade_pipeline · resumo_pipeline)
 
 **Regra:** todo agente que transfere para humano gera, no MESMO JSON, antes do

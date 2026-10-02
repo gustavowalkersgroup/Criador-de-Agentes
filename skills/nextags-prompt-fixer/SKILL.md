@@ -161,9 +161,17 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `trio_handoff_incompleto` | `send_flow` de transferência sem os 3 `set_field_value` (motivo/prioridade/resumo) antes: inserir os que faltam. Ver Regra 21 (campo stale). |
 | `send_flow_antes_de_set_field` | Reordenar: `set_field_value`(s) sempre antes do `send_flow` no mesmo array. Ver Regra 16. |
 | `octobercut_bolhas` / `octobercut_instrucao` / seção `formato_economico_octobercut` ausente | Cobrança da Meta por mensagem (desde 01/10/2026). Fundir textos separados por typing `4` num `text` só (`\n\n`); levar a frase vizinha para dentro do `text` do button template; vitrine = imagem + 1 botão; remover mensagem de espera e bolha de despedida; inserir o bloco OctoberCut após o bloco oficial; neutralizar instruções antigas ("3 blocos separados por typing 4", "pergunte o nome UMA vez", "uma pergunta por vez"). Preservar tom e regras da marca. `text` de botão >1024 caracteres é **block** (WhatsApp rejeita). Ferramenta: `nextags-prompt-octobercut` (`octobercut.py merge`). Ver Regra 28. |
+| Meta-doc no prompt: `mudancas_versao`, `o_que_mudou`, `changelog`, `auditoria`, `versao_metadata`… (**block**) e `decoracao` (**block**), `cabecalho_profundo` / `cabecalho_longo` (warn) | Remover a seção inteira do prompt e levar o conteúdo pro relatório; versão só no nome do arquivo. Trocar linhas `=====`/`#####` por cabeçalho `##` ou linha em branco; achatar cabeçalhos para no máximo `###`. Ver Regra 15. |
 | `promessa_sem_entrega` | Mensagem promete enviar algo e o JSON não entrega (sem `send_flow`, sem attachment): acrescentar a action que entrega ou reescrever a mensagem para não prometer. Ver Regra 27. |
 
 ### 4. Versionamento do arquivo corrigido
+
+A versão vive **só no nome do arquivo e no relatório**. Nunca escreva dentro do
+prompt um cabeçalho de mudanças, "o que mudou", "v2.3 → v2.4", `**Versão:**`,
+`**Data:**` ou tabela antes/depois: o analisador bloqueia (Regra 15) e, a cada
+edição, isso virava um relatório crescente no topo do prompt. Corrigir é trocar
+a regra errada pela certa no lugar onde ela está, mantendo a estrutura e o
+tamanho do prompt; não é acrescentar seções, `#####` nem `=====`.
 
 Use o esquema do meta-prompt do usuário:
 
