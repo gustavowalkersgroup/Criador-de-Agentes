@@ -87,6 +87,7 @@ A página `/webchat/` é um app Vue que fala por **WebSocket**. Sequência:
 
 ## Como interpretar o resultado
 
+- `[OctoberCut] N bolha(s)` = quantas mensagens o agente mandou no turno. Desde 01/10/2026 a Meta cobra **cada** mensagem de serviço: o esperado é **1 bolha** por resposta de texto e **2** por produto (imagem + card). `AVISO` = o prompt ainda quebra a resposta (typing `4`, mensagem de espera, frase do link fora do botão) → ajuste com a skill `nextags-prompt-octobercut`.
 - `BOT[text]` = mensagem de texto. `BOT[image]` = imagem (confira a URL real do backend, ex.: `acdn-us.mitiendanube.com/...`). `BOT[card]` = template/botão (texto + URL do botão).
 - **Card com imagem/preço/link reais do backend** = o MCP respondeu de verdade (não foi "decorado" do prompt).
 - **Saudação do agente errado** (ex.: SAC respondendo pergunta de venda) = problema de **roteamento** (config do NexTags, ex.: CUF `setor_agente` escrito pelo roteador, ou verificar se o contato anterior deixou `setor_agente` gravado — nesse caso rode o script de novo para resetar).

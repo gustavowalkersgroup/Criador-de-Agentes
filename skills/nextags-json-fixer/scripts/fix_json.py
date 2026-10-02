@@ -570,6 +570,46 @@ def process_one(raw_json: str, fixes: list[str], pending: list[str],
     return fixed
 
 
+def octobercut_warnings(fixed: dict) -> list[str]:
+    """Avisos de custo (OctoberCut): desde 01/10/2026 a Meta cobra cada
+    mensagem de serviço. Não altera o JSON — typing `4` e várias bolhas
+    continuam válidos no schema. Só conta e sugere fundir."""
+    msgs = fixed.get("messages") if isinstance(fixed, dict) else None
+    if not isinstance(msgs, list):
+        return []
+
+    def kind(m: Any) -> str:
+        if isinstance(m, int) and not isinstance(m, bool):
+            return "typing"
+        msg = m.get("message") if isinstance(m, dict) else None
+        if not isinstance(msg, dict):
+            return "other"
+        if set(msg) == {"text"}:
+            return "text"
+        att = msg.get("attachment")
+        if (isinstance(att, dict) and att.get("type") == "template"
+                and isinstance(att.get("payload"), dict)
+                and att["payload"].get("template_type") == "button"):
+            return "button"
+        return "other"
+
+    kinds = [kind(m) for m in msgs]
+    real = [k for k in kinds if k != "typing"]
+    out: list[str] = []
+    if "typing" in kinds:
+        out.append(f"{kinds.count('typing')} typing indicator(s): cada um cria bolha nova, "
+                   "cobrada pela Meta. Juntar o texto com \\n\\n num `text` só.")
+    if any(p in (("text", "text"), ("text", "button"), ("button", "text"))
+           for p in zip(real, real[1:])):
+        out.append("Texto vizinho de texto ou de button template pode ir na mesma "
+                   "mensagem (frase dentro do `text` do botão).")
+    if out:
+        out.insert(0, f"Resposta com {len(real)} mensagens cobradas. Para fundir: "
+                      "nextags-prompt-octobercut/scripts/octobercut.py merge "
+                      "(o conserto definitivo é no prompt).")
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("input", help="Arquivo de entrada (txt/json/md).")
@@ -601,6 +641,11 @@ def main() -> int:
         if result is not None:
             fixed_blocks.append(result)
 
+    octobercut: list[str] = []
+    for idx, blk in enumerate(fixed_blocks):
+        prefix = f"[bloco {idx + 1}] " if len(fixed_blocks) > 1 else ""
+        octobercut.extend(prefix + w for w in octobercut_warnings(blk))
+
     # Saída — se houver apenas 1 bloco, escreve direto; senão, array.
     if len(fixed_blocks) == 1:
         out_obj: Any = fixed_blocks[0]
@@ -619,10 +664,12 @@ def main() -> int:
             "syntax_repairs":       len(syntax_fixes),
             "semantic_fixes":       len(fixes),
             "pending_human_review": len(pending),
+            "octobercut_warnings":  len(octobercut),
         },
         "syntax_repairs":       syntax_fixes,
         "semantic_fixes":       fixes,
         "pending_human_review": pending,
+        "octobercut_warnings":  octobercut,
     }
     Path(args.report).write_text(
         json.dumps(findings, ensure_ascii=False, indent=2),

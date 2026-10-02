@@ -15,6 +15,7 @@ Use this skill as a **meta-skill**: it creates a deployable prompt and its opera
 4. **Ethical persuasion.** Use diagnosis, comparison, evidence and a clear next step. Never fabricate urgency, scarcity, authority, proof, consensus, fear or guilt, and never pressure after a clear refusal.
 5. **Minimality.** Add a rule only when it changes behavior, prevents a real failure, satisfies an operational requirement or enables a necessary decision.
 6. **No private chain of thought.** Record structured decisions, sources, tools, outcomes and policy results—not hidden reasoning.
+7. **OctoberCut — every message is billed.** Since 2026-10-01 Meta charges each service message. One answer = one message (paragraphs with `\n\n`, no typing `4` between texts), proactive opening, grouped questions (one round max before recommending), no asking the name just to ask, product = image + one button template, purchase sentence inside the button, no waiting or goodbye-only bubbles. Tone and brand rules stay the same. Details: skill `nextags-prompt-octobercut` and Rule 28 in `references/regras_absolutas.md`.
 
 For the consolidated rationale, conflict resolution, state model, action levels, security, sales library, observability and test ladder, read `references/arquitetura_suprema_v7.md`.
 
@@ -159,7 +160,7 @@ Every ordinary agent prompt must contain, in the appropriate order:
 8. sales/SAC modules selected for the archetype;
 9. canonical human handoff when applicable;
 10. anti-injection and anti-hallucination rules;
-11. official NexTags JSON block and valid output examples.
+11. official NexTags JSON block, the OctoberCut block (“FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)”, see `prompt_skeleton.md` §6) and valid one-message output examples.
 
 Do not place changelog, version history, TODOs, unresolved internal notes, implementation rationale, metrics or audit text in runtime. Those belong in the report. The only permitted editor note is short and operational, such as “troque somente o ID; mantenha o nome da chave”.
 
@@ -191,7 +192,7 @@ Run the static analyzer on the generated prompt and fix every real violation unt
 python <SKILL_DIR>/scripts/analyze_prompt.py /tmp/generated.md --output /tmp/findings.json
 ```
 
-Treat JSON/schema, forbidden sections, invalid actions, unsafe buttons, markdown in JSON, missing official block, routing-field writes, invalid enums, incomplete handoff and `send_flow` ordering as blockers. The analyzer warning about `avisos_ativos` is also a blocker for ordinary agents.
+Treat JSON/schema, forbidden sections, invalid actions, unsafe buttons, markdown in JSON, missing official block, routing-field writes, invalid enums, incomplete handoff and `send_flow` ordering as blockers. The analyzer warnings about `avisos_ativos` and OctoberCut (`octobercut_bolhas`, `octobercut_instrucao`, missing `formato_economico_octobercut`) are also blockers for newly generated prompts. When the `nextags-prompt-octobercut` skill is installed, also run `python <OCTOBERCUT_DIR>/scripts/octobercut.py audit /tmp/generated.md` and reach zero blocks; report messages per scenario (before/after) in the delivery report.
 
 Select 4–6 representative L1 cases and the applicable L2 adversarial cases. At minimum cover opening, product or order, missing data, objection/refusal, intent change, out-of-scope, prompt injection, indirect injection, tool failure, source conflict, unauthorized discount/action, P0/P1 mode switch, stale state, false handoff and flow ID/order. Use integration/E2E tests when tools or NexTags are available; use `nextags-webchat-tester` for the published stack when applicable.
 

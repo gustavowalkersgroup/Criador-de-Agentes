@@ -1,4 +1,5 @@
-# install.ps1 — instala as 6 skills NexTags no ~/.claude/skills/ no Windows.
+# install.ps1 — instala as 7 skills NexTags no ~/.claude/skills/ (Claude Code) no Windows e,
+# se o Codex estiver instalado (~/.codex) ou $env:INSTALL_CODEX = "1", também em ~/.codex/skills/.
 # Uso: irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 #      ou: .\install.ps1 (rodando localmente após clone)
 
@@ -8,8 +9,13 @@
 $ErrorActionPreference = "Continue"
 
 $RepoUrl = "https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester", "nextags-webhook-builder")
-$TargetDir = Join-Path $env:USERPROFILE ".claude\skills"
+$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester", "nextags-webhook-builder", "nextags-prompt-octobercut")
+$ClaudeDir = Join-Path $env:USERPROFILE ".claude\skills"
+$CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE ".codex" }
+$Targets = @($ClaudeDir)
+if ((Test-Path $CodexHome) -or ($env:INSTALL_CODEX -eq "1")) {
+    $Targets += (Join-Path $CodexHome "skills")
+}
 
 function Write-Status {
     param([string]$Symbol, [string]$Message, [string]$Color = "White")
@@ -18,7 +24,7 @@ function Write-Status {
 }
 
 Write-Host "╔════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║   NexTags Tools — Instalação de 6 Skills      ║" -ForegroundColor Green
+Write-Host "║   NexTags Tools — Instalação de 7 Skills      ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 
@@ -77,46 +83,47 @@ if (-not $PythonCmd) {
     Write-Status "✓" "Python OK ($PythonCmd)" "Green"
 }
 
-# 3. Cria pasta destino
-if (-not (Test-Path $TargetDir)) {
-    New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
-    Write-Status "✓" "Pasta criada: $TargetDir" "Green"
-}
-
-# 4. Copia cada skill
-Write-Host ""
-Write-Status "→" "Instalando skills em $TargetDir..." "Yellow"
+# 3/4. Copia cada skill para cada destino (Claude Code e, se houver, Codex)
 $InstalledCount = 0
 $FailedCount = 0
-foreach ($skill in $Skills) {
-    $skillSrc = Join-Path $SrcDir $skill
-    $skillDst = Join-Path $TargetDir $skill
-
-    if (-not (Test-Path $skillSrc)) {
-        Write-Status "✗" "Skill não encontrada no repo: $skill" "Red"
-        $FailedCount++
-        continue
+foreach ($TargetDir in $Targets) {
+    if (-not (Test-Path $TargetDir)) {
+        New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
+        Write-Status "✓" "Pasta criada: $TargetDir" "Green"
     }
+    # Backups ficam FORA da pasta de skills pra não aparecerem no agente
+    $backupDir = Join-Path (Split-Path $TargetDir -Parent) "skills-backup"
 
-    if (Test-Path $skillDst) {
-        # Move backups pra FORA de ~/.claude/skills/ pra não aparecerem no Claude Code
-        $backupDir = Join-Path $env:USERPROFILE ".claude\skills-backup"
-        if (-not (Test-Path $backupDir)) {
-            New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+    Write-Host ""
+    Write-Status "→" "Instalando skills em $TargetDir..." "Yellow"
+    foreach ($skill in $Skills) {
+        $skillSrc = Join-Path $SrcDir $skill
+        $skillDst = Join-Path $TargetDir $skill
+
+        if (-not (Test-Path $skillSrc)) {
+            Write-Status "✗" "Skill não encontrada no repo: $skill" "Red"
+            $FailedCount++
+            continue
         }
-        $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-        $backup = Join-Path $backupDir "$skill-$timestamp"
-        Write-Status "⚠" " Já existe: $skill — backup em ~/.claude/skills-backup/" "Yellow"
-        Move-Item $skillDst $backup -Force -ErrorAction SilentlyContinue
-    }
 
-    try {
-        Copy-Item $skillSrc $skillDst -Recurse -Force
-        Write-Status "✓" "Instalada: $skill" "Green"
-        $InstalledCount++
-    } catch {
-        Write-Status "✗" "Falha ao copiar $skill : $_" "Red"
-        $FailedCount++
+        if (Test-Path $skillDst) {
+            if (-not (Test-Path $backupDir)) {
+                New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+            }
+            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+            $backup = Join-Path $backupDir "$skill-$timestamp"
+            Write-Status "⚠" " Já existe: $skill — backup em $backupDir" "Yellow"
+            Move-Item $skillDst $backup -Force -ErrorAction SilentlyContinue
+        }
+
+        try {
+            Copy-Item $skillSrc $skillDst -Recurse -Force
+            Write-Status "✓" "Instalada: $skill" "Green"
+            $InstalledCount++
+        } catch {
+            Write-Status "✗" "Falha ao copiar $skill : $_" "Red"
+            $FailedCount++
+        }
     }
 }
 
@@ -137,7 +144,10 @@ if ($FailedCount -eq 0) {
 }
 
 Write-Host ""
-Write-Host "Skills instaladas em: $TargetDir"
+Write-Host "Skills instaladas em: $($Targets -join ', ')"
+if ($Targets.Count -eq 1) {
+    Write-Host "(Codex não detectado. Para instalar no Codex também: `$env:INSTALL_CODEX = '1' antes de rodar)"
+}
 Write-Host ""
 Write-Host "Como usar no Claude Code:"
 Write-Host "  /nextags-prompt-creator   # gerar prompt do zero"
@@ -146,8 +156,11 @@ Write-Host "  /nextags-json-fixer       # validar saída JSON do agente"
 Write-Host "  /nextags-mcp-builder      # construir MCP no n8n (atendimento sob demanda)"
 Write-Host "  /nextags-webhook-builder  # construir/auditar webhooks transacionais (disparo proativo)"
 Write-Host "  /nextags-webchat-tester   # testar o agente publicado no webchat"
+Write-Host "  /nextags-prompt-octobercut # agrupar respostas (cobrança Meta por mensagem)"
 Write-Host ""
-Write-Host "Backup das skills anteriores (se existirem): *.bak na mesma pasta."
+Write-Host "No Codex: `$nextags-prompt-octobercut (ou descreva a tarefa; a skill é escolhida pela descrição)"
+Write-Host ""
+Write-Host "Backup das skills anteriores (se existirem): pasta skills-backup ao lado de cada destino."
 
 if (-not $PythonCmd) {
     Write-Host ""

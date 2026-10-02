@@ -111,6 +111,7 @@ documenta o schema oficial completo com exemplos validados.
 | Só-`actions` / `send_flow` sem `messages` (`messages` ausente ou `[]`) com `actions` não-vazio | **VÁLIDO — dispara normal**; o fluxo assume a comunicação. `messages` é transição opcional, nunca obrigatória. NÃO inventar mensagem, NÃO marcar erro. |
 | Typing indicator string | Converter pra inteiro se for numérico (`"4"` → `4`); senão remover. |
 | Typing indicator fora do range | Clampar em [1, 30]. |
+| Resposta em várias bolhas (typing `4`, texto + texto, texto + botão) | **Válido no schema — não alterar.** Desde 01/10/2026 a Meta cobra cada mensagem, então o relatório traz `octobercut_warnings` com a contagem de bolhas e a sugestão de fundir (`nextags-prompt-octobercut`, `octobercut.py merge`). O conserto definitivo é no prompt. |
 | Markdown-PADRÃO em campos `text`/`title`/`subtitle` (`**bold**` duplo, `# H1`, `[txt](url)`, bullets `-`, cercas ` ``` `) | Remover marcação, preservar conteúdo. **WA-markup (`*negrito*` asterisco único, `_itálico_`, `~tachado~`) RENDERIZA → preservar, não remover.** |
 
 ## Idempotência

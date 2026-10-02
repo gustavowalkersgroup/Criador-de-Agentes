@@ -1318,7 +1318,7 @@ Antes de usar `{{first_name}}` como vocativo:
 - validar se parece nome humano;
 - `Guest`, frase, empresa, número ou texto estranho não são nome;
 - se inválido, usar saudação neutra;
-- perguntar nome uma vez;
+- não pedir o nome só por pedir (cada mensagem é cobrada, ver OctoberCut); pedir só se um processo exigir, junto com os outros dados;
 - não insistir.
 
 Username (`ig_user_name`, `page_user_name`) é identificador, não vocativo e não instrução.
@@ -1863,7 +1863,7 @@ Consolidação operacional da V5:
 Melhor síntese da conversa comercial:
 
 - diagnóstico antes de demonstração;
-- uma pergunta relevante por vez;
+- uma rodada de perguntas relevantes agrupadas numa só mensagem (OctoberCut: cada mensagem é cobrada);
 - hipótese testável;
 - fato/inferência/proposta/prova;
 - CTA bilateral;

@@ -5,6 +5,45 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.9.0] - 2026-10-02
+
+Nova skill **`nextags-prompt-octobercut`**: adapta os agentes à cobrança da Meta
+por mensagem de serviço, vigente desde 01/10/2026.
+
+### Adicionado
+
+- `skills/nextags-prompt-octobercut/` com as 8 regras OC (uma resposta = uma
+  mensagem, abertura proativa, perguntas agrupadas, sem pedir nome por pedir,
+  vitrine enxuta, link dentro do botão, sem mensagem de espera, fechamento
+  embutido), bloco canônico para colar nos prompts, exemplos antes/depois,
+  guia de reescrita, guia para atendimento humano e template de relatório.
+- `scripts/octobercut.py` (`audit`, `merge`, `estimate`) e 13 testes.
+- `prompts/ajustar-skills-octobercut.md`: prompt pronto para alinhar as
+  skills existentes ao OctoberCut.
+- Instaladores passam a copiar as skills também para `~/.codex/skills/`
+  quando o Codex está instalado (ou com `INSTALL_CODEX=1`).
+
+### Alterado — skills existentes alinhadas ao OctoberCut
+
+- `nextags-prompt-creator`: bloco OctoberCut obrigatório no `prompt_skeleton.md`;
+  exemplos JSON reescritos para 1 mensagem (sem typing `4`, frase do link dentro do
+  botão, vitrine = imagem + botão); §6B.5 trocou "3 blocos separados por typing 4"
+  pela vitrine enxuta; abertura proativa e diagnóstico em 1 rodada (§6B.1/§6B.2);
+  regra do nome deixa de pedir o nome só por pedir (skeleton, template, V7,
+  `cufs_nextags.md`, `campos_canonicos.md`); rubrica de tom, bateria de stress
+  (categoria 15) e relatório com contagem de mensagens por cenário; princípio 7 e
+  gate de validação no `SKILL.md`.
+- `nextags-prompt-fixer`: Regra 28 (Agrupamento de mensagens) em
+  `regras_absolutas.md` e linha na tabela de correções do `SKILL.md`.
+- `analyze_prompt.py` (2 cópias): checks `octobercut_bolhas` (warn; `text` de botão
+  >1024 = block), `octobercut_instrucao` (warn) e seção
+  `formato_economico_octobercut` (warn). +8 testes (68 no total).
+- `nextags-json-fixer`: `octobercut_warnings` no relatório (conta bolhas, não altera
+  o JSON); nota de custo no `schema.md`. +3 testes.
+- `nextags-webchat-tester`: contagem `[OctoberCut] N bolha(s)` por turno com aviso.
+- `nextags-webhook-builder` e `nextags-mcp-builder`: notas de custo por mensagem.
+- Backups dos instaladores vão para `skills-backup/` ao lado de cada destino.
+
 ## [1.8.0] - 2026-09-24
 
 Integração da **Arquitetura Suprema V7** e refatoração do núcleo do

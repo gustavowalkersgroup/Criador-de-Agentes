@@ -80,6 +80,13 @@ O inteiro (`4`) é o typing indicator: segundos de "digitando…". Posições v�
 - **No início** do array `messages` (pausa de abertura, encadeia com o turno
   anterior do mesmo atendimento) — VÁLIDO, não remover como "órfão".
 
+> 💸 **Custo (OctoberCut):** desde 01/10/2026 a Meta cobra **cada mensagem** de
+> serviço. Cada objeto de `messages` é uma mensagem cobrada, e o typing `4` cria
+> bolha nova (outra cobrança). O `4` continua **válido no schema** e o fixer **não
+> o remove**, mas a boa prática agora é uma resposta = uma mensagem (parágrafos com
+> `\n\n` num `text` só). O fixer só emite `octobercut_warnings` no relatório.
+> Fusão automática e guia: skill `nextags-prompt-octobercut`.
+
 `\n` dentro de `text` = multilinha na MESMA bolha (listas, blocos de rastreio).
 `4` = NOVA bolha. São coisas distintas: nunca converter `\n` em `4` nem vice-versa.
 
