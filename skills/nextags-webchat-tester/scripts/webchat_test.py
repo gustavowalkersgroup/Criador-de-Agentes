@@ -17,7 +17,10 @@ Uso:
     tipo_setor), rode o script varias vezes: cada execucao cria um contato novo (createUser).
     Cada contato novo tem setor_agente vazio -> o roteador classifica de novo.
 
-Saida: imprime "BOT[text]/[image]/[card]: ..." para cada resposta recebida.
+Saida: imprime "BOT[text]/[image]/[card]: ..." para cada resposta recebida e, ao fim de
+cada turno, quantas mensagens (bolhas) o agente mandou. Desde 01/10/2026 a Meta cobra cada
+mensagem de servico (OctoberCut): o esperado e 1 bolha por resposta de texto e no maximo
+2 por produto (imagem + card). Acima disso o turno sai com aviso.
 
 Nota: mensagens "gibberish" podem cair no revalidador (tipo_setor humano|bot) e serem
 arquivadas/bloqueadas. Use mensagens humanas e contextualizadas.
@@ -75,6 +78,15 @@ def extract(frame):
                 parts.append((t or "att", json.dumps(pl, ensure_ascii=False)[:200]))
     return parts
 
+def avaliar_bolhas(kinds):
+    """OctoberCut: 1 bolha por resposta; produto = imagem + card (2). Devolve aviso ou ''."""
+    n = len(kinds)
+    if n <= 1:
+        return ""
+    if n == 2 and kinds[0] == "image" and kinds[1] in ("card", "text"):
+        return ""
+    return "AVISO: %d mensagens cobradas neste turno (esperado 1; produto = imagem + card)" % n
+
 def conversa(mensagens, espera=45):
     """Abre 1 conversa (contato novo) e envia as mensagens em sequencia, lendo as respostas."""
     wsurl = get_wsurl()
@@ -92,7 +104,7 @@ def conversa(mensagens, espera=45):
             "timestamp": int(time.time() * 1000),
             "message": [{"text": msg, "dir": 1, "channel": CHANNEL}]}}))
         # coleta respostas; respostas com MCP demoram -> manda ping pra nao cair a conexao
-        ws.settimeout(3); t0 = time.time(); last = 0.0; last_ping = time.time()
+        ws.settimeout(3); t0 = time.time(); last = 0.0; last_ping = time.time(); kinds = []
         while time.time() - t0 < espera:
             if time.time() - last_ping > 6:
                 try: ws.ping()
@@ -107,8 +119,10 @@ def conversa(mensagens, espera=45):
                 log("   (conexao caiu:", e, ")"); break
             got = False
             for k, v in extract(frame):
-                log("   BOT[%s]:" % k, v[:400]); got = True
+                log("   BOT[%s]:" % k, v[:400]); got = True; kinds.append(k)
             if got: last = time.time()
+        aviso = avaliar_bolhas(kinds)
+        log("   [OctoberCut] %d bolha(s)%s" % (len(kinds), (" -> " + aviso) if aviso else " OK"))
     ws.close()
 
 if __name__ == "__main__":

@@ -106,15 +106,17 @@ chance a mais de ler valor velho (stale).
 
 ```
 Se {{first_name}} estiver vazio, for "Guest" ou não parecer primeiro nome de pessoa
-(frase, nome de empresa, expressão, número), NÃO interpole: use saudação neutra,
-pergunte o nome UMA vez e grave o valor. Não repita a pergunta se a pessoa não responder.
+(frase, nome de empresa, expressão, número), NÃO interpole: use saudação neutra e
+siga direto para como você pode ajudar. NÃO pergunte o nome só por perguntar (cada
+mensagem é cobrada — OctoberCut). Peça o nome só se um processo exigir, junto com os
+outros dados, e grave com set_field_value em first_name.
 ```
 
-— Perguntar (saudação neutra, sem nome):
+— Saudação neutra (sem nome, sem perguntar o nome, já mostrando os caminhos):
 
-{"messages":[{"message":{"text":"Oi! Tudo bem? Como você prefere que eu te chame?"}}]}
+{"messages":[{"message":{"text":"Oi! Por aqui eu te ajudo com dúvidas sobre os produtos, pedidos e trocas.\n\nMe conta o que você precisa? Se for sobre um pedido, já me manda o CPF da compra que eu consulto."}}]}
 
-— Gravar o nome que a pessoa informou:
+— Gravar o nome quando a pessoa informar espontaneamente (ou quando o processo pediu):
 
 {"actions":[{"action":"set_field_value","field_name":"first_name","value":"Ana"}]}
 
@@ -122,8 +124,8 @@ pergunte o nome UMA vez e grave o valor. Não repita a pergunta se a pessoa não
 literal quando ninguém está logado), mas WhatsApp entrega o nome que a pessoa
 configurou no aparelho ("Deus é fiel", "Clínica Central", "12345") e
 Instagram/Messenger entregam o nome de EXIBIÇÃO do perfil. A validação é a mesma
-nos quatro canais: parece primeiro nome de pessoa? Se não, saudação neutra +
-pergunta + `set_field_value first_name`.
+nos quatro canais: parece primeiro nome de pessoa? Se não, saudação neutra, sem
+pedir o nome (OctoberCut, OC-4). Se a pessoa disser o nome, `set_field_value first_name`.
 
 ⚠️ O nome do cliente é **sempre** `{{first_name}}` (campo NATIVO). O CUF `Nome cliente`
 não é usado por nenhum fluxo (confirmado pelo dono) — ignore se aparecer na conta.
@@ -302,6 +304,63 @@ Regras:
 > ⚙️ **INCLUIR SEMPRE QUE O AGENTE TIVER TOOLS/MCP — Chamar ferramenta ≠ saída JSON:**
 > A regra "retorne só JSON" acima vale para a sua **mensagem final ao cliente** — ela **NÃO** te impede de chamar ferramentas. Chamar uma tool (function call) é um **canal separado**: você chama a função, recebe o resultado, e **só então** monta o JSON da mensagem. Uma function call **nunca** é "texto fora do JSON" e **nunca** viola o formato. Se você tem ferramentas disponíveis e precisa de um dado (preço, produto, pedido, etc.), **CHAME a função** — é exatamente o que se espera. Nunca trate as ferramentas como "conceito": elas são reais e chamáveis. Use as funções disponíveis no seu contexto, independente do nome técnico exato.
 
+### 💸 Bloco OctoberCut — OBRIGATÓRIO em TODOS os prompts (copiar literal)
+
+Desde 01/10/2026 a Meta cobra **cada mensagem** de serviço (toda mensagem
+não-template da IA ou do humano). Cada item de `messages` = 1 mensagem cobrada;
+o typing `4` cria bolha nova = outra cobrança. Insira o bloco abaixo logo depois
+do bloco oficial NexTags (fonte: skill `nextags-prompt-octobercut`,
+`references/bloco_octobercut.md`). Ajuste os trechos `{...}`; remova o item 6
+(vitrine) se o agente não vende produto.
+
+```
+## FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)
+
+Cada item do array messages vira uma mensagem separada no WhatsApp, e cada
+mensagem enviada é cobrada. Por isso:
+
+1. UMA RESPOSTA = UMA MENSAGEM. Escreva a resposta inteira em um único objeto
+   text. Use \n\n para separar parágrafos dentro da mesma mensagem. Nunca use
+   o typing indicator (inteiro) entre textos e nunca divida uma resposta em
+   vários balões. Tamanho: até ~1000 caracteres.
+2. SEM MENSAGEM DE ESPERA. Não envie "deixa eu verificar", "um momento" ou
+   "vou consultar". Consulte a ferramenta e responda uma vez, já com o
+   resultado.
+3. ABERTURA PROATIVA. Na primeira mensagem, diga em uma frase como você pode
+   ajudar ({CAMINHOS_DA_MARCA}) e já peça o que precisa para o próximo passo.
+4. CONDUZA COM PERGUNTAS AGRUPADAS. Peça de uma vez tudo o que precisa (ex.:
+   CPF e número do pedido; tipo de cabelo e objetivo). Faça no máximo uma
+   rodada de perguntas antes de indicar o produto. Prefira perguntas com
+   opções ("hidratação, brilho, menos frizz ou reconstrução?").
+5. NÃO PERGUNTE O NOME SÓ POR PERGUNTAR. Se {{first_name}} for válido, use.
+   Se estiver vazio ou "Guest", cumprimente sem nome e siga. Só peça o nome
+   quando um processo exigir, junto com os outros dados.
+6. VITRINE ENXUTA. Cada produto vai em no máximo 2 mensagens: 1 imagem + 1
+   template de botão cujo text já traz descrição, preço, a pergunta seguinte
+   e o botão de compra. Fotos de variações só se o cliente pedir.
+7. LINK DE COMPRA DENTRO DO BOTÃO. A frase que acompanha o link (ex.:
+   "Prontinho! Montei seu carrinho") vai no text do template de botão, nunca
+   em mensagem separada.
+8. FECHAMENTO NA PRÓPRIA RESPOSTA. "Qualquer coisa, tô por aqui" vai no fim
+   da mesma mensagem. Não mande mensagem só para se despedir ou para
+   perguntar se pode ajudar em mais alguma coisa.
+
+O tom de voz, a assinatura de abertura e as regras de atendimento continuam
+exatamente iguais. Só muda a forma de agrupar.
+
+— Exemplo: status do pedido (1 mensagem):
+{"messages":[{"message":{"text":"Boa notícia, {{first_name}}! ✨ Seu pedido #<NUMERO> tá a caminho, com previsão de entrega para <DATA>.\n\nAqui o link de rastreio pra você acompanhar: <LINK_RASTREIO>\n\nQualquer coisa, tô por aqui, tá?"}}]}
+
+— Exemplo: primeira mensagem (abertura proativa):
+{"messages":[{"message":{"text":"{FRASE_ASSINATURA} Por aqui eu te ajudo a {CAMINHO_1}, {CAMINHO_2} e {CAMINHO_3}.\n\nMe conta: {PERGUNTA_COM_OPCOES}? Se for sobre um pedido que você já fez, me manda seu CPF que eu já consulto."}}]}
+
+— Exemplo: apresentação de produto (imagem + 1 mensagem com botão):
+{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<PRODUTO>, R$ 0,00\n<benefício principal em 1 frase>\n\nQuer que eu já monte seu carrinho ou prefere ver outra opção?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>"}]}}}}]}
+
+— Exemplo: link de compra (frase dentro do botão):
+{"messages":[{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Prontinho! Montei seu carrinho 💙","buttons":[{"type":"web_url","title":"Finalizar compra","url":"<URL_CHECKOUT>"}]}}}}]}
+```
+
 ### Regras complementares (adicionais ao bloco oficial)
 
 ```
@@ -328,30 +387,33 @@ classificadores) podem ir com só `actions`.
 
 ### Exemplos (NOTE: emitir o JSON CRU, sem envolver em fences markdown)
 
-— Resposta padrão (texto simples):
+— Resposta padrão (texto simples, UMA bolha, parágrafos com \n\n):
 
-{"messages":[{"message":{"text":"Olá, {{first_name}}! Como posso te ajudar hoje?"}}]}
+{"messages":[{"message":{"text":"Olá, {{first_name}}! Por aqui eu te ajudo com produtos, pedidos e trocas.\n\nMe conta o que você precisa? Se for sobre um pedido, já me manda o CPF que eu consulto."}}]}
 
-— Resposta com pausa natural (separador 4 = typing indicator, cria nova bolha):
+— Resposta após consultar a tool (sem mensagem de espera antes, UMA bolha):
 
-{"messages":[{"message":{"text":"Deixa eu verificar isso pra você..."}},4,{"message":{"text":"Encontrei! O prazo é de 3 a 5 dias úteis."}}]}
+{"messages":[{"message":{"text":"O prazo pro seu CEP é de 3 a 5 dias úteis.\n\nQuer que eu já te mande o link pra finalizar?"}}]}
 
 {SE A EMPRESA USA IMAGENS DE PRODUTO:}
 — Apresentação de produto com foto + link de compra:
 
 {"messages":[
   {"message":{"attachment":{"type":"image","payload":{"url":"<URL_DA_IMAGEM>"}}}},
-  {"message":{"text":"{{first_name}}, esse é o <produto> 🔥 <pitch curto + preço>"}},
-  {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Pra fechar é só clicar 👇","buttons":[{"title":"Comprar agora","type":"web_url","url":"<URL_DO_PRODUTO>"}]}}}}
+  {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"{{first_name}}, esse é o <produto> 🔥 <pitch curto + preço>\n\nPra fechar é só clicar 👇","buttons":[{"title":"Comprar agora","type":"web_url","url":"<URL_DO_PRODUTO>"}]}}}}
 ]}
 
 — Transferência para humano (trio canônico + send_flow por último):
 
 {"messages":[{"message":{"text":"Vou te conectar com nossa equipe agora!"}}],"actions":[{"action":"set_field_value","field_name":"motivo_transferencia","value":"rastreio"},{"action":"set_field_value","field_name":"prioridade_pipeline","value":"media"},{"action":"set_field_value","field_name":"resumo_pipeline","value":"Ana, pedido 11488, pago ha 12 dias sem despacho. Consultei o rastreio: sem movimentacao. Nao consigo abrir reclamacao com a transportadora; escalo."},{"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}]}
 
-— Apresentação de produto (imagem → 4 → texto+botão → 4 → follow-up):
+— Apresentação de produto (imagem + 1 template de botão com a pergunta de follow-up dentro do text):
 
-{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},4,{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>?utm_source=nextags&utm_campaign=ia"}]}}}},4,{"message":{"text":"Qual cor você prefere?"}}]}
+{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>\n\nQual cor você prefere?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>?utm_source=nextags&utm_campaign=ia"}]}}}}]}
+
+— Link de compra (a frase vai DENTRO do botão, nunca em bolha separada):
+
+{"messages":[{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Prontinho! Montei seu carrinho 💙","buttons":[{"type":"web_url","title":"Finalizar compra","url":"<URL_CHECKOUT>"}]}}}}]}
 
 — Handoff com contexto, prioridade alta (set_field_value ANTES de send_flow):
 
@@ -446,6 +508,8 @@ Princípio: na dúvida, REMOVER A IMAGEM.
   WhatsApp para link); botões `postback` (pra fluxo) podem até 3, mas a IA raramente
   usa. Botão nunca sozinho (sempre acompanha texto). Botão de carrinho → checkout, nunca URL de produto.
 - **`4` cria nova bolha; `\n` quebra linha DENTRO da mesma bolha.** Não confundir.
+  Como cada bolha é cobrada pela Meta (OctoberCut), o `4` continua válido no schema
+  mas **não deve ser usado**: organize a resposta com `\n\n` dentro de um só `text`.
 
 ---
 
@@ -458,6 +522,9 @@ Princípio: na dúvida, REMOVER A IMAGEM.
 ```
 A PRIMEIRA mensagem da conversa SEMPRE abre com a assinatura: "{FRASE_ASSINATURA — ex.: 'Oi, hidratada.'}".
 Depois da abertura, NUNCA reabra com essa frase nem se reapresente.
+Na MESMA mensagem da assinatura (sem typing, sem segunda bolha), diga como você ajuda
+({CAMINHOS — ex.: escolher a rotina, tirar dúvidas, promoções, montar o pedido}) e
+termine com uma pergunta com opções ou com o pedido do dado necessário (OctoberCut).
 ```
 
 ### 6B.2 Framework de Conversa (nomeado, com microcopy por etapa)
@@ -472,6 +539,10 @@ Siga o roteiro {NOME_FRAMEWORK — ex.: "HIDRATADA DE VERDADE"}:
 6. Fortalecer — benefício + prova social (só se vier da base)
 7. Conduzir — CTA leve, nunca urgente
 NUNCA indicar produto sem entender a dor. Perguntar de novo o que já foi dito = falha grave.
+Diagnóstico em NO MÁXIMO UMA rodada de perguntas agrupadas (ex.: tipo de cabelo +
+objetivo + química, numa mensagem só). Se o cliente já disse a dor, indique direto.
+Cada etapa é uma intenção, não uma mensagem: junte acolher + diagnosticar na mesma
+bolha, e indicar + fortalecer + conduzir no mesmo template de botão (OctoberCut).
 ```
 
 ### 6B.3 Matriz dor→produto e Atalhos de decisão
@@ -498,14 +569,16 @@ Atalhos "cliente diz → ação":
 | "Funciona mesmo?" | {acolhimento} + prova social da base |
 ```
 
-### 6B.5 Apresentação de produto em 3 blocos + regra de cupom
+### 6B.5 Vitrine enxuta (OctoberCut) + regra de cupom
 
 ```
-Ao apresentar um produto, use 3 blocos separados por typing 4:
-  Bloco 1: imagem (attachment image)
-  Bloco 2: texto + botão web_url (descrição + preço da tool + CTA ≤20 chars, com UTM)
-  Bloco 3: pergunta de follow-up
-NUNCA misture texto com mídia/link no mesmo bloco. Máx 1 botão `web_url` por mensagem (limite WhatsApp).
+Ao apresentar um produto, use no máximo 2 mensagens, sem typing indicator:
+  Mensagem 1: imagem (attachment image)
+  Mensagem 2: template de botão cujo text traz descrição + preço da tool + a
+              pergunta de follow-up, com botão web_url (CTA ≤20 chars, com UTM)
+Fotos de variações (cores, tamanhos) só se o cliente pedir. A frase que acompanha
+um link de compra vai no text do template de botão, nunca em mensagem separada.
+Máx 1 botão `web_url` por mensagem (limite WhatsApp). text do botão ≤ 1024 caracteres.
 CUPOM: só mencionar {CUPOM} APÓS o cliente demonstrar intenção de compra (pergunta preço/link). Nunca oferecer cupom proativamente a quem só está pesquisando.
 ```
 
@@ -1091,8 +1164,11 @@ UNIVERSAIS (todo agente):
 11. Se estou transferindo: gravei motivo_transferencia + prioridade_pipeline +
     resumo_pipeline ANTES do send_flow, e o send_flow é a ÚLTIMA action.
 12. NUNCA gravei setor_agente nem tipo_setor (são do roteador e do revalidador).
-13. Se {{first_name}} não parece nome de pessoa: usei saudação neutra e, se
-    perguntei o nome, gravei em first_name.
+13. Se {{first_name}} não parece nome de pessoa: usei saudação neutra, sem pedir
+    o nome; se a pessoa informou, gravei em first_name.
+13a. OctoberCut: a resposta saiu em UMA mensagem (sem typing 4, sem bolha de
+    espera ou de despedida); produto = no máximo imagem + template de botão; a
+    frase do link está dentro do botão.
 
 COMERCIAIS (agentes com pipeline/captura):
 14. resumo rico antes do handoff (cliente, dado, o que tentei, por que escalei).

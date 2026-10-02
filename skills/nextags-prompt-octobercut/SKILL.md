@@ -115,22 +115,23 @@ O atendente humano também gera mensagem de serviço cobrada. Quando o pedido
 envolver o time (treinamento, macro, script de atendimento), use
 `assets/guia_atendente_humano.md`.
 
-## Conflitos com as outras skills NexTags
+## Integração com as outras skills NexTags
 
-Até as skills irmãs serem atualizadas (prompt pronto em
-`prompts/ajustar-skills-octobercut.md` na raiz do repo), estas instruções
-antigas **perdem** para o OctoberCut:
+Desde a versão 1.9.0 as skills irmãs já seguem o OctoberCut:
 
-| Fonte antiga | Instrução antiga | Vale agora |
-|---|---|---|
-| `prompt_skeleton.md` §6B.5 | "3 blocos separados por typing 4", "NUNCA misture texto com mídia/link no mesmo bloco" | imagem + 1 button template (texto, preço, CTA e pergunta juntos) |
-| `prompt_skeleton.md` exemplos | "Resposta com pausa natural (… 4 …)" | 1 bolha só |
-| `prompt_skeleton.md` §1.7.1 / `cufs_nextags.md` | "pergunte o nome UMA vez" | não perguntar; saudação neutra |
-| `arquitetura_suprema_v7.md` | "uma pergunta relevante por vez" | uma rodada de perguntas agrupadas |
-| `schema.md` (json-fixer) | typing `4` entre mensagens é padrão | válido no schema, mas proibido por custo |
+| Skill | O que faz com o OctoberCut |
+|---|---|
+| `nextags-prompt-creator` | Bloco OctoberCut obrigatório no `prompt_skeleton.md` (§6), exemplos em 1 mensagem, vitrine enxuta (§6B.5), abertura proativa e diagnóstico em 1 rodada; bateria de teste com contagem de bolhas. |
+| `nextags-prompt-fixer` | Regra 28 em `regras_absolutas.md`; o `analyze_prompt.py` avisa `octobercut_bolhas`, `octobercut_instrucao` e seção `formato_economico_octobercut` ausente (warn; `text` de botão >1024 é block). |
+| `nextags-json-fixer` | Não altera o JSON (typing `4` segue válido), mas o relatório traz `octobercut_warnings` com a contagem de bolhas. |
+| `nextags-webchat-tester` | Mostra `[OctoberCut] N bolha(s)` por turno e avisa acima de 1 (texto) ou 2 (produto). |
+| `nextags-webhook-builder` / `nextags-mcp-builder` | Notas de custo: fluxo manda 1 mensagem completa por evento; tool devolve tudo numa chamada. |
 
-O schema JSON **não muda**: typing `4` continua sintaticamente válido. Não
-trate como erro de JSON. É uma regra de custo, aplicada no prompt.
+Se encontrar uma cópia antiga dessas skills (instalação desatualizada) que ainda
+mande "3 blocos separados por typing 4" ou "pergunte o nome UMA vez", o OctoberCut
+vence. Para realinhar uma cópia antiga, use `prompts/ajustar-skills-octobercut.md`
+na raiz do repo. O schema JSON **não muda**: typing `4` continua sintaticamente
+válido; é regra de custo, aplicada no prompt.
 
 ## O que esta skill NÃO faz
 

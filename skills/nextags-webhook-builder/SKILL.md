@@ -137,6 +137,19 @@ A validação final por regex `/^55\d{10,11}$/` é a do AliveMed, a implementaç
 
 **Número FIXO não recebe `send_flow`/mensagem via API:** ao entrar na plataforma o número ganha o 9 extra e vira inválido (evidência: dono do projeto, 2026-09-03; Alto Giro/ChatRace adiciona o `9` cegamente). Fixo = DDD + local de 8 dígitos começando em 2-5. Nunca "tentar mesmo assim" — descarte com `_motivo: 'telefone_fixo'` e registre a contagem no relatório.
 
+## 💸 Custo por mensagem (OctoberCut, desde 01/10/2026)
+
+A Meta cobra cada mensagem enviada. Template de **utilidade** (pedido pago, enviado,
+entregue) já era cobrado fora da janela de 24h e, desde 01/10/2026, também passou a ser
+cobrado **dentro** da janela; toda mensagem não-template que o fluxo mande depois disso
+é cobrada como **serviço**. Na prática:
+
+- o fluxo disparado pelo `send_flow` deve mandar **uma mensagem completa** por evento
+  (status + previsão + rastreio + próximo passo), não uma sequência de balões;
+- dedup continua sendo regra nº2: disparo duplicado agora é custo dobrado, além de spam;
+- esta skill não altera o conteúdo do fluxo; se o fluxo quebra a mensagem em várias,
+  registre como pendência para quem edita o fluxo (ver `nextags-prompt-octobercut`).
+
 ## 🧾 CUFs e tags canônicos — a fonte é `campos_canonicos.md`
 
 Os nomes de campo do transacional **não são escolha do projeto**. Tabela completa em

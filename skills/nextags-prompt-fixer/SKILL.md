@@ -146,7 +146,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `>1` botão `web_url` / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp). |
 | **`title` de botão com mais de 20 caracteres** (**block**) | Encurtar para ≤20 mantendo o sentido (`"Acompanhar meu pedido"` → `"Rastrear pedido"`). Não é estilo: o reparador de JSON do fluxo troca o título por `"Comprar agora"` sem erro nem log — num SAC o cliente vê "Comprar agora" numa conversa de devolução. Ver Regra 24. |
 | Data fixa que apodrece ("28/02", "até hoje") / preço literal em exemplo com tool | Ver Regra 18 (datas e preço literal). |
-| `{{first_name}}` vazio/"Guest"/não-nome (TODOS os canais) | Saudação neutra + perguntar o nome UMA vez + `set_field_value first_name`. Nunca saudar por `{{ig_user_name}}`/`{{page_user_name}}`/username (identificador, não vocativo; vetor de injeção). Ver Regra 14 (itens 5-6). |
+| `{{first_name}}` vazio/"Guest"/não-nome (TODOS os canais) | Saudação neutra, sem pedir o nome só por pedir (OctoberCut); se a pessoa informar, `set_field_value first_name`. Nunca saudar por `{{ig_user_name}}`/`{{page_user_name}}`/username (identificador, não vocativo; vetor de injeção). Ver Regra 14 (itens 5-6). |
 | Regra de disparo/broadcast ausente em agente com campanhas ativas | Sugerir adicionar à Anti-alucinação. Ver Regra 20. |
 | Empurrar pra outro número / reapresentar após handoff | Sugerir (não bloquear): usar `send_flow` no mesmo canal; não repetir saudação inicial pós-handoff. Ver Regra 20b. |
 | `avisos_ativos_presente` = ausente | Inserir bloco `📣 AVISOS ATIVOS` vazio no formato canônico (correção estrutural). Ver Regra 22. |
@@ -156,6 +156,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `prioridade_pipeline` fora de `baixa\|media\|alta` (**block**) | Corrigir para o valor mais próximo do enum ou `baixa` (default) — Seleção única rejeita qualquer outro valor. Ver Regra 21. |
 | `trio_handoff_incompleto` | `send_flow` de transferência sem os 3 `set_field_value` (motivo/prioridade/resumo) antes: inserir os que faltam. Ver Regra 21 (campo stale). |
 | `send_flow_antes_de_set_field` | Reordenar: `set_field_value`(s) sempre antes do `send_flow` no mesmo array. Ver Regra 16. |
+| `octobercut_bolhas` / `octobercut_instrucao` / seção `formato_economico_octobercut` ausente | Cobrança da Meta por mensagem (desde 01/10/2026). Fundir textos separados por typing `4` num `text` só (`\n\n`); levar a frase vizinha para dentro do `text` do button template; vitrine = imagem + 1 botão; remover mensagem de espera e bolha de despedida; inserir o bloco OctoberCut após o bloco oficial; neutralizar instruções antigas ("3 blocos separados por typing 4", "pergunte o nome UMA vez", "uma pergunta por vez"). Preservar tom e regras da marca. `text` de botão >1024 caracteres é **block** (WhatsApp rejeita). Ferramenta: `nextags-prompt-octobercut` (`octobercut.py merge`). Ver Regra 28. |
 | `promessa_sem_entrega` | Mensagem promete enviar algo e o JSON não entrega (sem `send_flow`, sem attachment): acrescentar a action que entrega ou reescrever a mensagem para não prometer. Ver Regra 27. |
 
 ### 4. Versionamento do arquivo corrigido

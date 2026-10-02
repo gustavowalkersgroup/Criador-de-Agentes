@@ -371,8 +371,9 @@ Nome: {{first_name}} · Telefone: {{phone}} · E-mail: {{email}} · Hora local: 
 ```
 
 **Regra do nome:** se `{{first_name}}` estiver vazio, for `"Guest"` (webchat) ou não parecer
-primeiro nome de pessoa (frase, empresa, expressão) → saudação neutra + perguntar o nome **UMA
-vez** → gravar:
+primeiro nome de pessoa (frase, empresa, expressão) → saudação neutra, **sem pedir o nome** só por
+pedir (OctoberCut: cada mensagem é cobrada). Se a pessoa informar o nome, ou se um processo
+exigir (pedido junto com os outros dados) → gravar:
 
 {"actions":[{"action":"set_field_value","field_name":"first_name","value":"<nome>"}]}
 

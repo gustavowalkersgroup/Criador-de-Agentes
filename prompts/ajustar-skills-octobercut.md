@@ -1,5 +1,9 @@
 # Prompt: alinhar as skills NexTags ao OctoberCut
 
+> **Status:** já aplicado neste repositório na versão 1.9.0. Guarde este prompt
+> para realinhar cópias antigas ou forks das skills (instalações desatualizadas,
+> skills enviadas ao claude.ai antes da 1.9.0).
+
 Cole o texto abaixo (da linha `---` em diante) numa sessão do Claude Code ou do
 Codex aberta na raiz do repositório `Criador-de-Agentes`. Ele adapta as skills
 existentes à cobrança da Meta por mensagem de serviço sem quebrar o que já
@@ -70,7 +74,7 @@ custo**, não de validade do JSON.
 ### 2. `skills/nextags-prompt-fixer`
 
 - `references/regras_absolutas.md`: nova regra "Agrupamento de mensagens
-  (OctoberCut)" com Regra / Why (cobrança por mensagem) / How to apply,
+  (OctoberCut)" (use o próximo número livre, ex.: 28) com Regra / Why (cobrança por mensagem) / How to apply,
   severidade **warn**.
 - `SKILL.md`: incluir a regra na tabela de correções: fundir textos com
   typing `4`, levar frase para dentro do button template, remover mensagem de

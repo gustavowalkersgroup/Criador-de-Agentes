@@ -103,6 +103,30 @@ def test_text_message_whatsapp_markup_preserved_in_pipeline():
     assert out["messages"][0]["message"]["text"] == "Olha o *negrito*"
 
 
+# ---- OctoberCut: aviso de custo, sem alterar o JSON -------------------
+
+def test_octobercut_avisa_typing_sem_alterar():
+    data = {"messages": [{"message": {"text": "a"}}, 4, {"message": {"text": "b"}}]}
+    fixes, pending = [], []
+    fixed = fj.process_one(fj.json.dumps(data), fixes, pending, [])
+    assert fixed["messages"][1] == 4  # schema válido: não remove
+    w = fj.octobercut_warnings(fixed)
+    assert w and "2 mensagens" in w[0]
+    assert any("typing" in x for x in w)
+
+
+def test_octobercut_uma_bolha_sem_aviso():
+    assert fj.octobercut_warnings({"messages": [{"message": {"text": "a\n\nb"}}]}) == []
+
+
+def test_octobercut_imagem_mais_botao_sem_aviso():
+    msgs = [{"message": {"attachment": {"type": "image", "payload": {"url": "https://x.com/a.jpg"}}}},
+            {"message": {"attachment": {"type": "template", "payload": {
+                "template_type": "button", "text": "x",
+                "buttons": [{"type": "web_url", "title": "Comprar", "url": "https://x.com"}]}}}}]
+    assert fj.octobercut_warnings({"messages": msgs}) == []
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

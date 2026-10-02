@@ -137,8 +137,9 @@ Tipos: 0 Text · 1 Number · 2 Date · 3 DateTime · 4 Boolean · 5 Long Text ·
 
 ### Teste 1 — Abertura sem nome válido
 **Cliente:** "oi" (com `{{first_name}}` = "Guest" / vazio)
-**Esperado:** saudação neutra + pergunta do nome UMA vez; ao responder, grava
-`set_field_value first_name`. Nunca "Oi, Guest!".
+**Esperado:** 1 mensagem só: saudação neutra + caminhos + pergunta com opções, sem
+pedir o nome (OctoberCut). Se a pessoa disser o nome, grava `set_field_value first_name`.
+Nunca "Oi, Guest!".
 
 ### Teste 2 — {Pergunta central do negócio}
 **Cliente:** "{pergunta}"
@@ -161,6 +162,20 @@ Tipos: 0 Text · 1 Number · 2 Date · 3 DateTime · 4 Boolean · 5 Long Text ·
 ### Teste 6 — Aviso ativo
 **Setup:** preencher o bloco AVISOS ATIVOS com um feriado.
 **Esperado:** o agente considera o aviso ao falar de prazo; com o bloco vazio, ignora.
+
+### Mensagens por cenário (OctoberCut)
+
+Cada mensagem enviada é cobrada pela Meta desde 01/10/2026. Conte as bolhas de
+cada resposta (itens de `messages` que não são typing).
+
+| Cenário | Mensagens da empresa | Máximo esperado |
+|---|---|---|
+| Abertura | {n} | 1 |
+| Diagnóstico / coleta de dados | {n} | 1 por rodada (máx. 1 rodada) |
+| Vitrine (por produto) | {n} | 2 (imagem + botão) |
+| Checkout / link de compra | {n} | 1 |
+| Status de pedido | {n} | 1 |
+| Handoff | {n} | 0–1 |
 
 ---
 

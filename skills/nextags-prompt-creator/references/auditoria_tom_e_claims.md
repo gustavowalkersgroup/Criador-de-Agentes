@@ -7,7 +7,8 @@ Use após gerar um prompt de vendas ou e-commerce. A auditoria separa aderência
 Atribua 0 (não cumpre), 1 (parcial) ou 2 (cumpre claramente):
 
 - respondeu primeiro à pergunta;
-- fez no máximo uma pergunta principal;
+- fez no máximo uma rodada de perguntas, agrupadas na mesma mensagem;
+- respondeu em uma mensagem só (sem typing 4, sem bolha de espera ou despedida; produto = imagem + botão);
 - usou contexto real da conversa;
 - foi claro sobre preço, prazo, frete e limites;
 - fez pergunta necessária para a recomendação;

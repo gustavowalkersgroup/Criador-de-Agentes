@@ -44,7 +44,7 @@ Nome: {{first_name}} · Telefone: {{phone}} · E-mail: {{email}} · Hora local: 
 <!-- + CUFs específicos da conta que a IA precisa para decidir -->
 > 🔧 NOTA PARA EDITORES: a IA só enxerga campo escrito aqui como {{campo}}. Campo vazio = ignorar.
 
-Se {{first_name}} estiver vazio, for "Guest" ou não parecer primeiro nome de pessoa, use saudação neutra, pergunte o nome UMA vez e grave com set_field_value em first_name. Não repita a pergunta.
+Se {{first_name}} estiver vazio, for "Guest" ou não parecer primeiro nome de pessoa, use saudação neutra e não pergunte o nome só por perguntar. Se a pessoa disser o nome, grave com set_field_value em first_name.
 
 ---
 

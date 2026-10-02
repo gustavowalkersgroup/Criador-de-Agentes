@@ -432,3 +432,36 @@ O analisador avisa (`promessa_sem_entrega`, warn) quando acha promessa de envio 
 `send_flow` e sem attachment. É warn, não block: o envio pode vir de um fluxo disparado
 depois — mas confira, porque na maioria dos casos não vem.
 
+---
+
+## 28. Agrupamento de mensagens (OctoberCut)
+
+**Regra:** uma resposta = uma mensagem. O texto vai inteiro num único objeto `text`
+(parágrafos com `\n\n`, até ~1.000 caracteres), sem typing indicator entre textos.
+Produto = no máximo imagem + template de botão (descrição, preço, pergunta e CTA no
+`text` do botão). A frase de um link de compra vai dentro do `text` do botão. Sem
+mensagem de espera ("deixa eu verificar") e sem bolha só de despedida. Abertura já diz
+como o agente ajuda; perguntas agrupadas, no máximo uma rodada antes de indicar
+produto; não pedir o nome só por pedir.
+
+**Por quê:** desde 01/10/2026 a Meta cobra **cada mensagem** de serviço (toda mensagem
+não-template enviada pela IA ou por humano). Cada item de `messages` é uma mensagem
+cobrada; o typing `4` cria bolha nova, logo outra cobrança. Estimativa nos agentes do
+grupo: rastreio de ~7 para ~2 mensagens (−71%), venda de ~10 para ~5 (−50%).
+
+**Severidade:** **warn**. O typing `4` continua válido no schema e não quebra a
+plataforma; é regra de custo. O analisador avisa com `octobercut_bolhas` (exemplo JSON
+com typing ou com bolhas que podem ser fundidas), `octobercut_instrucao` (prosa que
+manda dividir a resposta, usar "3 blocos", perguntar o nome ou uma pergunta por vez) e
+`formato_economico_octobercut` (seção ausente).
+
+**Como corrigir:** inserir o bloco "FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)" depois do
+bloco oficial NexTags, reescrever os exemplos JSON no padrão de 1 mensagem e neutralizar
+as instruções antigas. Ferramenta e guia completos: skill `nextags-prompt-octobercut`
+(`scripts/octobercut.py audit|merge`, `references/guia_reescrita.md`).
+
+```json
+{"messages":[{"message":{"text":"Boa notícia! ✨ Seu pedido #5432 tá a caminho, previsão 08/10.\n\nRastreio: <LINK>\n\nQualquer coisa, tô por aqui!"}}]}
+```
+
+> 🔧 NOTA PARA EDITORES: cada bolha é cobrada pela Meta desde 01/10/2026; não reintroduzir typing 4 entre textos.

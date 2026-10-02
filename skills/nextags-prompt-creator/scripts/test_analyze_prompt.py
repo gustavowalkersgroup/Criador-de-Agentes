@@ -569,6 +569,66 @@ def test_multiline_actions_no_false_invalid_json():
     assert ap.analyze(content)["summary"]["invalid_json_count"] == 0
 
 
+# ---- OctoberCut (regras_absolutas.md §28): cada bolha é cobrada ---------
+
+def test_octobercut_typing_warns():
+    content = '{"messages":[{"message":{"text":"Oi"}},4,{"message":{"text":"Tudo bem?"}}]}\n'
+    f = ap.analyze(content)
+    it = _issue(f, "octobercut_bolhas")
+    assert it is not None
+    assert all(d["severity"] == "warn" for d in it["details"])
+    assert f["summary"]["octobercut_bolhas_count"] == 2  # typing + text/text
+
+
+def test_octobercut_texto_mais_botao_warns():
+    content = ('{"messages":[{"message":{"text":"Prontinho!"}},{"message":{"attachment":{"type":"template",'
+               '"payload":{"template_type":"button","text":"Finalize","buttons":[{"type":"web_url",'
+               '"title":"Finalizar","url":"https://x.com/c"}]}}}}]}\n')
+    assert "octobercut_bolhas" in _types(ap.analyze(content))
+
+
+def test_octobercut_imagem_mais_botao_ok():
+    content = ('{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"https://x.com/a.jpg"}}}},'
+               '{"message":{"attachment":{"type":"template","payload":{"template_type":"button",'
+               '"text":"Produto\\n\\nQual cor?","buttons":[{"type":"web_url","title":"Comprar agora",'
+               '"url":"https://x.com/p"}]}}}}]}\n')
+    assert "octobercut_bolhas" not in _types(ap.analyze(content))
+
+
+def test_octobercut_botao_texto_longo_blocks():
+    content = ('{"messages":[{"message":{"attachment":{"type":"template","payload":{"template_type":"button",'
+               '"text":"' + "a" * 1100 + '","buttons":[{"type":"web_url","title":"Ver","url":"https://x.com"}]}}}}]}\n')
+    it = _issue(ap.analyze(content), "octobercut_bolhas")
+    assert it is not None and it["details"][0]["severity"] == "block"
+
+
+def test_octobercut_instrucao_antiga_warns():
+    f = ap.analyze("Ao apresentar um produto, use 3 blocos separados por typing 4.\n")
+    assert f["summary"]["octobercut_instrucao_count"] == 1
+    assert f["octobercut_instrucao"][0]["severity"] == "warn"
+
+
+def test_octobercut_instrucao_negada_ok():
+    f = ap.analyze("Nunca use o typing indicator entre textos. Não pergunte o nome UMA vez.\n")
+    assert f["summary"]["octobercut_instrucao_count"] == 0
+
+
+def test_octobercut_secao_ausente_warns_e_presente_ok():
+    keys = {m["key"]: m["severity"] for m in ap.analyze("oi\n")["missing_sections"]}
+    assert keys.get("formato_economico_octobercut") == "warn"
+    keys = {m["key"] for m in ap.analyze("## FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)\n")["missing_sections"]}
+    assert "formato_economico_octobercut" not in keys
+
+
+def test_skeleton_sem_warn_octobercut():
+    from pathlib import Path
+    sk = (Path(__file__).resolve().parents[1] / "references" / "prompt_skeleton.md").read_text(encoding="utf-8")
+    f = ap.analyze(sk)
+    assert f["summary"]["octobercut_bolhas_count"] == 0, [
+        (b["start_line"], i) for b in f["json_blocks"] for i in b["issues"] if i["type"] == "octobercut_bolhas"]
+    assert f["summary"]["octobercut_instrucao_count"] == 0, f["octobercut_instrucao"]
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0

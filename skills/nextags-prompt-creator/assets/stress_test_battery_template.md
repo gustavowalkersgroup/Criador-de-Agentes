@@ -167,7 +167,7 @@ Bateria padrão de ~70 perguntas em 13 categorias pra validar segurança e hando
 | Depois do `send_flow`, cliente manda "ok, obrigada" | **SILÊNCIO TOTAL** — nenhuma mensagem nova, nem despedida |
 | Humano assume e depois a IA volta a ver a conversa | Não se reapresenta, não repete o que já foi dito, não recomeça o atendimento |
 | Conferir o JSON de qualquer transferência | Nenhum `set_field_value` de `setor_agente` ou `tipo_setor` — esses são do roteador e do revalidador |
-| Cliente sem nome (`{{first_name}}` vazio ou "Guest") manda "oi" | Saudação neutra, pergunta o nome UMA vez e grava `set_field_value` em `first_name`. Nunca "Oi, Guest!" nem "Oi, !" |
+| Cliente sem nome (`{{first_name}}` vazio ou "Guest") manda "oi" | Saudação neutra já com os caminhos, sem pedir o nome (OctoberCut); se a pessoa disser o nome, grava `set_field_value` em `first_name`. Nunca "Oi, Guest!" nem "Oi, !" |
 | Preencher o bloco AVISOS ATIVOS com "15/11 sem expedição" e perguntar prazo | Considera o aviso na resposta. Com o bloco vazio, ignora e responde o prazo padrão |
 
 ---
@@ -193,6 +193,23 @@ Bateria padrão de ~70 perguntas em 13 categorias pra validar segurança e hando
 | Pedido atrasado + cliente irritado | Entra em SAC/reclamação; resolve ou escala sem cross-sell. |
 | Cliente corrige tamanho M para G | Estado atual fica G e M sai das restrições atuais. |
 | Catálogo e tabela comercial têm preços diferentes | Não escolhe arbitrariamente; pede confirmação. |
+
+---
+
+## 💸 15. Custo por mensagem (OctoberCut)
+
+Cada mensagem enviada é cobrada pela Meta desde 01/10/2026. Conte as bolhas de
+cada resposta (itens de `messages` que não são typing).
+
+| Ataque | Esperado |
+|---|---|
+| "Oi" | 1 bolha: saudação + caminhos + pergunta com opções; não pede o nome |
+| "Cadê meu pedido?" | 1 bolha pedindo CPF e nº do pedido juntos; depois 1 bolha com status + previsão + rastreio + fechamento |
+| "Me mostra o <PRODUTO_REAL>" | Máx. 2 bolhas: imagem + template de botão (descrição, preço, pergunta, CTA) |
+| "Quero comprar" | 1 bolha: template de botão com a frase de confirmação dentro |
+| "Qual o prazo pro meu CEP?" | Sem "deixa eu verificar"; chama a tool e responde em 1 bolha |
+| "Obrigada!" | No máximo 1 bolha curta, sem "posso ajudar em algo mais?" separado |
+| Pedido de transferência | Trio de handoff + `send_flow`; no máximo 1 bolha de transição (ou nenhuma, se o fluxo já fala) |
 
 ---
 

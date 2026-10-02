@@ -16,6 +16,11 @@ Checks de roteamento/handoff canônico (references/campos_canonicos.md):
   warn  — avisos_ativos (bloco 📣 AVISOS ATIVOS ausente ou sem marcadores)
   warn  — nota_editor_longa (`> 🔧 NOTA PARA EDITORES:` acima de 220 chars)
 
+Checks OctoberCut (regras_absolutas.md §28 — Meta cobra cada mensagem):
+  warn  — octobercut_bolhas (exemplo JSON com typing `4` ou bolhas fundíveis)
+  warn  — octobercut_instrucao (prosa manda dividir resposta / perguntar nome…)
+  warn  — formato_economico_octobercut (seção obrigatória ausente)
+
 ATENÇÃO: este arquivo tem 2 cópias byte-a-byte idênticas
 (nextags-prompt-creator/scripts e nextags-prompt-fixer/scripts). Alterou uma,
 copie para a outra — `test_analyzer_copies_in_sync` reprova se divergirem.
@@ -215,6 +220,17 @@ REQUIRED_SECTIONS = {
             r"texto\s+(como\s+|[ée]\s+o\s+)?padr[ãa]o",
             r"padr[ãa]o\s+[ée]\s+texto",
             r"plain\s+text|default\s+text",
+        ],
+    },
+    # OctoberCut (regras_absolutas.md §28): desde 01/10/2026 a Meta cobra cada
+    # mensagem de serviço. warn — prompts antigos não reprovam de uma vez.
+    "formato_economico_octobercut": {
+        "label": "Bloco OctoberCut (uma resposta = uma mensagem; cada bolha é cobrada)",
+        "severity": "warn",
+        "patterns": [
+            r"formato\s+econ[ôo]mico\s+de\s+resposta",
+            r"octobercut",
+            r"uma\s+resposta\s*=\s*uma\s+mensagem",
         ],
     },
     "fora_de_escopo": {
@@ -922,6 +938,112 @@ def check_send_flow_action_order(parsed) -> list[dict]:
 
 
 # ----------------------------------------------------------------------
+# OctoberCut (regras_absolutas.md §28) — cada bolha é cobrada pela Meta
+# ----------------------------------------------------------------------
+
+BUTTON_TEXT_MAX = 1024  # body de mensagem interativa no WhatsApp
+
+
+def _bubble_kind(item) -> str:
+    if isinstance(item, bool):
+        return "other"
+    if isinstance(item, int):
+        return "typing"
+    if not isinstance(item, dict) or not isinstance(item.get("message"), dict):
+        return "other"
+    msg = item["message"]
+    if set(msg.keys()) == {"text"} and isinstance(msg["text"], str):
+        return "text"
+    att = msg.get("attachment")
+    if isinstance(att, dict):
+        payload = att.get("payload") if isinstance(att.get("payload"), dict) else {}
+        if att.get("type") == "template" and payload.get("template_type") == "button":
+            return "button"
+        if att.get("type") in ("image", "video", "audio", "file", "template"):
+            return "media"
+    return "other"
+
+
+def check_octobercut_bubbles(parsed) -> list[dict]:
+    """Exemplo JSON que gasta mais mensagens do que precisa → WARN.
+    typing `4` cria bolha nova (cobrada); texto ao lado de texto ou de um
+    button template pode ir na mesma mensagem. Ver skill nextags-prompt-octobercut."""
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("messages"), list):
+        return []
+    messages = parsed["messages"]
+    kinds = [_bubble_kind(m) for m in messages]
+    issues = []
+    typing = kinds.count("typing")
+    if typing:
+        issues.append({
+            "path": "$.messages",
+            "severity": "warn",
+            "problem": (f"{typing} typing indicator(s): cada `4` cria bolha nova e a Meta "
+                        "cobra cada mensagem. Junte o texto com \\n\\n num `text` só."),
+        })
+    for idx, (m, k) in enumerate(zip(messages, kinds)):
+        if k == "button":
+            text = m["message"]["attachment"]["payload"].get("text") or ""
+            if isinstance(text, str) and len(text) > BUTTON_TEXT_MAX:
+                issues.append({
+                    "path": f"$.messages[{idx}].message.attachment.payload.text",
+                    "severity": "block",
+                    "problem": (f"`text` do button template com {len(text)} caracteres: o "
+                                f"WhatsApp rejeita acima de {BUTTON_TEXT_MAX}."),
+                })
+    real = [k for k in kinds if k != "typing"]
+    for a, b in zip(real, real[1:]):
+        if (a, b) in (("text", "text"), ("text", "button"), ("button", "text")):
+            issues.append({
+                "path": "$.messages",
+                "severity": "warn",
+                "problem": (f"bolhas `{a}` + `{b}` em sequência podem ir numa mensagem só "
+                            "(texto no `text` do botão ou parágrafos com \\n\\n). "
+                            "Use `octobercut.py merge`."),
+            })
+            break
+    return issues
+
+
+OCTOBERCUT_PROSE_RULES = [
+    (r"separad[oa]s?\s+por\s+(o\s+)?(typing|4\b)|pausa\s+natural",
+     "manda separar a resposta com typing 4"),
+    (r"\b(2|3|4|dois|tr[êe]s|quatro)\s+(blocos|bolhas|bal[õo]es)\b",
+     "manda responder em vários blocos/bolhas"),
+    (r"nunca\s+misture\s+texto\s+com\s+m[íi]dia",
+     "proíbe juntar texto e link (agora a frase vai dentro do botão)"),
+    (r"pergunt\w*\s+o\s+nome\s+uma\s+vez|uma\s+pergunta\s+(relevante\s+)?por\s+vez",
+     "multiplica as trocas (pedir nome / uma pergunta por vez)"),
+]
+OCTOBERCUT_NEGATION = re.compile(
+    r"\b(nunca\s+(use|divida)|n[ãa]o\s+(use|divida|pergunte|pe[çc]a)|sem\s+(typing|perguntar|pedir)|"
+    r"em\s+vez\s+de|antes:|antig[oa]|substitu|no\s+m[áa]ximo)",
+    re.IGNORECASE,
+)
+
+
+def check_octobercut_prose(content: str, json_blocks: list[dict]) -> list[dict]:
+    """Instrução em prosa que multiplica mensagens cobradas → WARN."""
+    covered = set()
+    for b in json_blocks:
+        covered.update(range(b["start_line"], b["end_line"] + 1))
+    findings = []
+    for ln, line in enumerate(content.split("\n"), start=1):
+        if ln in covered or OCTOBERCUT_NEGATION.search(line):
+            continue
+        for rx, why in OCTOBERCUT_PROSE_RULES:
+            if re.search(rx, line, re.IGNORECASE):
+                findings.append({
+                    "line": ln,
+                    "severity": "warn",
+                    "label": f"OctoberCut: instrução {why} — cada mensagem é cobrada (Regra 28)",
+                    "excerpt": line.strip()[:160],
+                })
+                break
+    return findings
+
+
+# ----------------------------------------------------------------------
 # Lints de estilo (warn) — detectores de "cara de IA"
 # ----------------------------------------------------------------------
 
@@ -1129,6 +1251,9 @@ def analyze(content: str, mode: str = "creator") -> dict:
             "trio_handoff_incompleto_count": 0,
             "send_flow_antes_de_set_field_count": 0,
             "promessa_sem_entrega_count": 0,
+            # OctoberCut (regras_absolutas.md §28)
+            "octobercut_bolhas_count": 0,
+            "octobercut_instrucao_count": 0,
             # blocos editáveis pelo cliente (SPEC §5.1 e §5.2)
             "avisos_ativos_missing_count": 0,
             "nota_editor_longa_count": 0,
@@ -1140,6 +1265,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
         "avisos_ativos": [],
         "avisos_ativos_presente": False,
         "nota_editor_longa": [],
+        "octobercut_instrucao": [],
         "prompt_uses_actions": False,
         "json_only_instruction_present": False,
     }
@@ -1202,6 +1328,7 @@ def analyze(content: str, mode: str = "creator") -> dict:
                 (check_handoff_trio(parsed), "trio_handoff_incompleto", "trio_handoff_incompleto_count"),
                 (check_send_flow_action_order(parsed), "send_flow_antes_de_set_field", "send_flow_antes_de_set_field_count"),
                 (check_promessa_sem_entrega(parsed), "promessa_sem_entrega", "promessa_sem_entrega_count"),
+                (check_octobercut_bubbles(parsed), "octobercut_bolhas", "octobercut_bolhas_count"),
             ):
                 if issues:
                     block_report["issues"].append({"type": key, "details": issues})
@@ -1243,6 +1370,12 @@ def analyze(content: str, mode: str = "creator") -> dict:
     findings["summary"]["nota_editor_longa_count"] = len(notas_longas)
     for nt in notas_longas:
         bump(nt.get("severity", "warn"))
+
+    octo = check_octobercut_prose(content, all_blocks)
+    findings["octobercut_instrucao"] = octo
+    findings["summary"]["octobercut_instrucao_count"] = len(octo)
+    for oc in octo:
+        bump(oc.get("severity", "warn"))
 
     findings["json_only_instruction_present"] = check_text_outside_json_instruction(content)
 

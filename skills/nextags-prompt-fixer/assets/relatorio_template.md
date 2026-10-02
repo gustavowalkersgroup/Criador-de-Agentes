@@ -90,6 +90,10 @@
       + `prioridade_pipeline` + `resumo_pipeline` (`trio_handoff_incompleto`).
 - [x] Ordem das actions: `set_field_value` sempre antes de `send_flow`
       (`send_flow_antes_de_set_field`).
+- [x] OctoberCut (Regra 28): exemplos em 1 mensagem, sem typing `4`
+      (`octobercut_bolhas`), sem instrução que multiplica mensagens
+      (`octobercut_instrucao`) e bloco "FORMATO ECONÔMICO DE RESPOSTA" presente.
+      Bolhas nos exemplos: {N_ANTES} → {N_DEPOIS}.
 
 *(Exceção: prompts de Roteador/Revalidador — saída de 1 palavra — não são
 avaliados pelos itens acima que pressupõem JSON/handoff; ver Regra 23 de

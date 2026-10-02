@@ -195,6 +195,20 @@ Doutrina consolidada de como uma tool sai do n8n e chega visível/chamável pela
    onda 1"). Registrar no relatório de entrega quais tools são de escrita e qual gate foi
    aplicado.
 
+## 💸 Custo por mensagem (OctoberCut, desde 01/10/2026)
+
+A Meta cobra cada mensagem de serviço que o agente envia. A tool não envia mensagem,
+mas influencia quantas o agente manda:
+
+- devolva numa chamada só tudo o que o agente precisa para responder de uma vez
+  (status + previsão + link de rastreio; produto + preço + imagem + URL de compra).
+  Tool que obriga o agente a perguntar mais um dado ou a chamar de novo vira mais uma
+  troca cobrada;
+- aceite os identificadores que o agente costuma pedir juntos (CPF **ou** e-mail **ou**
+  nº do pedido) para ele não precisar de outra rodada;
+- prompt, formato da resposta e agrupamento de mensagens continuam fora do escopo
+  (são da `nextags-prompt-creator` / `nextags-prompt-octobercut`).
+
 ## ⚠️ Escopo — o que essa skill faz E NÃO faz
 
 ### ✅ Faz

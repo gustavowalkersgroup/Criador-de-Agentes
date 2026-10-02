@@ -207,7 +207,7 @@ def _line_of(text: str, pos: int) -> int:
 NEGATION = re.compile(
     r"\b(nunca|não use|nao use|não divida|nao divida|proibid|evite|sem typing|"
     r"não mande|nao mande|não envie|nao envie|não pergunte|nao pergunte|"
-    r"não fique|nao fique|no máximo|no maximo|em vez de|ao invés de|antes:|antigo|substitu)",
+    r"sem perguntar|sem pedir|não confundir|nao confundir|não fique|nao fique|no máximo|no maximo|em vez de|ao invés de|antes:|antigo|substitu)",
     re.IGNORECASE,
 )
 

@@ -70,6 +70,8 @@
 - [x] Markdown removido de `text`/`title`/`subtitle`.
 - [x] Nomes de ações normalizados (8 ações canônicas).
 - [x] Ações com campos obrigatórios presentes.
+- [x] OctoberCut: bolhas cobradas na resposta ({N}); typing `4` e textos
+      fundíveis sinalizados em `octobercut_warnings` (aviso, sem alterar o JSON).
 
 ---
 
