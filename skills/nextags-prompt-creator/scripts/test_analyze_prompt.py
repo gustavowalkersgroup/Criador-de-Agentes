@@ -460,11 +460,11 @@ _AVISOS_BLOCO = (
 )
 
 
-def test_avisos_ativos_ausente_warna():
+def test_avisos_ativos_ausente_bloqueia():
     f = ap.analyze('{"messages":[{"message":{"text":"oi"}}]}\n')
     assert f["avisos_ativos_presente"] is False
     assert f["summary"]["avisos_ativos_missing_count"] == 1
-    assert f["avisos_ativos"][0]["severity"] == "warn"
+    assert f["avisos_ativos"][0]["severity"] == "block"
 
 
 def test_avisos_ativos_presente_ok():
@@ -627,6 +627,92 @@ def test_skeleton_sem_warn_octobercut():
     assert f["summary"]["octobercut_bolhas_count"] == 0, [
         (b["start_line"], i) for b in f["json_blocks"] for i in b["issues"] if i["type"] == "octobercut_bolhas"]
     assert f["summary"]["octobercut_instrucao_count"] == 0, f["octobercut_instrucao"]
+
+
+# ---- Blocos estruturais obrigatórios (Regras 14 e 22): agora BLOCK ----------
+
+DADOS_IG = ("## DADOS DESTA CONVERSA\nCanal: Instagram\nNome: {{first_name}} · Username: {{ig_user_name}}\n"
+            "Post: {{last_commented_post_text}}\n"
+            "Se {{first_name}} estiver vazio ou for Guest, use saudação neutra.\n")
+
+
+def _kinds(f):
+    return {e["kind"]: e["severity"] for e in f["estrutura"]}
+
+
+def test_dados_conversa_ausente_bloqueia():
+    k = _kinds(ap.analyze('{"messages":[{"message":{"text":"oi"}}]}\n'))
+    assert k.get("dados_conversa_ausente") == "block"
+
+
+def test_first_name_sem_regra_bloqueia():
+    f = ap.analyze("## DADOS DESTA CONVERSA\nCanal: WhatsApp\nNome: {{first_name}} · Tel: {{phone}}\n"
+                   '{"messages":[{"message":{"text":"Oi, {{first_name}}!"}}]}\n')
+    assert _kinds(f).get("first_name_sem_regra") == "block"
+
+
+def test_first_name_com_regra_ok():
+    f = ap.analyze("## DADOS DESTA CONVERSA\nCanal: WhatsApp\nNome: {{first_name}} · Tel: {{phone}}\n"
+                   "Se {{first_name}} estiver vazio, for \"Guest\" ou não parecer nome, saudação neutra.\n")
+    assert "first_name_sem_regra" not in _kinds(f)
+
+
+def test_saudacao_por_username_bloqueia():
+    f = ap.analyze(DADOS_IG + '{"messages":[{"message":{"text":"Oi, {{ig_user_name}}! Tudo bem?"}}]}\n')
+    assert _kinds(f).get("saudacao_por_username") == "block"
+
+
+def test_username_so_interno_ok():
+    f = ap.analyze(DADOS_IG + "Use {{ig_user_name}} apenas no resumo_pipeline.\n")
+    assert "saudacao_por_username" not in _kinds(f)
+
+
+def test_canal_nao_declarado_warna():
+    f = ap.analyze("## DADOS DESTA CONVERSA\nNome: {{first_name}}\nSe {{first_name}} for Guest, saudação neutra.\n")
+    assert _kinds(f).get("canal_nao_declarado") == "warn"
+    assert f["canais_declarados"] == []
+
+
+def test_instagram_sem_ig_user_name_bloqueia():
+    f = ap.analyze("## DADOS DESTA CONVERSA\nCanal: Instagram Direct\nNome: {{first_name}}\n"
+                   "Se {{first_name}} for Guest, saudação neutra.\n")
+    es = [e for e in f["estrutura"] if e["kind"] == "cufs_de_canal"]
+    assert any(e["severity"] == "block" and "ig_user_name" in e["problem"] for e in es)
+    assert f["canais_declarados"] == ["instagram"]
+
+
+def test_instagram_com_cuf_de_facebook_bloqueia():
+    f = ap.analyze(DADOS_IG + "Marcados: {{total_tagged}}\n")
+    es = [e for e in f["estrutura"] if e["kind"] == "cufs_de_canal"]
+    assert any(e["severity"] == "block" and "total_tagged" in e["problem"] for e in es)
+
+
+def test_instagram_completo_ok():
+    f = ap.analyze(DADOS_IG)
+    assert not [e for e in f["estrutura"] if e["kind"] == "cufs_de_canal"]
+
+
+def test_multicanal_whatsapp_instagram_ok():
+    f = ap.analyze("## DADOS DESTA CONVERSA\nCanal: WhatsApp e Instagram\nNome: {{first_name}} · Tel: {{phone}} · "
+                   "IG: {{ig_user_name}} · Post: {{last_commented_post_text}}\n"
+                   "Se {{first_name}} for Guest, saudação neutra.\n")
+    assert f["canais_declarados"] == ["instagram", "whatsapp"]
+    assert not [e for e in f["estrutura"] if e["kind"] == "cufs_de_canal"]
+
+
+def test_roteador_isento_dos_blocos():
+    f = ap.analyze("Você é um roteador. Responda apenas com uma palavra: vendas, sac ou ignorar.\n")
+    assert f["is_router_prompt"] is True
+    assert f["estrutura"] == [] and f["avisos_ativos"] == []
+
+
+def test_skeleton_e_template_passam_na_estrutura():
+    from pathlib import Path
+    base = Path(__file__).resolve().parents[1] / "references"
+    for name in ("prompt_template.md",):
+        f = ap.analyze((base / name).read_text(encoding="utf-8"))
+        bad = [e for e in f["estrutura"] if e["severity"] == "block"] + f["avisos_ativos"]
+        assert not bad, (name, bad)
 
 
 def _run():

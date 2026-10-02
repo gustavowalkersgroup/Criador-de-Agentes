@@ -358,7 +358,11 @@ e nunca um exemplo de `send_flow` sem os três `set_field_value` antes.
 
 **Regra:** todo prompt de agente gerado (exceto Roteador/Revalidador, que não
 levam este bloco) inclui, perto do topo, o bloco `📣 AVISOS ATIVOS` no
-formato canônico, vazio por padrão:
+formato canônico, vazio por padrão. **Bloqueante** desde a 1.9.1
+(`avisos_ativos_ausente`, `avisos_ativos_sem_marcadores`): era só aviso e os
+prompts saíam sem o bloco. O mesmo vale para `## DADOS DESTA CONVERSA`
+(`dados_conversa_ausente`), que abre com a linha `Canal:` e os CUFs do canal
+(Regra 14, itens 5-6 e 8).
 
 ```
 📣 AVISOS ATIVOS

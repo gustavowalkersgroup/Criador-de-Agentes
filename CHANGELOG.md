@@ -5,6 +5,32 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.9.1] - 2026-10-02
+
+Enforcement do que antes era só documentação: prompts gerados saíam sem
+`📣 AVISOS ATIVOS`, sem `## DADOS DESTA CONVERSA`, sem os CUFs de Instagram e
+Facebook e saudando errado pelo nome. Agora o analisador **bloqueia**.
+
+### Alterado
+
+- `analyze_prompt.py` (2 cópias): `avisos_ativos_ausente` e
+  `avisos_ativos_sem_marcadores` passam de warn para **block**; novos checks
+  **block** `dados_conversa_ausente`, `first_name_sem_regra` (`{{first_name}}` sem a
+  regra de vazio/"Guest"), `saudacao_por_username` (`{{ig_user_name}}`/
+  `{{page_user_name}}`/`{{username}}` em saudação ou texto ao cliente) e
+  `cufs_de_canal` (canal declarado sem o CUF do canal, ou CUF de outro canal);
+  warn `canal_nao_declarado`. Roteador/Revalidador ficam isentos (Regra 23).
+  +12 testes (80 no total).
+- `prompt_skeleton.md` §1.7: o bloco DADOS DESTA CONVERSA abre com `Canal:` e ganha
+  variantes prontas para WhatsApp, Instagram (`{{ig_user_name}}`, `{{last_story_id}}`,
+  `{{last_fb_comment}}`, `{{last_commented_post_text}}` + regras defensivas),
+  Messenger (`{{page_user_name}}`, `{{last_ad}}`, …) e Webchat.
+- `prompt_template.md`: linha `Canal:` e orientação por canal no bloco de dados.
+- `SKILL.md` do creator: item 3/3a da lista obrigatória (canal, CUFs do canal, regra
+  do nome) e lista de bloqueios no gate de validação.
+- `nextags-prompt-fixer`: Regra 22 bloqueante, Regra 14 item 8 (CUFs do canal),
+  tabela de correções e relatório atualizados.
+
 ## [1.9.0] - 2026-10-02
 
 Nova skill **`nextags-prompt-octobercut`**: adapta os agentes à cobrança da Meta
