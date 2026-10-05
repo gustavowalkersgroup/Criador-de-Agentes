@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder" "nextags-prompt-octobercut")
+SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder" "nextags-prompt-octobercut" "nextags-prompt-instagram")
 CLAUDE_DIR="${HOME}/.claude/skills"
 CODEX_HOME_DIR="${CODEX_HOME:-${HOME}/.codex}"
 TARGETS=("$CLAUDE_DIR")
@@ -94,6 +94,7 @@ echo "  /nextags-mcp-builder      # construir MCP no n8n (atendimento sob demand
 echo "  /nextags-webhook-builder  # construir/auditar webhooks transacionais (disparo proativo)"
 echo "  /nextags-webchat-tester   # testar o agente publicado no webchat"
 echo "  /nextags-prompt-octobercut # agrupar respostas (cobrança Meta por mensagem)"
+echo "  /nextags-prompt-instagram # automação de comentários do Instagram"
 echo ""
 echo "No Codex: \$nextags-prompt-octobercut (ou descreva a tarefa; a skill é escolhida pela descrição)"
 echo ""
