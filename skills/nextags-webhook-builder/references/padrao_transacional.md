@@ -48,9 +48,30 @@ Existem **três** padrões em produção. A escolha depende de **como a platafor
 | **Magazord** | **polling** (sem webhook) | **polling** | Wazzu — feeder de polling POSTa no webhook de disparo. |
 | **Conecta Venda** | **polling** (cron 5min) | **polling** (cron 2h) | Privilège Semijoias. |
 | **Loja Integrada** | webhook | cron | Amo (carrinho). |
+| **FácilZap** | webhook nativo `pedido_criado` ⚠️ **só criação documentada** — para pago/enviado/entregue confirmar no painel; se não houver, **polling** `GET /pedidos` com `filtros[data_inicial]/[data_final]` | webhook nativo (`carrinho_abandonado_criado`) | Webhook **só se configura no painel** (Integrações → Webhooks) — `GET /webhooks` é log de entregas, não CRUD. **Sem HMAC.** Estágio vem em flags booleanas `status_pago`/`status_em_separacao`/`status_separado`/`status_despachado`/`status_entregue` — ler a última verdadeira, nunca texto. Rate limit **2 req/s**. Sem cliente em produção ainda. |
 | **Melhor Envio** | polling (rastreio) | — | Cantarola. |
 
 > **Regra:** nunca assuma cron sem confirmar na doc da plataforma se existe webhook push equivalente. E nunca assuma webhook onde não existe (Magazord/Conecta Venda **só** têm polling). [Certeza]
+
+### 2.1 FácilZap — notas de payload (plataforma nova, sem produção ainda)
+
+Recipe completa da API em `nextags-mcp-builder/references/api_recipes/facilzap.md`. O que muda no transacional:
+
+| Ponto | Detalhe |
+|---|---|
+| **Envelope** | `{ id, evento, dados }` — `id` é UUID **da entrega**. Use como chave de idempotência do webhook; use `dados.id` como chave de dedup do pedido. |
+| **Estágio** | Flags booleanas independentes: `status_pago` → `status_em_separacao` → `status_separado` → `status_despachado` → `status_entregue`. Derive o estágio pela **última verdadeira nessa ordem**. Não há campo de texto de status — casa com a Regra nº3 sem esforço. |
+| **Telefone** | `dados.cliente.whatsapp_e164` já vem normalizado (`+5511999999999`). Ainda assim rode o guard de fixo (Regra nº7). |
+| **`dados.id` tem tipo misto** | Pedido = `integer`, carrinho = **UUID string**. Trate sempre como string na Data Table de dedup. |
+| **Carrinho não tem link** | O payload de `carrinho_abandonado_criado` **não traz URL de recuperação**. `link_carrinho` precisa ser montado a partir do catálogo, ou o CTA vira "fale com a gente". Não invente campo. |
+| **Carrinho não tem preço por item** | Só `valor_total` e `quantidade_produtos`. `produtos[]` traz nome, variação, quantidade e dimensões — sem preço unitário. |
+| **Rastreio não vem no webhook** | Ler via `GET /pedidos/{id}`; gravar via `PATCH /pedidos/{id}/codigo_rastreio`. |
+| **Sem HMAC** | Nenhum header de assinatura. Proteja o endpoint com segredo no path e valide o shape. |
+| **Auto-desativação** | Excesso de falha de entrega **desativa o webhook sozinho**. O receptor tem que devolver **200 imediato** e processar em background. Monitorar `GET /webhooks` (log: `tentativas`, `status`, `response`) para pegar degradação antes do desligamento. |
+| **Provisionamento manual** | Não há API para criar webhook. Cadastro da URL é passo manual de onboarding — registre no `NÃO ATIVAR antes de…` do sticky. |
+| **Rate limit 2 req/s** | Se cair em polling (`GET /pedidos`), serialize e use `length` alto. `429` com `x-ratelimit-remaining` para pacing. |
+| **`GET /pedidos` sem data = só hoje** | Todo polling/backfill precisa de `filtros[data_inicial]` e `filtros[data_final]`. |
+
 
 ---
 
