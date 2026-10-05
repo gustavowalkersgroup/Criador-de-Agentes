@@ -9,7 +9,7 @@
 $ErrorActionPreference = "Continue"
 
 $RepoUrl = "https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester", "nextags-webhook-builder", "nextags-prompt-octobercut")
+$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester", "nextags-webhook-builder", "nextags-prompt-octobercut", "nextags-prompt-instagram")
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE ".codex" }
 $Targets = @($ClaudeDir)
@@ -157,6 +157,7 @@ Write-Host "  /nextags-mcp-builder      # construir MCP no n8n (atendimento sob 
 Write-Host "  /nextags-webhook-builder  # construir/auditar webhooks transacionais (disparo proativo)"
 Write-Host "  /nextags-webchat-tester   # testar o agente publicado no webchat"
 Write-Host "  /nextags-prompt-octobercut # agrupar respostas (cobrança Meta por mensagem)"
+Write-Host "  /nextags-prompt-instagram # automação de comentários do Instagram"
 Write-Host ""
 Write-Host "No Codex: `$nextags-prompt-octobercut (ou descreva a tarefa; a skill é escolhida pela descrição)"
 Write-Host ""

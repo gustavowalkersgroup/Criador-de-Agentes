@@ -5,6 +5,25 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.10.0] - 2026-10-05
+
+Nova skill para automação de comentários do Instagram, validada em produção
+em um e-commerce de acessórios pet.
+
+### Adicionado
+
+- `nextags-prompt-instagram`: monta resposta pública por IA (@autor, preço via
+  MCP, "a partir de"), classificador `CHAMAR`/`NAO` que grava `decisao_dm` e
+  `resumo_atendimento` e dispara o fluxo de abertura por `send_flow`, e mini
+  prompt para o agente de vendas abrir o direct com contexto. Inclui 3
+  templates, arquitetura, lições, metodologia de pesquisa e bateria de 12 testes.
+- Parceria, UGC, influencer e reclamação: gravam `motivo_transferencia`,
+  `prioridade_pipeline` e `resumo_pipeline` antes do `send_flow`.
+
+### Alterado
+
+- Instaladores, README e manifestos passam a listar 8 skills.
+
 ## [1.9.2] - 2026-10-02
 
 Legibilidade do prompt vira bloqueio. O fixer empilhava, a cada edição, um
