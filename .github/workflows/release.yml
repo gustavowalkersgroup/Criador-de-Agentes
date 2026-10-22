@@ -1,0 +1,39 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gerar um zip por skill
+        run: bash scripts/build_dist.sh
+
+      - name: Montar notas a partir do CHANGELOG
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          prev=$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -1)
+          awk -v cur="${tag#v}" -v prev="${prev#v}" '
+            index($0, "## [" cur "]") == 1 { on = 1 }
+            prev != "" && index($0, "## [" prev "]") == 1 { on = 0 }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Release ${tag}" > notes.md
+
+      - name: Publicar release com os zips
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.zip \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            --verify-tag
