@@ -3,6 +3,11 @@ name: release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag a criar a partir da main (ex.: v1.11.0)'
+        required: true
 
 permissions:
   contents: write
@@ -18,9 +23,12 @@ jobs:
       - name: Gerar um zip por skill
         run: bash scripts/build_dist.sh
 
+      - name: Definir tag
+        run: echo "TAG=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_ENV"
+
       - name: Montar notas a partir do CHANGELOG
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${TAG}"
           prev=$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -1)
           awk -v cur="${tag#v}" -v prev="${prev#v}" '
             index($0, "## [" cur "]") == 1 { on = 1 }
@@ -33,7 +41,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/*.zip \
-            --title "${GITHUB_REF_NAME}" \
+          gh release create "${TAG}" dist/*.zip \
+            --title "${TAG}" \
             --notes-file notes.md \
-            --verify-tag
+            --target "${GITHUB_SHA}"
