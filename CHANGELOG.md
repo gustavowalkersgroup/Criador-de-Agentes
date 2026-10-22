@@ -5,6 +5,27 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.11.0] - 2026-10-22
+
+Nova skill para cadastrar modelos de WhatsApp na categoria Utilidade.
+
+### Adicionado
+
+- `whatsapp-template-utilidade`: padrões de modelo que a Meta aprovou como
+  Utilidade (pedido enviado, coringa, carrinho, PIX, reativação), o que foi
+  reclassificado para Marketing, passo a passo do WhatsApp Manager, lotes de
+  teste e riscos. Ganhou seções de conformidade e de integração com
+  `nextags-webhook-builder` e `nextags-prompt-octobercut`.
+
+### Corrigido
+
+- Frontmatter da skill recebida tinha `: ` sem aspas no `description`, o que
+  é YAML inválido e impediria o carregamento. Agora o texto vai entre aspas.
+
+### Alterado
+
+- Instaladores, README e manifestos passam a listar 9 skills.
+
 ## [1.10.0] - 2026-10-05
 
 Nova skill para automação de comentários do Instagram, validada em produção
