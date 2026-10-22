@@ -5,6 +5,19 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.12.0] - 2026-10-22
+
+Skill de modelos de WhatsApp atualizada com o aprendizado do Cowork.
+
+### Alterado
+
+- `whatsapp-template-utilidade` (v2): formato obrigatório do coringa (cada
+  variável em linha própria, rodapé `Empresa | Digite STOP para sair`), como
+  resolver o erro de "muitas variáveis para a extensão", passo a passo do
+  cadastro mais detalhado (conta correta, upload de imagem, envio e checagem
+  contra duplicidade) e regras para lotes de teste. Nomes de clientes e de
+  pessoas foram mantidos fora do texto.
+
 ## [1.11.0] - 2026-10-22
 
 Nova skill para cadastrar modelos de WhatsApp na categoria Utilidade.
