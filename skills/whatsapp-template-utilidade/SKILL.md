@@ -50,11 +50,6 @@ Quando pedido um lote, gerar variações sutis do mesmo modelo (nome v2, v3...),
 - Mensagem de pós-venda ('seu pedido foi aprovado') enviada com pagamento ainda pendente pode confundir o cliente e gerar bloqueios.
 - Não alterar nem enviar nada em conta de cliente sem pedido explícito; ler o editor e sair sem salvar.
 
-## Conformidade
-- Use Utilidade só para conteúdo realmente transacional ou de relacionamento já em andamento (pedido, pagamento, entrega, cadastro, agendamento, confirmação). O formato coringa serve para variar a mensagem real, não para fazer oferta passar por aviso.
-- Os exemplos das variáveis precisam representar o que será enviado de verdade. Divulgação, cupom ou convite de compra vai em modelo de Marketing.
-- Reclassificações e quedas de qualidade repetidas podem limitar o número, então teste em lote pequeno.
-
 ## Integração com as outras skills
 - Disparos transacionais pelo webhook (pedido, rastreio, PIX): quem monta o endpoint é `nextags-webhook-builder`; esta skill cuida só do modelo aprovado na Meta.
 - Custo: modelo de Utilidade enviado fora da janela de 24h é cobrado, e dentro da janela também passou a ser cobrado desde 01/10/2026. Para a conversa em si (mensagens de serviço do agente de IA), use `nextags-prompt-octobercut`.

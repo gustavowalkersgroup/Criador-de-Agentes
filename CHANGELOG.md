@@ -14,8 +14,8 @@ Nova skill para cadastrar modelos de WhatsApp na categoria Utilidade.
 - `whatsapp-template-utilidade`: padrões de modelo que a Meta aprovou como
   Utilidade (pedido enviado, coringa, carrinho, PIX, reativação), o que foi
   reclassificado para Marketing, passo a passo do WhatsApp Manager, lotes de
-  teste e riscos. Ganhou seções de conformidade e de integração com
-  `nextags-webhook-builder` e `nextags-prompt-octobercut`.
+  teste e riscos. Ganhou seção de integração com `nextags-webhook-builder` e
+  `nextags-prompt-octobercut`.
 
 ### Corrigido
 
