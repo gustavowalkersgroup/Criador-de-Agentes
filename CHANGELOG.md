@@ -5,6 +5,20 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.14.3] - 2026-10-26
+
+O agente já acumula o histórico da conversa; `{{chat_history*}}` só serve para puxar o histórico uma vez.
+
+### Adicionado
+
+- `analyze_prompt.py` (2 cópias idênticas): aviso `historico_no_prompt` quando um prompt de agente conversacional traz
+  `{{chat_history*}}` (roteador e revalidador ficam de fora). +3 testes (99 no creator).
+- Regra 30 nos dois `regras_absolutas.md` e nota em `cufs_nextags.md` (2 cópias).
+
+### Corrigido
+
+- `ia_hub_nativo.md`: encerrado o ponto em aberto do histórico (decisão do dono).
+
 ## [1.14.2] - 2026-10-26
 
 ### Corrigido

@@ -29,6 +29,7 @@ Checks estruturais (regras_absolutas.md §14 e §22 — o que o creator SEMPRE g
   block — saudacao_por_username ({{ig_user_name}}/{{page_user_name}} como vocativo)
   block — cufs_de_canal (canal declarado sem o CUF do canal, ou CUF de outro canal)
   warn  — canal_nao_declarado (sem linha `Canal:` no bloco de dados)
+  warn  — historico_no_prompt (`{{chat_history*}}` em prompt de agente: o agente já acumula o histórico)
   (Roteador/Revalidador — saída de 1 palavra, sem JSON — ficam de fora, Regra 23.)
 
 Checks OctoberCut (regras_absolutas.md §28 — Meta cobra cada mensagem):
@@ -1043,6 +1044,7 @@ ROUTER_PROMPT_RE = re.compile(
     r"responda\s+(apenas|somente|s[óo])\s+com\s+(uma|1)\s+(das\s+)?palavras?",
     re.IGNORECASE)
 DADOS_CONVERSA_RE = re.compile(r"DADOS\s+DESTA\s+CONVERSA", re.IGNORECASE)
+CHAT_HISTORY_RE = re.compile(r"\{\{\s*chat_history\w*\s*\}\}")
 FIRST_NAME_RE = re.compile(r"\{\{\s*first_name\s*\}\}")
 FIRST_NAME_RULE_RE = re.compile(
     r"first_name[^\n]{0,160}(guest|vazi[oa])|(guest|vazi[oa])[^\n]{0,160}first_name|"
@@ -1149,6 +1151,15 @@ def check_structural_blocks(content: str, json_blocks: list[dict]) -> list[dict]
                         "ou dentro de texto ao cliente. Username é identificador (\"Oi, "
                         "maria_silva_123!\") e texto livre do próprio usuário (vetor de injeção). "
                         "Saudar por {{first_name}} validado; username só em uso interno."),
+        })
+    if CHAT_HISTORY_RE.search(content):
+        issues.append({
+            "kind": "historico_no_prompt",
+            "severity": "warn",
+            "problem": ("`{{chat_history*}}` num prompt de agente conversacional. O agente já acumula o "
+                        "histórico conforme conversa com a pessoa; a variável a cada chamada só duplica "
+                        "tokens. Ela serve para puxar o histórico uma vez (resumo, automação específica) "
+                        "ou em classificador sem memória (roteador/revalidador). Dono, 26/10/2026."),
         })
     channels = declared_channels(content)
     if not channels:

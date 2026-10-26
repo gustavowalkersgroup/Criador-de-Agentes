@@ -1338,3 +1338,17 @@ testar no canal real.
 de IA** do AI Hub fazem o trabalho do JSON e que a skill oficial da NexTags orienta a
 **não pedir JSON no prompt**; o bloco antigo continua funcionando ("teste antes de
 mudar"). Esta skill segue exigindo o bloco oficial (Regra 12) até o dono decidir.
+
+---
+
+## 30. `{{chat_history*}}` em prompt de agente conversacional
+
+O agente já acumula o histórico conforme conversa com a pessoa. `{{chat_history}}`, `{{chat_history_large}}`,
+`{{chat_history_details}}` e `{{chat_history_details_large}}` só servem para **puxar o histórico uma vez** (resumir, ou uma
+automação específica) e em prompt sem memória (roteador e revalidador). Em agente conversacional a variável duplica tokens a
+cada chamada.
+
+- O analisador avisa `historico_no_prompt` (warn; roteador e revalidador ficam de fora).
+- **Como corrigir:** tirar a variável do bloco `## DADOS DESTA CONVERSA` e reescrever a frase que a chama de "única memória"
+  para "as mensagens anteriores desta conversa são sua memória". Não mexer no resto.
+- Decisão do dono, 26/10/2026. Caso real: vendas v3.0 e SAC v1.7 da Degan.

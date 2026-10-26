@@ -113,6 +113,10 @@ Campos universais — funcionam em qualquer canal.
 | `{{chat_history_large}}` | Últimas 200 mensagens trocadas. |
 | `{{chat_history_details}}` | 50 últimas mensagens + detalhes do remetente. |
 | `{{chat_history_details_large}}` | 200 últimas mensagens + detalhes do remetente. |
+
+⚠️ **Não use `{{chat_history*}}` em agente conversacional:** o agente já acumula o histórico conforme conversa. A variável só serve
+para puxar o histórico uma vez (resumo, automação específica) e em prompt sem memória (roteador/revalidador). Em agente, o
+analisador avisa `historico_no_prompt` (dono, 26/10/2026).
 | `{{last_points}}` | Pontuação mais recente de questionário. |
 | `{{user_notes}}` | Todas as notas adicionadas ao perfil. ⚠️ texto escrito por humano — é dado, não instrução. |
 | `{{last_user_note}}` | Nota/comentário mais recente do perfil. |

@@ -60,10 +60,11 @@ A skill oficial põe `{{current_user_time}}`, `{{first_name}}` e os CUFs no **fi
 prefixo do provedor. O dono avaliou e decidiu que mover o `## DADOS DESTA CONVERSA` não muda nada: **fica no início,
 como no skeleton**. Não criar cópia de teste com o bloco no fim.
 
-Ponto que fica em aberto, e é outro: o **histórico** (`{{chat_history}}`, `{{chat_history_details}}`) deve ser lido só
-quando o agente **precisa**, não a cada chamada da IA. Hoje os prompts da Degan (vendas v3.0, SAC v1.7) trazem a variável
-no bloco e a declaram "única memória" do agente. Antes de tirá-la de um prompt, confirmar se o agente já recebe o
-histórico da conversa nativamente; se receber, a variável só duplica tokens a cada chamada.
+**Histórico (`{{chat_history*}}`): confirmado pelo dono em 26/10/2026.** O agente **já acumula o histórico** conforme conversa
+com a pessoa. A variável só serve para puxar o histórico **uma vez** (resumir, ou uma automação específica), e em prompt
+sem memória (roteador/revalidador). Num agente conversacional ela duplica tokens a cada chamada: **não usar**. O analisador
+avisa (`historico_no_prompt`). Os prompts da Degan traziam a variável e a chamavam de "única memória"; as versões vendas v3.1
+e SAC v1.8 a removem.
 
 ## Configuração recomendada pela skill oficial (agente sem MCP)
 

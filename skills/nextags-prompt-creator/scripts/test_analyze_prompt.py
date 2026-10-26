@@ -749,6 +749,23 @@ def test_canal_nao_declarado_warna():
     assert f["canais_declarados"] == []
 
 
+def test_historico_no_prompt_de_agente_warna():
+    f = ap.analyze("## DADOS DESTA CONVERSA\nCanal: WhatsApp\nNome: {{first_name}} · Histórico: {{chat_history_details}}\n"
+                   "Se {{first_name}} for Guest, saudação neutra.\n")
+    assert _kinds(f).get("historico_no_prompt") == "warn"
+
+
+def test_historico_ausente_nao_warna():
+    f = ap.analyze(DADOS_IG)
+    assert "historico_no_prompt" not in _kinds(f)
+
+
+def test_historico_em_roteador_nao_warna():
+    f = ap.analyze("Responda apenas com uma palavra: vendas, sac ou ignorar.\nHistórico: {{chat_history_details_large}}\n")
+    assert f["is_router_prompt"] is True
+    assert "historico_no_prompt" not in _kinds(f)
+
+
 def test_instagram_sem_ig_user_name_bloqueia():
     f = ap.analyze("## DADOS DESTA CONVERSA\nCanal: Instagram Direct\nNome: {{first_name}}\n"
                    "Se {{first_name}} for Guest, saudação neutra.\n")
