@@ -5,6 +5,15 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.14.2] - 2026-10-26
+
+### Corrigido
+
+- `nextags-prompt-creator/references/ia_hub_nativo.md`: a "decisão pendente" de pôr o bloco dinâmico no fim do prompt (cache de
+  prefixo) foi encerrada pelo dono: o `## DADOS DESTA CONVERSA` fica no início, como no skeleton. Ficou em aberto só o
+  histórico (`{{chat_history*}}`): deve ser lido quando o agente precisa, não a cada chamada; confirmar se há histórico
+  nativo antes de tirar a variável de um prompt.
+
 ## [1.14.1] - 2026-10-26
 
 Decisões do dono depois de comparar com a skill oficial da NexTags (`guiipego/nextags`, `criar-agente-ia`).

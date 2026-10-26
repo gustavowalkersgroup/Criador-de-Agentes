@@ -145,7 +145,7 @@ Read only the references relevant to the selected modules:
 | E-commerce adversarial scenarios | `references/testes_adversariais_ecommerce.md` |
 | Tone and commercial claims audit | `references/auditoria_tom_e_claims.md` |
 | Walkers account flow catalog | `references/fluxos_canonicos_walkers.md` |
-| Native AI Hub mode (Tipo de resposta + Ações de IA), lessons from the official NexTags skill, pending cache-order decision | `references/ia_hub_nativo.md` |
+| Native AI Hub mode (Tipo de resposta + Ações de IA), lessons from the official NexTags skill, owner decisions on the dynamic block and history | `references/ia_hub_nativo.md` |
 | Full V7 methodology | `references/arquitetura_suprema_v7.md` |
 
 Use `references/prompt_skeleton.md` as a modular skeleton, never as a universal prompt. Include only selected modules.

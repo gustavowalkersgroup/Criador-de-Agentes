@@ -54,17 +54,16 @@ Diferenças e riscos a testar antes de adotar:
 9. **`[A DEFINIR]` em vez de inventar:** o que o cliente não soube responder vira placeholder e o agente diz que a
    equipe confirma.
 
-## Candidato, decisão pendente: bloco dinâmico no fim do prompt
+## Decisão do dono (26/10/2026): não mover o bloco dinâmico para o fim
 
-A skill oficial põe `{{current_user_time}}`, `{{first_name}}` e os CUFs no **fim** do prompt, para a parte fixa
-ser idêntica entre conversas e favorecer o cache de prefixo do provedor [Provável: depende de a NexTags enviar a
-mensagem do sistema como prefixo estável e de o provedor cachear].
+A skill oficial põe `{{current_user_time}}`, `{{first_name}}` e os CUFs no **fim** do prompt, para favorecer o cache de
+prefixo do provedor. O dono avaliou e decidiu que mover o `## DADOS DESTA CONVERSA` não muda nada: **fica no início,
+como no skeleton**. Não criar cópia de teste com o bloco no fim.
 
-Nosso método põe `## DADOS DESTA CONVERSA` logo depois do `📣 AVISOS ATIVOS`, no **início**. Medido em 26/10/2026 nos
-prompts da Degan: vendas v3.0 (≈40 mil caracteres) e SAC v1.7 (≈30 mil) abrem com o bloco, que inclui
-`{{chat_history_details}}`/`{{chat_history}}`. Como o histórico muda a cada mensagem, quase nada do prompt fica
-como prefixo idêntico. Não mudar o skeleton nem o analisador antes de testar (comparar custo e latência com uma
-cópia do prompt com o bloco no fim, e conferir que a adesão às regras não cai).
+Ponto que fica em aberto, e é outro: o **histórico** (`{{chat_history}}`, `{{chat_history_details}}`) deve ser lido só
+quando o agente **precisa**, não a cada chamada da IA. Hoje os prompts da Degan (vendas v3.0, SAC v1.7) trazem a variável
+no bloco e a declaram "única memória" do agente. Antes de tirá-la de um prompt, confirmar se o agente já recebe o
+histórico da conversa nativamente; se receber, a variável só duplica tokens a cada chamada.
 
 ## Configuração recomendada pela skill oficial (agente sem MCP)
 
