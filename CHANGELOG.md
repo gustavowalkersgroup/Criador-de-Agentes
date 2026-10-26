@@ -5,6 +5,22 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.13.0] - 2026-10-26
+
+Duas skills novas para operar a API da NexTags: referência completa e publicação de prompt.
+
+### Adicionado
+
+- `nextags-api`: referência completa da API REST da NexTags (69 endpoints, gerada do swagger
+  oficial `app.nextagsai.com.br/php/images.php?id=swagger.json`), com `live_shapes.md` (formas reais
+  de resposta verificadas ao vivo: config do agente dentro de `data`, números como string,
+  envelopes inconsistentes) e `scripts/nextags_api.py` (`call`, `whoami`, `snapshot`,
+  `backup-agents`, `spec-check`; escrita só com `--yes`).
+- `nextags-prompt-push`: sobe só o prompt de um agente no IA Hub, com simulação, backup e
+  conferência (origem: LeoALXHIl/nextags-skills). `get_agent` passou a achatar `data`; antes `id`
+  e `nome` saíam `None` no `show` e no relatório.
+- Instaladores e README passam a listar 11 skills.
+
 ## [1.12.0] - 2026-10-22
 
 Skill de modelos de WhatsApp atualizada com o aprendizado do Cowork.
