@@ -1,0 +1,160 @@
+# NexTags Desenvolvedores
+
+> Documentação para desenvolvedores da NexTags: API REST, webhooks, exemplos de código e integração com IA (llms.txt e MCP).
+
+Toda página existe também em Markdown: troque a barra final do endereço por ".md" (ex.: /comecar/primeira-requisicao.md).
+Páginas marcadas "em produção" ainda não têm o texto final.
+
+Veja também: Central de Ajuda NexTags — https://help.nextags.com.br/llms.txt
+
+## Começar
+
+- [Começar](https://docs.nextags.com.br/comecar.md): Autenticação, primeira requisição, limites e os identificadores que a API usa.
+- [Visão geral da API](https://docs.nextags.com.br/comecar/visao-geral.md): O que a API REST da NexTags faz em cada recurso, a URL base e o formato das respostas, dos IDs, das datas e do dinheiro. E o que fica fora dela.
+- [Autenticação com a chave de API](https://docs.nextags.com.br/comecar/autenticacao.md): Guarde a chave de API numa variável de ambiente, mande no cabeçalho X-ACCESS-TOKEN, reconheça o erro 401 e troque a chave sem parar as integrações.
+- [Sua primeira requisição](https://docs.nextags.com.br/comecar/primeira-requisicao.md): Consulte os dados da conta com GET /accounts/me em cURL, JavaScript, Python ou PHP, entenda a resposta e saiba o que fazer com o erro 401.
+- [Contatos, fluxos e outros identificadores](https://docs.nextags.com.br/comecar/identificadores.md): Onde achar o ID de contato, fluxo, etiqueta, campo, pipeline, etapa, oportunidade, administrador, agente, produto, pedido e disparo, pela API e pela tela.
+- [Limites, erros e boas práticas](https://docs.nextags.com.br/comecar/limites-e-erros.md): Os códigos de resposta da API, o formato do erro, quantas chamadas planejar por minuto, a paginação e como repetir chamadas sem duplicar contatos e envios.
+- [Campos personalizados, campos do bot e variáveis](https://docs.nextags.com.br/comecar/campos-e-variaveis.md): Campo personalizado (um valor por contato), campo do bot (um valor da conta) e campos do sistema: o formato de cada valor e como ler e gravar cada um pela API.
+- [Mensagens e ações em JSON](https://docs.nextags.com.br/comecar/mensagens-e-acoes.md): O formato JSON de mensagens e ações da NexTags (texto, botões, respostas rápidas, mídia, cartões, galeria e as 8 ações), com os limites e onde ele vale.
+
+## Guias
+
+- [Guias](https://docs.nextags.com.br/guias.md): Receitas de ponta a ponta para os casos de uso mais comuns da API.
+- [Criar ou atualizar um contato](https://docs.nextags.com.br/guias/criar-ou-atualizar-contato.md): Procure o contato pelo telefone, crie se não existir (com etiqueta, campo e fluxo) e, se existir, atualize as etiquetas e os campos. Sem criar duplicados.
+- [Enviar um fluxo para um contato](https://docs.nextags.com.br/guias/enviar-fluxo.md): Envie um fluxo pronto a um contato a partir do seu sistema, com o ID do contato e o do fluxo, e respeite a janela de 24 horas do WhatsApp.
+- [Enviar texto, imagem e arquivo](https://docs.nextags.com.br/guias/enviar-texto-e-arquivos.md): Envie um texto, uma imagem, um vídeo, um áudio ou um arquivo a um contato pela API, escolha o canal e respeite a janela de 24 horas e os limites.
+- [Etiquetar contatos e preencher campos](https://docs.nextags.com.br/guias/etiquetas-e-campos.md): Ache ou crie a etiqueta, ponha e tire do contato, preencha e limpe campos personalizados e mude o valor de um campo do bot, tudo pela API.
+- [Encontrar um contato pelo e-mail ou telefone](https://docs.nextags.com.br/guias/buscar-contato-por-campo.md): Ache o contato pelo telefone, pelo e-mail ou pelo valor de um campo personalizado, e saiba o que fazer quando a busca traz mais de um resultado.
+- [Criar e mover oportunidades no pipeline](https://docs.nextags.com.br/guias/oportunidades-no-pipeline.md): Liste pipelines e etapas, crie a oportunidade do contato, mova de etapa, marque como ganha ou perdida, transfira para outro pipeline e comente, pela API.
+- [Carrinho, pedidos e produtos](https://docs.nextags.com.br/guias/carrinho-e-pedidos.md): Consulte e atualize produtos, envie produtos, mexa no carrinho e mude o status, a entrega e o pagamento dos pedidos pela API, com valores em centavos.
+- [Acompanhar, reenviar e cancelar disparos](https://docs.nextags.com.br/guias/disparos-pela-api.md): Liste e consulte os Broadcasts da conta, acompanhe o status, reenvie e cancele pela API. Criar o Broadcast continua na tela da NexTags.
+- [Agentes de IA pela API](https://docs.nextags.com.br/guias/agentes-de-ia-pela-api.md): Liste os agentes do AI Hub, atualize o prompt, o modelo e o limite de tokens, veja funções, MCP e arquivos e salve mensagens no histórico da IA.
+- [Usar a API no Make, n8n e Zapier](https://docs.nextags.com.br/guias/make-n8n-zapier.md): Chame a API da NexTags pelo módulo HTTP do Make, pelo HTTP Request do n8n e pelo Webhooks by Zapier, e faça o caminho contrário com webhooks.
+
+## Referência
+
+- [Referência da API](https://docs.nextags.com.br/referencia.md): Todos os endpoints da API REST da NexTags, agrupados por recurso, gerados do contrato OpenAPI.
+- [Conta](https://docs.nextags.com.br/referencia/conta.md): Dados da conta, administradores, equipes e integrações ligadas.
+- [Consultar a conta](https://docs.nextags.com.br/referencia/conta/consultar-a-conta.md): Devolve os dados da conta dona da chave de API: o ID, o nome, se o acesso ao painel está liberado, quando a conta foi criada e quantos contatos ela tem.
+- [Listar administradores](https://docs.nextags.com.br/referencia/conta/listar-administradores.md): Lista os administradores da conta, as pessoas da equipe que entram no painel, com o ID de cada um.
+- [Listar equipes](https://docs.nextags.com.br/referencia/conta/listar-equipes.md): Lista as equipes de atendimento da conta (as equipes da Caixa de Entrada), com o ID e o nome de cada uma.
+- [Listar integrações da conta](https://docs.nextags.com.br/referencia/conta/listar-integracoes-da-conta.md): Mostra quais integrações estão ligadas na conta: os provedores de IA (OpenAI, Gemini, Claude, xAI e DeepSeek), o Google Sheets e o e-mail.
+- [Contatos](https://docs.nextags.com.br/referencia/contatos.md): Crie, encontre e consulte contatos.
+- [Criar contato](https://docs.nextags.com.br/referencia/contatos/criar-contato.md): Cria um contato e, na mesma chamada, roda ações nele: etiquetar, preencher campos e enviar um fluxo.
+- [Consultar contato](https://docs.nextags.com.br/referencia/contatos/consultar-contato.md): Devolve um contato, com os dados do perfil, as etiquetas e os campos personalizados.
+- [Buscar contato por campo personalizado](https://docs.nextags.com.br/referencia/contatos/buscar-contato-por-campo-personalizado.md): Encontra contatos pelo valor de um campo: o telefone, o e-mail ou um campo personalizado.
+- [Mensagens](https://docs.nextags.com.br/referencia/mensagens.md): Envie fluxos, textos, arquivos e conteúdos para um contato.
+- [Enviar fluxo](https://docs.nextags.com.br/referencia/mensagens/enviar-fluxo.md): Envia um fluxo ao contato, como o Enviar Fluxo da Caixa de Entrada: o contato recebe as mensagens e passa pelas ações do fluxo, na versão publicada.
+- [Enviar texto](https://docs.nextags.com.br/referencia/mensagens/enviar-texto.md): Envia uma mensagem de texto ao contato.
+- [Enviar arquivo](https://docs.nextags.com.br/referencia/mensagens/enviar-arquivo.md): Envia ao contato uma imagem, um vídeo, um áudio ou um documento, a partir do endereço do arquivo.
+- [Enviar conteúdo](https://docs.nextags.com.br/referencia/mensagens/enviar-conteudo.md): Envia várias mensagens e roda ações no contato, numa chamada só.
+- [Etiquetas](https://docs.nextags.com.br/referencia/etiquetas.md): Etiquetas da conta e dos contatos.
+- [Listar etiquetas](https://docs.nextags.com.br/referencia/etiquetas/listar-etiquetas.md): Lista as etiquetas da conta, com o ID e o nome de cada uma.
+- [Criar etiqueta](https://docs.nextags.com.br/referencia/etiquetas/criar-etiqueta.md): Cria uma etiqueta na conta e devolve o ID dela.
+- [Consultar etiqueta](https://docs.nextags.com.br/referencia/etiquetas/consultar-etiqueta.md): Devolve o nome de uma etiqueta a partir do ID.
+- [Apagar etiqueta](https://docs.nextags.com.br/referencia/etiquetas/apagar-etiqueta.md): Apaga a etiqueta da conta, sem volta.
+- [Buscar etiqueta pelo nome](https://docs.nextags.com.br/referencia/etiquetas/buscar-etiqueta-pelo-nome.md): Encontra uma etiqueta pelo nome e devolve o ID dela.
+- [Listar etiquetas do contato](https://docs.nextags.com.br/referencia/etiquetas/listar-etiquetas-do-contato.md): Lista as etiquetas que o contato tem.
+- [Adicionar etiqueta ao contato](https://docs.nextags.com.br/referencia/etiquetas/adicionar-etiqueta-ao-contato.md): Põe a etiqueta no contato, como a ação Adicionar Etiqueta de um fluxo.
+- [Remover etiqueta do contato](https://docs.nextags.com.br/referencia/etiquetas/remover-etiqueta-do-contato.md): Tira a etiqueta do contato, como a ação Remover Etiqueta de um fluxo.
+- [Campos personalizados](https://docs.nextags.com.br/referencia/campos-personalizados.md): Campos da conta e os valores de cada contato.
+- [Listar campos personalizados](https://docs.nextags.com.br/referencia/campos-personalizados/listar-campos-personalizados.md): Lista os campos personalizados da conta.
+- [Criar campo personalizado](https://docs.nextags.com.br/referencia/campos-personalizados/criar-campo-personalizado.md): Cria um campo personalizado na conta e devolve o ID dele.
+- [Consultar campo personalizado](https://docs.nextags.com.br/referencia/campos-personalizados/consultar-campo-personalizado.md): Devolve o nome, o tipo e a descrição de um campo personalizado a partir do ID.
+- [Buscar campo pelo nome](https://docs.nextags.com.br/referencia/campos-personalizados/buscar-campo-pelo-nome.md): Encontra um campo personalizado pelo nome e devolve o ID, o tipo e a descrição.
+- [Listar campos do contato](https://docs.nextags.com.br/referencia/campos-personalizados/listar-campos-do-contato.md): Lista os campos personalizados do contato, com o valor de cada um.
+- [Consultar campo do contato](https://docs.nextags.com.br/referencia/campos-personalizados/consultar-campo-do-contato.md): Devolve o valor de um campo personalizado do contato.
+- [Preencher campo do contato](https://docs.nextags.com.br/referencia/campos-personalizados/preencher-campo-do-contato.md): Grava um valor num campo personalizado do contato, como a ação Definir Campo Personalizado de um fluxo.
+- [Limpar campo do contato](https://docs.nextags.com.br/referencia/campos-personalizados/limpar-campo-do-contato.md): Apaga o valor de um campo personalizado do contato, como a ação Limpar Campo Personalizado de um fluxo.
+- [Campos do bot](https://docs.nextags.com.br/referencia/campos-do-bot.md): Valores globais da conta, iguais para todos os contatos.
+- [Consultar campo do bot](https://docs.nextags.com.br/referencia/campos-do-bot/consultar-campo-do-bot.md): Devolve o nome, o tipo e o valor de um campo do bot.
+- [Preencher campo do bot](https://docs.nextags.com.br/referencia/campos-do-bot/preencher-campo-do-bot.md): Troca o valor de um campo do bot: todos os fluxos que usam o campo passam a mostrar o valor novo.
+- [Limpar campo do bot](https://docs.nextags.com.br/referencia/campos-do-bot/limpar-campo-do-bot.md): Apaga o valor de um campo do bot.
+- [Fluxos e modelos](https://docs.nextags.com.br/referencia/fluxos.md): Liste os fluxos e instale modelos prontos.
+- [Listar fluxos](https://docs.nextags.com.br/referencia/fluxos/listar-fluxos.md): Lista os fluxos da conta, com o ID e o nome de cada um.
+- [Instalar modelo na conta](https://docs.nextags.com.br/referencia/fluxos/instalar-modelo-na-conta.md): Instala um modelo de Templates na conta dona da chave de API, sem abrir o link de instalação.
+- [Gerar link de uso único do modelo](https://docs.nextags.com.br/referencia/fluxos/gerar-link-de-uso-unico-do-modelo.md): Gera um link de instalação do modelo que vale para um uso só.
+- [Pipelines e oportunidades](https://docs.nextags.com.br/referencia/pipelines.md): Pipelines, etapas, oportunidades e comentários do CRM.
+- [Listar pipelines](https://docs.nextags.com.br/referencia/pipelines/listar-pipelines.md): Lista os pipelines da conta, com o ID e o nome de cada um.
+- [Consultar pipeline](https://docs.nextags.com.br/referencia/pipelines/consultar-pipeline.md): Devolve um pipeline pelo ID: o ID e o nome.
+- [Listar etapas do pipeline](https://docs.nextags.com.br/referencia/pipelines/listar-etapas-do-pipeline.md): Lista as etapas do pipeline (as colunas do quadro), com o ID e o nome de cada uma.
+- [Listar campos do pipeline](https://docs.nextags.com.br/referencia/pipelines/listar-campos-do-pipeline.md): Lista os campos do pipeline: os campos próprios das oportunidades, criados nas definições do pipeline em Campo Personalizados.
+- [Listar oportunidades](https://docs.nextags.com.br/referencia/pipelines/listar-oportunidades.md): Lista as oportunidades de um pipeline, em páginas (offset e limit).
+- [Criar oportunidade](https://docs.nextags.com.br/referencia/pipelines/criar-oportunidade.md): Cria uma oportunidade (ou um ticket, nos pipelines de suporte) para um contato.
+- [Consultar oportunidade](https://docs.nextags.com.br/referencia/pipelines/consultar-oportunidade.md): Devolve uma oportunidade: o contato, o título, o valor, o estado, a prioridade, a etapa, os responsáveis e as datas.
+- [Atualizar oportunidade](https://docs.nextags.com.br/referencia/pipelines/atualizar-oportunidade.md): Muda uma oportunidade: o título, a descrição, a etapa, o valor, o estado, a prioridade, os responsáveis e os campos do pipeline.
+- [Apagar oportunidade](https://docs.nextags.com.br/referencia/pipelines/apagar-oportunidade.md): Apaga a oportunidade do pipeline, como o Excluir do menu do cartão.
+- [Transferir oportunidade de pipeline](https://docs.nextags.com.br/referencia/pipelines/transferir-oportunidade-de-pipeline.md): Leva a oportunidade para outro pipeline, numa etapa escolhida, como o Transferir para o Pipeline do cartão.
+- [Listar comentários da oportunidade](https://docs.nextags.com.br/referencia/pipelines/listar-comentarios-da-oportunidade.md): Lista os comentários de uma oportunidade (a seção Comentários do cartão), em páginas (offset e limit).
+- [Comentar na oportunidade](https://docs.nextags.com.br/referencia/pipelines/comentar-na-oportunidade.md): Escreve um comentário na oportunidade, como o Adicionar Comentário do cartão.
+- [Apagar comentário](https://docs.nextags.com.br/referencia/pipelines/apagar-comentario.md): Apaga um comentário da oportunidade, como o Excluir do menu do comentário.
+- [Agentes de IA](https://docs.nextags.com.br/referencia/agentes-de-ia.md): Agentes, funções, servidores MCP, arquivos e histórico da IA.
+- [Listar agentes de IA](https://docs.nextags.com.br/referencia/agentes-de-ia/listar-agentes-de-ia.md): Lista os agentes de IA da conta (a aba Agentes de IA do AI Hub), com o ID e o nome de cada um.
+- [Consultar agente de IA](https://docs.nextags.com.br/referencia/agentes-de-ia/consultar-agente-de-ia.md): Devolve um agente de IA pelo ID: o nome, quem criou e quando.
+- [Atualizar agente de IA](https://docs.nextags.com.br/referencia/agentes-de-ia/atualizar-agente-de-ia.md): Muda a configuração de um agente: a Mensagem do sistema (Prompt), o Max tokens e o modelo de cada provedor.
+- [Listar funções dos agentes](https://docs.nextags.com.br/referencia/agentes-de-ia/listar-funcoes-dos-agentes.md): Lista as Funções de IA da conta (AI Hub › Ferramentas de IA): as tarefas que o agente executa durante a conversa, como coletar dados e acionar um fluxo.
+- [Listar servidores MCP](https://docs.nextags.com.br/referencia/agentes-de-ia/listar-servidores-mcp.md): Lista os Servidores MCP da conta (AI Hub › Ferramentas de IA): os sistemas externos que o agente consulta pelo protocolo MCP, como o estoque de uma loja.
+- [Listar arquivos dos agentes](https://docs.nextags.com.br/referencia/agentes-de-ia/listar-arquivos-dos-agentes.md): Lista os Arquivos da conta (AI Hub › Ferramentas de IA): a base de conhecimento que o agente consulta para responder.
+- [Salvar mensagens no histórico da IA](https://docs.nextags.com.br/referencia/agentes-de-ia/salvar-mensagens-no-historico-da-ia.md): Põe mensagens no histórico de conversa que a IA guarda do contato, sem enviar nada a ele.
+- [E-commerce](https://docs.nextags.com.br/referencia/ecommerce.md): Produtos, carrinho e pedidos de cada contato.
+- [Consultar produto](https://docs.nextags.com.br/referencia/ecommerce/consultar-produto.md): Devolve um produto do E-commerce: o nome, os preços, o estoque, a categoria, a descrição curta e a imagem.
+- [Atualizar produto](https://docs.nextags.com.br/referencia/ecommerce/atualizar-produto.md): Muda o preço, o estoque e o Ativo de um produto, para a loja acompanhar o seu sistema de estoque.
+- [Enviar produtos ao contato](https://docs.nextags.com.br/referencia/ecommerce/enviar-produtos-ao-contato.md): Manda ao contato uma mensagem com um ou mais produtos do E-commerce, como o Enviar Produtos da Caixa de Entrada.
+- [Consultar carrinho](https://docs.nextags.com.br/referencia/ecommerce/consultar-carrinho.md): Devolve o carrinho do contato: os itens, a quantidade de cada um, o cupom e os totais.
+- [Esvaziar carrinho](https://docs.nextags.com.br/referencia/ecommerce/esvaziar-carrinho.md): Tira todos os itens do carrinho do contato, como a operação Limpar Carrinho de Compras da ação Ecommerce dos fluxos.
+- [Adicionar produto ao carrinho](https://docs.nextags.com.br/referencia/ecommerce/adicionar-produto-ao-carrinho.md): Põe um produto no carrinho do contato, com a quantidade.
+- [Remover produto do carrinho](https://docs.nextags.com.br/referencia/ecommerce/remover-produto-do-carrinho.md): Tira um produto do carrinho do contato.
+- [Consultar pedido](https://docs.nextags.com.br/referencia/ecommerce/consultar-pedido.md): Devolve um pedido do contato, no mesmo formato do carrinho: os itens, o cupom e os totais em centavos (menos o price de cada item).
+- [Alterar pedido](https://docs.nextags.com.br/referencia/ecommerce/alterar-pedido.md): Muda a situação de um pedido e os dados de entrega.
+- [Marcar pedido como pago](https://docs.nextags.com.br/referencia/ecommerce/marcar-pedido-como-pago.md): Marca um pedido como pago, quando o contato pagou fora da NexTags (Pix, link de pagamento, na loja).
+- [Disparos](https://docs.nextags.com.br/referencia/disparos.md): Consulte, reenvie e cancele disparos (broadcasts).
+- [Listar disparos](https://docs.nextags.com.br/referencia/disparos/listar-disparos.md): Lista os Broadcasts da conta, com o nome, o estado e as datas de cada um.
+- [Consultar disparo](https://docs.nextags.com.br/referencia/disparos/consultar-disparo.md): Devolve um Broadcast pelo ID, com o estado: use para acompanhar um envio até SENT.
+- [Reenviar disparo](https://docs.nextags.com.br/referencia/disparos/reenviar-disparo.md): Manda o Broadcast de novo, como o Reenviar do menu da lista, que aparece em qualquer estado.
+- [Cancelar disparo](https://docs.nextags.com.br/referencia/disparos/cancelar-disparo.md): Para um Broadcast que ainda não saiu, como o Cancelar do menu da lista.
+- [Agenda](https://docs.nextags.com.br/referencia/agenda.md): Calendários usados nos agendamentos.
+- [Listar calendários](https://docs.nextags.com.br/referencia/agenda/listar-calendarios.md): Lista os calendários da conta, com o ID, o nome e a duração de cada um.
+- [Consultar calendário](https://docs.nextags.com.br/referencia/agenda/consultar-calendario.md): Devolve um calendário pelo ID: o nome, a duração de cada agendamento, quem criou e quando.
+- [Ferramentas](https://docs.nextags.com.br/referencia/ferramentas.md): Utilitários para usar nas requisições externas dos fluxos: texto, números, URLs, QR Code, hash e distância.
+- [Formatar número](https://docs.nextags.com.br/referencia/ferramentas/formatar-numero.md): Formata um número com as casas decimais e os separadores que você escolher: 1995.5 vira 1.995,50.
+- [Dividir um texto em partes](https://docs.nextags.com.br/referencia/ferramentas/dividir-um-texto-em-partes.md): Divide um texto em partes a cada separador e devolve a lista e o total: Camiseta,Boné,Meia com o separador , vira três partes.
+- [Codificar texto para URL](https://docs.nextags.com.br/referencia/ferramentas/codificar-texto-para-url.md): Codifica um texto para usar numa URL, no formato de formulário: o espaço vira +, e os acentos e os outros caracteres especiais viram %XX.
+- [Decodificar texto de URL](https://docs.nextags.com.br/referencia/ferramentas/decodificar-texto-de-url.md): Desfaz a codificação de URL: troca as sequências %XX pelos caracteres e o + por espaço.
+- [Codificar para URL (RFC 3986)](https://docs.nextags.com.br/referencia/ferramentas/codificar-para-url-rfc-3986.md): Codifica um texto para URL pela RFC 3986: o espaço vira %20, e não +.
+- [Decodificar de URL (RFC 3986)](https://docs.nextags.com.br/referencia/ferramentas/decodificar-de-url-rfc-3986.md): Desfaz a codificação da RFC 3986: troca as sequências %XX pelos caracteres.
+- [Gerar QR Code](https://docs.nextags.com.br/referencia/ferramentas/gerar-qr-code.md): Gera um QR Code com o texto ou o link que você mandar e devolve o endereço da imagem, para enviar como imagem numa mensagem.
+- [Converter texto para minúsculas](https://docs.nextags.com.br/referencia/ferramentas/converter-texto-para-minusculas.md): Passa o texto para letras minúsculas.
+- [Converter texto para maiúsculas](https://docs.nextags.com.br/referencia/ferramentas/converter-texto-para-maiusculas.md): Passa o texto para letras maiúsculas.
+- [Contar os caracteres de um texto](https://docs.nextags.com.br/referencia/ferramentas/contar-os-caracteres-de-um-texto.md): Conta os caracteres de um texto.
+- [Recortar parte de um texto](https://docs.nextags.com.br/referencia/ferramentas/recortar-parte-de-um-texto.md): Recorta um pedaço do texto: a partir da posição offset (o primeiro caractere é a posição 0), com length caracteres; sem length, vai até o fim.
+- [Substituir um texto](https://docs.nextags.com.br/referencia/ferramentas/substituir-um-texto.md): Troca, no texto, todas as vezes que um trecho aparece por outro: com .
+- [Substituir vários textos](https://docs.nextags.com.br/referencia/ferramentas/substituir-varios-textos.md): Faz várias trocas de uma vez: cada item de search é trocado pelo item na mesma posição de replace.
+- [Ler os parâmetros de uma URL](https://docs.nextags.com.br/referencia/ferramentas/ler-os-parametros-de-uma-url.md): Lê os parâmetros de uma URL (o que vem depois do ?) e devolve cada um com o seu valor.
+- [Devolver o JSON enviado (eco)](https://docs.nextags.com.br/referencia/ferramentas/devolver-o-json-enviado-eco.md): Devolve, igual, o JSON que você mandar.
+- [Gerar um hash](https://docs.nextags.com.br/referencia/ferramentas/gerar-um-hash.md): Gera o hash de um texto com o algoritmo escolhido; sem algo, usa o SHA-256.
+- [Calcular a distância entre duas coordenadas](https://docs.nextags.com.br/referencia/ferramentas/calcular-a-distancia-entre-duas-coordenadas.md): Calcula a distância entre dois pontos de latitude e longitude, em metros e em milhas.
+
+## Webhooks
+
+- [Webhooks](https://docs.nextags.com.br/webhooks.md): Receba dados de outros sistemas e envie eventos da NexTags para o seu.
+- [Webhooks na NexTags](https://docs.nextags.com.br/webhooks/visao-geral.md): As quatro formas de trocar dados com outro sistema (webhook de entrada, webhook de saída, requisição externa e API) e quando usar cada uma.
+- [Webhook de entrada: receber dados de outro sistema](https://docs.nextags.com.br/webhooks/webhook-de-entrada.md): Mande um JSON de outro sistema para o link de um webhook de entrada. O formato, o contato achado pelo telefone ou e-mail, o JSONPath aceito e um teste em cURL.
+- [Requisição externa: o fluxo chama o seu sistema](https://docs.nextags.com.br/webhooks/requisicao-externa-no-fluxo.md): Prepare o seu servidor para a requisição externa do fluxo: o que chega, o cabeçalho X-USER-ID, o que responder para guardar dados ou mandar mensagens e ações.
+- [Mapear o corpo recebido para campos do contato](https://docs.nextags.com.br/webhooks/mapear-campos.md): JSONPath na prática: o caminho de cada valor num JSON de exemplo, o tipo de campo certo e o que muda entre o webhook de entrada e o fluxo.
+- [Segurança, testes e novas tentativas](https://docs.nextags.com.br/webhooks/seguranca-e-testes.md): Como proteger o link do webhook de entrada, o endereço de saída e a requisição externa, como testar sem sistema pronto, tratar repetições e achar os erros.
+- [Exemplos: Hotmart, Kiwify, Shopify e formulários](https://docs.nextags.com.br/webhooks/exemplos-de-plataformas.md): O que a Hotmart, a Kiwify e a Shopify mandam por webhook e os caminhos de telefone, e-mail, nome, produto e status. E um formulário do site sem expor o link.
+
+## IA e MCP
+
+- [IA e MCP](https://docs.nextags.com.br/ia.md): Use a documentação com o ChatGPT e o Claude e prepare sua IA para operar a NexTags.
+- [A documentação pronta para IA](https://docs.nextags.com.br/ia/documentacao-para-ia.md): Cada página das duas centrais em Markdown, o llms.txt, o llms-full.txt, o contrato OpenAPI e a coleção do Postman: o que a sua IA pode ler da NexTags.
+- [Atalhos para o ChatGPT e o Claude](https://docs.nextags.com.br/ia/atalhos-chatgpt-e-claude.md): Abra qualquer página no ChatGPT ou no Claude, use os pedidos prontos, monte um projeto com a documentação e peça código sem expor a chave de API.
+- [Respostas ricas e ações do agente de IA](https://docs.nextags.com.br/ia/respostas-do-agente-em-json.md): Faça o agente de IA mandar imagem, botões e carrossel e executar ações: o que marcar no AI Hub, o que escrever no prompt e o formato JSON de mensagens e ações.
+- [Skill da NexTags no Claude Code](https://docs.nextags.com.br/ia/skill-claude-code.md): Instale a skill da NexTags no Claude Code e monte o seu agente de IA com uma entrevista guiada. Ela entrega os 3 textos para colar no AI Hub.
+- [Servidor MCP da documentação](https://docs.nextags.com.br/ia/servidor-mcp.md): Ligue o Claude, o ChatGPT, o Cursor ou o VS Code à documentação da NexTags: a IA busca e lê as duas centrais e a referência da API sozinha.
+- [Prompts prontos para montar agentes e integrações](https://docs.nextags.com.br/ia/prompts-prontos.md): Pedidos para colar no ChatGPT ou no Claude: integração com a API, mapeamento de webhook, servidor da requisição externa, prompt do agente e revisão de código.
+
+## Novidades
+
+- [Novidades da API](https://docs.nextags.com.br/novidades.md): Mudanças na API e nos webhooks, com data e o que fazer. (em produção)

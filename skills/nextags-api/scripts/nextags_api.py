@@ -8,10 +8,13 @@ Escrita (POST/PUT/PATCH/DELETE) so e enviada com --yes; sem ele o script mostra 
   whoami                      GET /accounts/me (confirma em qual conta o token cai)
   snapshot --dir D            GET de leitura sem parametro em todos os recursos da conta -> D/*.json
   backup-agents --dir D       salva config + prompt (.md) de cada agente IA
-  spec-check [--update]       compara o swagger oficial ao references/swagger.json (drift da doc)
+  doc URL_OU_CAMINHO          imprime o Markdown de uma pagina do docs/help (ex.: comecar/limites-e-erros)
+  spec-check [--update]       compara docs.nextags.com.br/openapi.json e os llms.txt com references/
+  gen-ref                     regenera references/endpoints.md a partir do openapi local
 """
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import pathlib
@@ -22,12 +25,14 @@ import urllib.parse
 import urllib.request
 
 BASE = "https://app.nextagsai.com.br/api"
-# A pagina /api/swagger/ carrega ESTE arquivo. O /api/swagger/swagger.json e a versao Chatrace (desatualizada).
-SPEC_URL = "https://app.nextagsai.com.br/php/images.php?id=swagger.json"
+# Contrato oficial (OpenAPI 3.1, em portugues, 86 operacoes). O swagger legado de /api/swagger/ tem so 69 e
+# nao traz /tools/*: nao usar como fonte.
+SPEC_URL = "https://docs.nextags.com.br/openapi.json"
+INDEXES = {"docs": "https://docs.nextags.com.br/llms.txt", "help": "https://help.nextags.com.br/llms.txt"}
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 REF_DIR = SKILL_DIR / "references"
 METHODS = ("get", "post", "put", "patch", "delete")
-ROOTS = "accounts|agents|contacts|pipelines|products|calendars|broadcasts"
+ROOTS = "accounts|agents|contacts|pipelines|products|calendars|broadcasts|tools"
 SNAPSHOT_GETS = [
     "/accounts/me", "/accounts/admins", "/accounts/teams", "/accounts/tags", "/accounts/flows",
     "/accounts/custom_fields", "/accounts/integrations", "/agents", "/agents/functions", "/agents/mcp",
@@ -50,8 +55,9 @@ def norm_path(p):
     return p if p.startswith("/") else "/" + p
 
 
-def http(method, url, token=None, body=None, form=None):
-    headers = {"Accept": "application/json"}
+def http(method, url, token=None, body=None, form=None, raw=False):
+    # O Cloudflare do docs/help devolve 403 para o User-Agent padrao do urllib.
+    headers = {"Accept": "application/json", "User-Agent": "Mozilla/5.0 (compatible; nextags-api-skill/1.1)"}
     if token:
         headers["X-ACCESS-TOKEN"] = token
     data = None
@@ -64,12 +70,14 @@ def http(method, url, token=None, body=None, form=None):
     req = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            status, raw = r.status, r.read()
+            status, content = r.status, r.read()
     except urllib.error.HTTPError as e:
-        status, raw = e.code, e.read()
+        status, content = e.code, e.read()
     except urllib.error.URLError as e:
         sys.exit(f"ERRO de rede em {method} {url}: {e.reason}")
-    text = raw.decode("utf-8", "replace")
+    text = content.decode("utf-8", "replace")
+    if raw:
+        return status, text
     try:
         parsed = json.loads(text) if text.strip() else None
     except ValueError:
@@ -104,7 +112,7 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:40] or "sem-nome"
 
 
-# ---------------------------------------------------------------- comandos
+# ---------------------------------------------------------------- comandos de API
 
 def cmd_call(a):
     method = a.method.upper()
@@ -180,128 +188,201 @@ def cmd_backup_agents(a):
     return 0
 
 
-# ---------------------------------------------------------------- spec / referencia
+def cmd_doc(a):
+    u = a.url.strip()
+    if not u.startswith("http"):
+        u = "https://docs.nextags.com.br/" + u.lstrip("/")
+    u = re.sub(r"/?(#.*)?$", "", u)
+    if not u.endswith(".md"):
+        u += ".md"
+    status, text = http("GET", u, raw=True)
+    if status != 200:
+        sys.exit(f"HTTP {status} em {u} (confira o caminho em references/llms_docs.txt ou llms_help.txt)")
+    print(text if len(text) <= a.max_chars else text[: a.max_chars] + f"\n... [truncado: {len(text)} chars; use --max-chars]")
+    return 0
+
+
+# ---------------------------------------------------------------- spec / referencia (OpenAPI 3.1)
 
 def ops_of(spec):
     return {(m.upper(), p): o for p, ms in spec["paths"].items() for m, o in ms.items() if m in METHODS}
 
 
-def typ(v):
-    if "$ref" in v:
-        return v["$ref"].split("/")[-1]
+def deref(spec, s):
+    """Segue $ref (#/components/...). Devolve (nome_ou_None, schema)."""
+    name = None
+    while isinstance(s, dict) and "$ref" in s:
+        parts = s["$ref"].lstrip("#/").split("/")
+        name = parts[-1]
+        s = spec
+        for p in parts:
+            s = s[p]
+    return name, s
+
+
+def typ(spec, v):
+    name, v = deref(spec, v)
+    if name and v.get("type") == "object":
+        return name
     t = v.get("type", "object")
-    return f"array<{typ(v.get('items', {}))}>" if t == "array" else t
+    if isinstance(t, list):
+        return "|".join(t)
+    if t == "array":
+        return f"array<{typ(spec, v.get('items', {}))}>"
+    return t
 
 
-def inline(s, depth=0):
+def inline(spec, s, depth=0):
     if not s:
         return ""
-    if "$ref" in s:
-        return s["$ref"].split("/")[-1]
+    name, s = deref(spec, s)
+    if name and depth > 0:
+        return name
     if s.get("type") == "array":
-        return f"[{inline(s.get('items', {}), depth + 1)}]"
+        return f"[{inline(spec, s.get('items', {}), depth + 1)}]"
     if s.get("properties") and depth < 3:
-        return "{" + ", ".join(f"{k}: {inline(v, depth + 1)}" for k, v in s["properties"].items()) + "}"
-    return s.get("type", "object")
+        return "{" + ", ".join(f"{k}: {inline(spec, v, depth + 1)}" for k, v in s["properties"].items()) + "}"
+    t = s.get("type", "object")
+    return "|".join(t) if isinstance(t, list) else t
 
 
-def prop_lines(schema, ind=0):
+def prop_lines(spec, schema, ind=0, seen=()):
     out, pad = [], "  " * ind
+    _, schema = deref(spec, schema)
+    req = set(schema.get("required") or [])
     for k, v in (schema.get("properties") or {}).items():
+        name, rv = deref(spec, v)
         extra = []
-        if v.get("enum"):
-            extra.append(f"enum={v['enum']}")
-        if "default" in v:
-            extra.append(f"default={v['default']}")
-        if v.get("required") is True:
+        if rv.get("enum"):
+            extra.append(f"enum={rv['enum']}")
+        if "default" in rv:
+            extra.append(f"default={rv['default']}")
+        if k in req:
             extra.append("obrigatorio")
-        d = (v.get("description") or "").strip()
-        out.append(f"{pad}- `{k}` ({typ(v)})" + (f" [{', '.join(extra)}]" if extra else "") + (f" — {d}" if d else ""))
-        sub = v if v.get("properties") else (v.get("items") if (v.get("items") or {}).get("properties") else None)
-        if sub and ind < 3:
-            out += prop_lines(sub, ind + 1)
-            if isinstance(sub.get("required"), list):
-                out.append(f"{pad}  (obrigatorios: {', '.join(sub['required'])})")
+        d = " ".join((rv.get("description") or v.get("description") or "").split())
+        out.append(f"{pad}- `{k}` ({typ(spec, v)})" + (f" [{', '.join(extra)}]" if extra else "") + (f" — {d}" if d else ""))
+        sub = rv if rv.get("properties") else None
+        if not sub and rv.get("type") == "array":
+            _, it = deref(spec, rv.get("items", {}))
+            sub = it if it.get("properties") else None
+        if sub and ind < 3 and (name or k) not in seen:
+            out += prop_lines(spec, sub, ind + 1, seen + (name or k,))
     return out
 
 
 def render(spec):
     ops = [(p, m, o) for p, ms in spec["paths"].items() for m, o in ms.items() if m in METHODS]
     L = [
-        "# API NexTags — referencia completa (gerada do swagger oficial)",
-        f"Fonte: {SPEC_URL} · host `{spec.get('host')}` · {len(ops)} operacoes · gerado em {datetime.date.today().isoformat()}",
+        "# API NexTags — referencia completa (gerada do OpenAPI oficial)",
+        f"Fonte: {SPEC_URL} · {len(ops)} operacoes · gerado em {datetime.date.today().isoformat()} · base `{BASE}`",
         "Auth: header `X-ACCESS-TOKEN` (valor puro). `FORM` = application/x-www-form-urlencoded (`--form k=v`); `JSON` = body JSON (`--json`).",
-        "O swagger documenta o contrato, nao tudo que a API devolve (ex.: GET /agents/{id} traz `data.prompt`/`data.model` que o schema nao lista; numeros voltam como string). Shapes reais: `live_shapes.md`.",
+        "O contrato nao descreve tudo que a API devolve (ex.: `GET /agents/{id}` traz `data.prompt`/`data.model`, que ele nao lista; ids e numeros voltam como string). Formas reais: `live_shapes.md`.",
+        "Os exemplos de codigo (cURL/JS/Python/PHP) de cada operacao estao no `x-codeSamples` de `openapi.json`.",
         "",
     ]
     groups = {}
     for p, m, o in ops:
-        groups.setdefault(p.split("/")[1], []).append((p, m, o))
+        groups.setdefault((o.get("tags") or [p.split("/")[1]])[0], []).append((p, m, o))
     for g, items in groups.items():
-        L += [f"## /{g}", ""]
+        L += [f"## {g}", ""]
         for p, m, o in items:
             L.append(f"### {m.upper()} {p}")
-            L.append(f"`{o.get('operationId')}` — {(o.get('description') or o.get('summary') or '').strip()}")
-            cons = o.get("consumes") or []
+            L.append(f"`{o.get('operationId')}` — {o.get('summary', '')}")
+            desc = " ".join((o.get("description") or "").split())
+            if desc:
+                L.append(desc)
             for x in o.get("parameters", []):
+                _, xs = deref(spec, x)
                 req = "*" if x.get("required") else ""
-                if x["in"] == "body":
-                    L.append(f"- **body** `{x['name']}`{req} (JSON):")
-                    sch = x.get("schema", {})
-                    L += ["  " + s for s in prop_lines(sch)]
-                    if isinstance(sch.get("required"), list):
-                        L.append(f"  (obrigatorios: {', '.join(sch['required'])})")
-                    if "example" in sch:
-                        L.append("  exemplo: `" + json.dumps(sch["example"], ensure_ascii=False) + "`")
-                else:
-                    kind = "FORM" if x["in"] == "formData" else x["in"]
-                    d = (x.get("description") or "").strip()
-                    L.append(f"- {kind} `{x['name']}`{req} ({x.get('type', '?')})" + (f" — {d}" if d else ""))
-            if any("form" in c for c in cons) and not any(x["in"] == "formData" for x in o.get("parameters", [])):
-                L.append("- (consumes FORM, sem campos)")
+                sch = x.get("schema", {})
+                d = " ".join((x.get("description") or "").split())
+                en = f" enum={deref(spec, sch)[1].get('enum')}" if deref(spec, sch)[1].get("enum") else ""
+                L.append(f"- {x['in']} `{x['name']}`{req} ({typ(spec, sch)}{en})" + (f" — {d}" if d else ""))
+            rb = o.get("requestBody")
+            if rb:
+                for mt, mo in rb.get("content", {}).items():
+                    kind = "FORM" if "form" in mt else "JSON"
+                    L.append(f"- **body {kind}**{'*' if rb.get('required') else ''}:")
+                    sch = mo.get("schema", {})
+                    L += ["  " + s for s in prop_lines(spec, sch)]
+                    ex = mo.get("example") or (mo.get("examples") or {})
+                    if ex:
+                        L.append("  exemplo: `" + json.dumps(ex, ensure_ascii=False) + "`")
+            else:
+                if m == "post":
+                    L.append("- (sem body)")
             for code, r in o.get("responses", {}).items():
-                sch = r.get("schema")
-                if code.startswith("2") or code == "default":
-                    L.append(f"- resp {code}: `{inline(sch) or '(sem schema)'}`" + (f" — {r['description']}" if r.get("description") else ""))
-                    if sch and "example" in sch:
-                        L.append("  exemplo: `" + json.dumps(sch["example"], ensure_ascii=False) + "`")
+                _, r = deref(spec, r)
+                d = " ".join((r.get("description") or "").split())
+                cont = (r.get("content") or {}).get("application/json")
+                if str(code).startswith("2") and cont:
+                    L.append(f"- resp {code}: `{inline(spec, cont.get('schema')) or '(sem schema)'}`" + (f" — {d}" if d else ""))
+                    ex = cont.get("example") or cont.get("examples")
+                    if ex:
+                        L.append("  exemplo: `" + json.dumps(ex, ensure_ascii=False) + "`")
                 else:
-                    L.append(f"- resp {code}: {r.get('description', '')}")
+                    L.append(f"- resp {code}: {d}")
             L.append("")
     L += ["## Modelos", ""]
-    for n, df in spec.get("definitions", {}).items():
-        L += [f"### {n}"] + prop_lines(df) + [""]
+    for n, df in spec.get("components", {}).get("schemas", {}).items():
+        L += [f"### {n}"] + prop_lines(spec, df) + [""]
     return "\n".join(L)
+
+
+def sha(s):
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:12]
+
+
+def page_urls(text):
+    return sorted(set(re.findall(r"\]\((https://[^)\s]+\.md)\)", text)))
 
 
 def cmd_spec_check(a):
     status, live = http("GET", SPEC_URL)
     if status != 200 or not isinstance(live, dict):
         sys.exit(f"Nao consegui baixar o spec: HTTP {status}")
-    local = json.loads((REF_DIR / "swagger.json").read_text(encoding="utf-8"))
+    local_p = REF_DIR / "openapi.json"
+    local = json.loads(local_p.read_text(encoding="utf-8")) if local_p.exists() else {"paths": {}, "components": {}}
     lo, no = ops_of(live), ops_of(local)
     added, removed = sorted(set(lo) - set(no)), sorted(set(no) - set(lo))
     changed = sorted(k for k in set(lo) & set(no) if json.dumps(lo[k], sort_keys=True) != json.dumps(no[k], sort_keys=True))
-    defs = sorted(n for n in set(live.get("definitions", {})) | set(local.get("definitions", {}))
-                  if live.get("definitions", {}).get(n) != local.get("definitions", {}).get(n))
-    print(f"live={len(lo)} ops · local={len(no)} ops")
+    ls, ns = live.get("components", {}).get("schemas", {}), local.get("components", {}).get("schemas", {})
+    defs = sorted(n for n in set(ls) | set(ns) if ls.get(n) != ns.get(n))
+    print(f"openapi: live={len(lo)} ops · local={len(no)} ops")
     for label, items in (("NOVOS", added), ("REMOVIDOS", removed), ("ALTERADOS", changed)):
         print(f"{label}: " + (", ".join(f"{m} {p}" for m, p in items) if items else "nenhum"))
     print("MODELOS alterados: " + (", ".join(defs) if defs else "nenhum"))
     drift = bool(added or removed or changed or defs)
+    fresh = {}
+    for key, url in INDEXES.items():
+        st, text = http("GET", url, raw=True)
+        if st != 200:
+            print(f"indice {key}: HTTP {st} (pulado)")
+            continue
+        fresh[key] = text
+        lp = REF_DIR / f"llms_{key}.txt"
+        old = lp.read_text(encoding="utf-8") if lp.exists() else ""
+        nu, ou = set(page_urls(text)), set(page_urls(old))
+        print(f"indice {key}: {len(nu)} paginas (antes {len(ou)}) · novas: {len(nu - ou)} · removidas: {len(ou - nu)}"
+              + ("" if sha(text) == sha(old) else " · TEXTO MUDOU"))
+        for u in sorted(nu - ou)[:15]:
+            print("   + " + u)
+        drift = drift or sha(text) != sha(old)
     if a.update:
-        (REF_DIR / "swagger.json").write_text(json.dumps(live, ensure_ascii=False, indent=2), encoding="utf-8")
+        local_p.write_text(json.dumps(live, ensure_ascii=False, indent=1), encoding="utf-8")
         (REF_DIR / "endpoints.md").write_text(render(live), encoding="utf-8")
-        print("references/swagger.json e references/endpoints.md atualizados. Revise o SKILL.md (tabela e 'nao existe na API').")
+        for key, text in fresh.items():
+            (REF_DIR / f"llms_{key}.txt").write_text(text, encoding="utf-8")
+        print("references/ atualizada (openapi.json, endpoints.md, llms_*.txt). Revise o SKILL.md: tabela, 'nao existe' e armadilhas.")
     elif drift:
-        print("Houve drift. Rode com --update para regenerar a referencia.")
+        print("Houve drift. Rode com --update para atualizar references/.")
     return 0
 
 
 def cmd_gen_ref(a):
-    spec = json.loads((REF_DIR / "swagger.json").read_text(encoding="utf-8"))
+    spec = json.loads((REF_DIR / "openapi.json").read_text(encoding="utf-8"))
     (REF_DIR / "endpoints.md").write_text(render(spec), encoding="utf-8")
-    print("references/endpoints.md regenerado a partir do swagger local.")
+    print("references/endpoints.md regenerado a partir do openapi local.")
     return 0
 
 
@@ -333,6 +414,10 @@ def main():
     b = sub.add_parser("backup-agents", parents=[common])
     b.add_argument("--dir", required=True)
     b.set_defaults(fn=cmd_backup_agents)
+    d = sub.add_parser("doc", help="Markdown de uma pagina do docs/help")
+    d.add_argument("url", help="URL completa ou caminho do docs (ex.: comecar/limites-e-erros)")
+    d.add_argument("--max-chars", type=int, default=30000)
+    d.set_defaults(fn=cmd_doc)
     k = sub.add_parser("spec-check")
     k.add_argument("--update", action="store_true")
     k.set_defaults(fn=cmd_spec_check)

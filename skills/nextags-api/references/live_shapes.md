@@ -1,6 +1,6 @@
 # Shapes REAIS da API (verificados ao vivo em 26/10/2026, só GET, conta de teste)
 
-O swagger diverge da resposta real nos pontos abaixo. Em caso de dúvida, um GET real vale mais que `endpoints.md`.
+O contrato (OpenAPI) diverge da resposta real nos pontos abaixo. Em caso de dúvida, um GET real vale mais que `endpoints.md`. (Checado contra o contrato de docs.nextags.com.br em 26/10/2026).
 
 ## Regras gerais
 - **Números voltam como string**: `id`, `page_id`, `created`, `total_users`, `size`, `value` (`"17.00"`). Exceção vista: `stage.id` é int. Comparar ids com `str()`.

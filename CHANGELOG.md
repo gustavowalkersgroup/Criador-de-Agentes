@@ -5,6 +5,25 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.13.1] - 2026-10-26
+
+`nextags-api` passa a seguir o contrato oficial do docs.nextags.com.br e a documentação do docs e do help.
+
+### Alterado
+
+- Fonte do contrato: `https://docs.nextags.com.br/openapi.json` (OpenAPI 3.1, 86 operações). O swagger
+  de `/api/swagger/` (69 operações) estava desatualizado: sem os 17 `/tools/*` e com canais antigos
+  (`sms`, `googleBM`, `viber`, `omnichannel`, `rcs`).
+- `references/endpoints.md` regenerado do OpenAPI novo (descrições, obrigatórios, enums e exemplos).
+  Novos: `llms_docs.txt` e `llms_help.txt` (índices das duas centrais) e `openapi.json`.
+- `SKILL.md`: limites (~100 req/min por conta, compartilhado), retry sem duplicar, formatos (datas,
+  centavos, tipos de CUF), formato de mensagens e as 8 ações, janela de 24 h, ações para mudar
+  nome/telefone/e-mail do contato (não há "atualizar contato"), bot field sem listagem, `/tools/echo`.
+  Armadilhas do swagger antigo removidas.
+- `scripts/nextags_api.py`: gerador para OpenAPI 3.1; novo comando `doc` (Markdown de qualquer página
+  do docs/help); `spec-check` também compara os índices `llms.txt`; User-Agent próprio (o docs devolvia 403
+  ao do urllib).
+
 ## [1.13.0] - 2026-10-26
 
 Duas skills novas para operar a API da NexTags: referência completa e publicação de prompt.
