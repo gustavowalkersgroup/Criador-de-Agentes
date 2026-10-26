@@ -309,7 +309,7 @@ Regras:
   discriminador; **Data Table de dedup separada por origem** (evidência: Amo Calçados, Bling +
   Loja Integrada).
 - **Setup de CUFs por API, idempotente** (padrão Degan): `GET /accounts/custom_fields` → diff →
-  `POST /accounts/custom_fields {name, type:0}`. A API **não tem DELETE** → fazer dry-run antes.
+  `POST /accounts/custom_fields {name, type:0}` (a API cria só tipos 0–4). A API **não tem DELETE** → fazer dry-run antes.
 - **Token é por conta.** Token errado retorna `200` e cria os campos na conta errada, sem erro
   visível (evidência: Wazzu com token da Hebreus Doze).
 
@@ -387,9 +387,9 @@ Não repetir a pergunta se a pessoa não responder.
 
 ```
 [ ] setor_agente            Texto (0)
-[ ] tipo_setor              Seleção única (6) — opções: humano, bot
+[ ] tipo_setor              Seleção única (6) — opções: humano, bot  (criar NO PAINEL: a API só cria 0–4)
 [ ] motivo_transferencia    Texto (0)
-[ ] prioridade_pipeline     Seleção única (6) — opções: baixa, media, alta
+[ ] prioridade_pipeline     Seleção única (6) — opções: baixa, media, alta  (criar NO PAINEL)
 [ ] resumo_pipeline         Texto (0)   (ou Long Text (5) se a conta preferir)
 [ ] resposta_ia             Texto (0)
 [ ] data_inicial_pipeline   Data e hora (3)
@@ -411,8 +411,12 @@ Transacional (só se o cliente tiver integração de pedido/carrinho) — TODOS 
 [ ] link_carrinho
 ```
 
-Tipos da API: `0` Text, `1` Number, `2` Date, `3` DateTime, `4` Boolean, `5` Long Text,
+Tipos de campo: `0` Text, `1` Number, `2` Date, `3` DateTime, `4` Boolean, `5` Long Text,
 `6` Select, `7` Multi Select.
+
+⚠️ A API só **cria** os tipos 0 a 4. Texto longo (5) e Seleção única/múltipla (6, 7) são criados na tela
+(Fluxos › aba Campo Personalizados), e o tipo não muda depois de criado. Por isso `tipo_setor` e
+`prioridade_pipeline` (Seleção única) entram no checklist como "criar no painel". Fonte: docs.nextags.com.br/comecar/campos-e-variaveis.
 
 ### 7.2 Tags a criar (`POST /accounts/tags {name}`)
 
@@ -453,6 +457,7 @@ O relatório do creator entrega isso como **"LISTA DE FLUXOS E CAMPOS A CRIAR"**
 
 - Listar antes de criar (idempotente, padrão Degan): `GET /accounts/custom_fields` → diff → criar só o que falta.
 - Criar CUF: `POST /accounts/custom_fields` com `{"name":"motivo_transferencia","type":0}`.
+- ⚠️ A API **não cria** CUF dos tipos 5–7 (Texto longo, Seleção única e múltipla): criar na tela. Limite ~100 req/min por conta, somando todas as integrações (`docs.nextags.com.br/comecar/limites-e-erros`).
 - Criar tag: `POST /accounts/tags` com `{"name":"transacional"}`; consultar por nome em `GET /accounts/tags/name/{tag_name}`.
 - Validar flow: `GET /accounts/flows` — **o `flow_id` precisa existir de verdade**;
   `/send/{flow_id}` retorna `success:true` até para id inexistente (evidência: Alto Giro).

@@ -77,6 +77,9 @@ apontando para o fluxo de transferência do projeto.
  ]}
 ```
 
+`transfer_conversation_to` aceita dois valores em `value`: `human` (passa a conversa para a equipe) e `bot`
+(devolve ao robô). `bot` é legítimo: nunca "corrigir" para `human` (mandaria o cliente para a fila errada).
+
 ⚠️ Se NÃO há flow de transferência configurado, `transfer_conversation_to` é
 fallback legítimo — mantenha. Se o `flow_id` correto não estiver definido no
 prompt, **mantenha o placeholder** `<ID_DO_FLUXO_PIPELINE>` e adicione no
@@ -93,6 +96,13 @@ obrigatório antes de todo `send_flow` de transferência — ver Regra 21.
 - **No máximo 1 botão `web_url` por mensagem** (restrição do WhatsApp para link).
 - Botão `postback` (dispara um fluxo ao clicar) é **permitido** — podem até 3 —
   mas a IA **raramente** usa. Para sim/não e menus simples, prefira a pergunta em texto.
+
+**Limites oficiais do formato** (docs.nextags.com.br › Mensagens e ações em JSON): até
+**3 botões** por texto, título de até **20 caracteres**; até **11 respostas rápidas** por
+mensagem; `postback` leva o ID do fluxo no `payload`. No WhatsApp, uma mensagem com botão
+`web_url` não convive com outros botões (no editor de fluxo, "mais de um botão, quando um
+deles abre site" tira o WhatsApp da lista de destinos). A doc diz que, no JSON, a conversão
+acontece na hora do envio e o resultado de cada caso não foi conferido: teste no canal real.
 
 **Detecção do script (BLOQUEIA):** bloco com `template_type: "button"` que tem
 botão `web_url` sem `url`, ou mais de 1 botão `web_url` na mesma mensagem.
@@ -121,6 +131,13 @@ botão `web_url` sem `url`, ou mais de 1 botão `web_url` na mesma mensagem.
 
 **Regra:** carrosséis (`template_type: "generic"`) servem para listar 2+
 produtos com imagem. Para 1 item, use texto + attachment de imagem.
+
+**Limites oficiais** (docs.nextags.com.br › Mensagens e ações em JSON): título e
+subtítulo do cartão até **80 caracteres**, até **3 botões** por cartão, até **10
+cartões** na galeria. `image_aspect_ratio` é `horizontal` ou `square`. Cartão e galeria
+não vão para Telegram e TikTok, e **galeria com mais de um cartão não vai para o
+WhatsApp** no editor de fluxo (a doc não confirma o comportamento no JSON): em agente de
+WhatsApp, teste o carrossel no celular antes de prometê-lo ao cliente.
 
 **Como corrigir:** transforme em uma sequência de mensagens com texto e a
 imagem como attachment.
@@ -492,3 +509,23 @@ as instruções antigas. Ferramenta e guia completos: skill `nextags-prompt-octo
 ```
 
 > 🔧 NOTA PARA EDITORES: cada bolha é cobrada pela Meta desde 01/10/2026; não reintroduzir typing 4 entre textos.
+
+---
+
+## 29. Formatos válidos da doc oficial que NÃO são violação
+
+Fonte: docs.nextags.com.br/comecar/mensagens-e-acoes e docs.nextags.com.br/ia/respostas-do-agente-em-json
+(conferidas em 26/10/2026). Ao gerar ou auditar um JSON de exemplo, **não reportar nem "corrigir"**:
+
+| Formato | Por que é válido |
+|---|---|
+| Botão `phone_number` com `payload` = telefone + código do país | 3º tipo de botão (`web_url`, `postback`, `phone_number`). |
+| `postback` com `payload` = string JSON `{"actions":[...]}` (aspas escapadas) | A doc ensina "ações num botão". Montar com `json.dumps`. |
+| `quick_replies` (até 11) em qualquer mensagem | `content_type:"text"`, `title`, `payload`. |
+| Item de `messages` no formato da Cloud API do WhatsApp, com `"to": null` | "Mensagem só do WhatsApp": a NexTags preenche o destinatário. |
+| `transfer_conversation_to` com `value:"bot"` | Devolve a conversa ao robô. |
+| `set_field_value` em `phone`, `email`, `first_name`, `last_name`, `full_name` | Campos do sistema aceitos pelo nome. |
+| Número solto entre mensagens com outro valor além de `4` | A doc define o número como segundos de "digitando"; `4` é a convenção ao gerar (OctoberCut pede uma mensagem só). |
+
+Limites que a doc declara: 3 botões por mensagem, título de botão 20 caracteres, título e subtítulo de cartão 80,
+10 cartões por galeria, 11 respostas rápidas. O analisador só **avisa** (nunca corta conteúdo).

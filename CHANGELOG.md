@@ -5,6 +5,44 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.14.0] - 2026-10-26
+
+As skills do grupo foram conferidas contra a documentação oficial (docs.nextags.com.br e
+help.nextags.com.br). Só edições factuais ou aditivas, cada uma com a página da doc como fonte;
+persona, tom, regras de negócio e as regras OctoberCut (já padrão no creator desde a 1.9.0) não mudaram.
+
+### Adicionado
+
+- Todas as skills: bloco "Fontes oficiais da NexTags" (skill `nextags-api`, MCP da documentação, `.md` das
+  páginas e `llms.txt`); se a skill divergir da doc, vale a doc.
+- `nextags-json-fixer` e `nextags-prompt-fixer`: Regra 29 (formatos válidos da doc que não são violação) e
+  avisos para os limites da doc: 3 botões, título de botão 20, título/subtítulo de cartão 80, galeria 10,
+  11 respostas rápidas. Só avisam, nunca cortam conteúdo. +31 testes.
+- `nextags-prompt-creator`: seção "Subir o prompt e configurar o AI Hub" no relatório (subida por
+  `nextags-prompt-push`, ajustes que só o usuário faz no painel, ferramentas de IA, agente padrão),
+  pergunta sobre o provedor de IA conectado, janela de 24 h por canal, aviso de sigilo no prompt.
+- `nextags-webhook-builder`: §2.1 com as 4 formas de integrar, antipadrões 23 e 24, limite de ~100 req/min por conta,
+  retry sem duplicar, formatos de data, dinheiro, telefone e ID.
+- `nextags-mcp-builder`: passo a passo de ligar o MCP no AI Hub (URL, Authentication, Allowed tools) e Função de IA.
+  Seção de tokens movida para `references/tokens_em_docs.md` (SKILL.md 594 → 593 linhas).
+
+### Corrigido
+
+- `fix_json.py`: `transfer_conversation_to` com `bot` era reescrito para `human`; mensagem só-WhatsApp
+  (`messaging_product`, `"to": null`) era descartada ou embrulhada; botão `phone_number` virava tipo inválido
+  (também no `analyze_prompt.py`, cópias idênticas no creator e no fixer).
+- `nextags-json-fixer/SKILL.md`: deixou de mandar manter só o 1º botão (a doc permite 3).
+- `setup_cufs_canonicos.js`: tipos 5 a 7 não são criados pela API (só 0 a 4), vão para `criar_no_painel`; `GET /accounts/me`
+  não tem `id`, só `page_id`; a criação de etiqueta é formulário, não JSON.
+- `campos_canonicos.md` (4 cópias) e `cufs_nextags.md` (2 cópias): a API só cria CUF dos tipos 0 a 4;
+  `tipo_setor` e `prioridade_pipeline` (Seleção única) são criados no painel.
+- `api_nextags.md`: 86 operações (entram `/broadcasts` e `/tools`), canais de `send_content`, `Contact.channel`.
+- `nextags-prompt-octobercut`: cota grátis de 1.000 mensagens de atendimento por mês por número; janela de entrada grátis.
+- `whatsapp-template-utilidade`: contestar categoria em 60 dias (era 24 h), rodapé ≤ 60, pausa de modelo.
+- `nextags-prompt-instagram`: nomes atuais da tela e limites (≤ 60 posts, frases ≤ 300, Direct ≤ 640).
+- `nextags-webchat-tester`: escala de temperatura atual (0 a 2), requisitos do Agente Padrão e sites autorizados.
+- Vídeo no WhatsApp: limite documentado de 16 MB (os prompts seguem com 15 MB de margem).
+
 ## [1.13.1] - 2026-10-26
 
 `nextags-api` passa a seguir o contrato oficial do docs.nextags.com.br e a documentação do docs e do help.

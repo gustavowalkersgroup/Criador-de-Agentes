@@ -101,8 +101,13 @@ documenta o schema oficial completo com exemplos validados.
 | Botão `web_url` sem `url` | Converter botão pra texto inline na mensagem; OU pendência se intenção for ambígua. |
 | Botão `postback` sem `payload` | Pendência (precisa do flow_id). |
 | Button template sem `text` no payload | Pendência (`text` é obrigatório). |
-| Button template com >1 botão | Aviso (estoura UI Messenger); manter o 1º, listar os demais no relatório. |
+| Button template com >3 botões | Pendência de aviso (limite da doc: 3 por mensagem). **Não corta** botões. 1 a 3 botões é válido, de qualquer tipo. |
+| Botão `phone_number` | **Válido** (`payload` = telefone com código do país). Sem `payload` → pendência. |
 | Botão com CTA (`title`) > 20 chars | Aviso (não trunca automaticamente; sinaliza). |
+| Mensagem só do WhatsApp em `messages` (`messaging_product:"whatsapp"`, `"to":null`) | **Válida — passa intacta**. Não embrulhar em `message`, não descartar. |
+| `quick_replies` | Preservadas; aviso só se >11. |
+| Cartão: título/subtítulo > 80, galeria > 10 cartões, cartão com > 3 botões | Pendência de aviso (limites da doc); não corta. |
+| `transfer_conversation_to` com `value:"bot"` | **Válido** (devolve ao robô). Só normaliza a caixa. Outro valor desconhecido → `human`. |
 | Carrossel com 1 elemento | Converter pra `message` com `attachment` `image` + texto; OU pendência. |
 | Carrossel com 0 elementos | Remover bloco; pendência. |
 | Nome de ação errado | Mapear pra nome canônico (ver `references/schema.md`). |
@@ -123,6 +128,13 @@ zero correções. Se não, é bug — investigue antes de entregar.
 
 Relatório **sempre em PT-BR**. O JSON corrigido preserva o idioma dos
 textos originais.
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## Estrutura desta skill
 

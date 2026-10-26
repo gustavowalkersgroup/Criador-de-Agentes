@@ -99,4 +99,4 @@ return [{ json: {
 // }
 // ⚠️ Ordem fixa: set_field_value… → add_tag… → send_flow por último.
 // Header: X-ACCESS-TOKEN: <NEXTAGS_ACCESS_TOKEN>  (preferir credencial nomeada do n8n)
-// Em polling grande, batchSize 1 + intervalo (~600ms): rate limit NexTags ~100 req/60s (Privilège).
+// Em polling grande, batchSize 1 + intervalo (~600ms): rate limit NexTags ~100 req/min por conta, somando todas as integrações (Privilège; doc comecar/limites-e-erros).

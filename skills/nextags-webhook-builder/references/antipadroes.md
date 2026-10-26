@@ -3,6 +3,7 @@
 > Todos observados em produção ou nas conversas. Cada um custou tempo. Evite-os no setup.
 > §1-§15 vêm da auditoria de 2026-07; **§16-§22 vêm da leitura de 21 workflows n8n recentes
 > (2026-09-03)** e trazem os incidentes mais caros do corpus — cada um cita workflow + id.
+> **§23-§24 vêm do confronto com a doc oficial da NexTags (2026-10-26)** e citam a página de origem.
 
 ## 1. Texto direto em vez de `send_flow` (o pior)
 
@@ -23,7 +24,7 @@ Ordem errada no `actions[]` faz os CUFs chegarem **vazios** no destino da transf
 
 ## 3. Confiar no `success:true` do `send_flow`
 
-`/send/{flow_id}` retorna `success:true` **mesmo para flow_id inexistente/falso** (Alto Giro). Nunca use a resposta da API como prova de entrega — valide com recebimento real no WhatsApp. E o endpoint exige `Content-Length > 0` (retorna **411** se o corpo vier vazio).
+`/send/{flow_id}` retorna `success:true` **mesmo para flow_id inexistente/falso** (Alto Giro). Nunca use a resposta da API como prova de entrega — valide com recebimento real no WhatsApp. E o endpoint exige `Content-Length > 0` (retorna **411** se o corpo vier vazio). O contrato oficial descreve a chamada como **sem corpo** e não descreve a resposta; o 411 é evidência de produção (Alto Giro) com cliente HTTP sem `Content-Length`.
 
 ## 4. Placeholder de flow_id shippado em produção
 
@@ -141,3 +142,15 @@ Motivos canônicos: `sem_telefone`, `telefone_invalido`, `telefone_fixo`, `flow_
 ## 22. `/api/users` em projeto novo
 
 O endpoint canônico de disparo é `POST /api/contacts` (8 clientes do corpus). `/api/users` aparece **só** no AliveMed Dispatcher, sem explicação na sticky — variante legada. Em projeto novo, usar `/api/contacts`; em cliente existente que já usa `/api/users`, não migrar sem combinar (mesma regra do CUF legado). Ver `api_nextags.md` §0.
+
+## 23. Flow de transacional que começa com mensagem livre fora da janela de 24 h
+
+No WhatsApp, mensagem livre (texto, imagem, botões) só sai até 24 horas depois da última mensagem do contato; fora disso só **Modelo de Mensagem** aprovado. A regra vale para a API, os flows e os Broadcasts, e o `send_flow` a segue. Um transacional é quase sempre proativo, ou seja, fora da janela: se o flow de destino começa com texto livre, a API aceita o envio (`200`) e o cliente não recebe nada. O motivo aparece em Fluxos › Registro de Erros, não na resposta da API.
+
+Correto: o flow começa com um **Modelo aprovado** (todas as variáveis preenchidas: variável vazia = `#131008`) ou com uma Condição **Interagiu nas últimas 24h** que manda texto livre a quem está na janela e o Modelo a quem não está. E o flow tem que estar **publicado**: o contato recebe a versão publicada, não o rascunho. (doc `guias/enviar-fluxo`; help `canais/janela-de-24-horas`)
+
+## 24. Corpo JSON em endpoint que recebe formulário (e tipo de CUF fora de 0–4 pela API)
+
+Cinco chamadas recebem `application/x-www-form-urlencoded`, não JSON: criar etiqueta (`name`), preencher campo do contato (`value`), preencher campo do bot (`value`), adicionar produto ao carrinho (`quantity`) e marcar pedido como pago (`amount_received`). O mesmo vale para as `/tools/*` (menos `echo`). Com JSON, a doc diz que dá `400` ou o campo fica vazio. No n8n: **Body Content Type = Form Urlencoded**. `POST /contacts`, `send_content` e `POST /accounts/custom_fields` são JSON.
+
+Parecido: `POST /accounts/custom_fields` só cria os tipos `0` a `4`. Mandar `5`, `6` ou `7` (Texto longo, Seleção única/múltipla) não funciona por API: esses campos nascem no painel. O `setup_cufs_canonicos.js` separa os dois casos (`criar_no_painel`). (doc `guias/make-n8n-zapier`, `comecar/visao-geral`, `comecar/campos-e-variaveis`)

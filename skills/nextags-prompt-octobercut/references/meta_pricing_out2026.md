@@ -31,10 +31,16 @@ mensagem de serviço**, e cada uma é cobrada.
 - **Preço da mensagem de serviço = preço de utilidade/autenticação do
   mercado**, sem faixas de volume. Referência Brasil usada pela Meta: 0,68
   centavo de dólar por mensagem. A Meta pode revisar o valor a cada trimestre.
-- **Janela grátis de 72h (entry point)** continua valendo: conversa iniciada
+- **Janela grátis de entrada (entry point)** continua valendo: conversa iniciada
   por anúncio Click-to-WhatsApp ou botão de CTA do Facebook não paga entrega
-  de mensagem nesse período.
+  de mensagem nesse período. Prazo: a Meta falava em 72h; a Central de Ajuda da
+  NexTags (24/10/2026) diz **até 7 dias** quando a empresa responde dentro da
+  janela. Confirme o prazo vigente na tabela da Meta antes de prometer.
 - Mensagem enviada pelo cliente não é cobrada.
+- **Cota grátis:** as primeiras **1.000 mensagens de atendimento (sem modelo) do mês,
+  em cada número**, não são cobradas; a cota não acumula e a cobrança vale acima dela
+  (help NexTags `tutoriais/canais/precos-das-conversas`, 24/10/2026). As estimativas
+  abaixo valem para o volume que passa da cota.
 - Webhook de status: mensagens cobradas chegam com
   `"pricing": {"billable": true, "pricing_model": "PMP", "type": "regular", "category": "service"}`.
   Dá para contar o volume real pela Pricing Analytics API com

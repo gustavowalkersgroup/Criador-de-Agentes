@@ -90,8 +90,37 @@ O inteiro (`4`) é o typing indicator: segundos de "digitando…". Posições v�
 `\n` dentro de `text` = multilinha na MESMA bolha (listas, blocos de rastreio).
 `4` = NOVA bolha. São coisas distintas: nunca converter `\n` em `4` nem vice-versa.
 
-> O typing indicator é SEMPRE o inteiro `4`. "3-5 segundos" é só a descrição
-> semântica, não um valor alternativo — nunca usar `3` nem `5`.
+> Ao **gerar**, o typing indicator da casa é o inteiro `4` ("3-5 segundos" é só a
+> descrição semântica). A doc oficial define o número solto como segundos de
+> "digitando" (o exemplo dela usa `3` e `4`), então o fixer **aceita 1–30 e não
+> reescreve** `3`, `5` etc.: é convenção, não schema.
+> (https://docs.nextags.com.br/comecar/mensagens-e-acoes/, "Pausa de digitando")
+
+### 2b. Mensagem só do WhatsApp (Cloud API) dentro de `messages`
+
+Para o que só o WhatsApp tem (lista de opções, contatos, localização, catálogo,
+botões de resposta) o item de `messages` pode ser o objeto da Cloud API, com
+`"to": null` (a NexTags preenche o destinatário). **Não tem chave `message`** e é
+válido: o fixer o deixa **intacto** (não embrulha, não descarta, sem pendência).
+
+```json
+{"messages":[{"messaging_product":"whatsapp","recipient_type":"individual","to":null,
+  "type":"interactive","interactive":{"type":"button","body":{"text":"Confirma a entrega?"},
+  "action":{"buttons":[{"type":"reply","reply":{"id":"1000001","title":"Confirmo"}}]}}}]}
+```
+
+### 2c. Respostas rápidas (`quick_replies`)
+
+Até **11** por mensagem, em qualquer tipo de mensagem; ficam dentro de `message`:
+
+```json
+{"messages":[{"message":{"text":"Qual sabor?","quick_replies":[
+  {"content_type":"text","title":"Chocolate","payload":"1000001"},
+  {"content_type":"text","title":"Morango","payload":"1000002"}]}}]}
+```
+
+O `payload` funciona como o do botão (ID de fluxo/etapa ou ações). O fixer não mexe
+nelas; só avisa se passarem de 11. Não existem `web_url` nem `phone_number` aqui.
 
 ### 3. Attachments (imagem, vídeo, áudio, arquivo)
 
@@ -127,6 +156,10 @@ em pelo menos um canal:
 - ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
 - ❌ Além do formato, a **Meta bloqueia por tamanho**: imagem acima de **5 MB** e vídeo acima
   de **15 MB** não são enviados. 1 MB a mais já basta — e não aparece erro para o cliente.
+  (15 MB é a margem conservadora; o limite documentado do WhatsApp é **16 MB** para vídeo e
+  áudio e 5 MB para imagem. Instagram: imagem 8 MB, vídeo 25 MB. Messenger: imagem 8 MB,
+  vídeo/áudio/arquivo 25 MB. Vale o menor entre os canais de destino. Tabela completa:
+  https://help.nextags.com.br/tutoriais/canais/tipos-de-arquivo-e-limites/)
 - ❌ PNG com **16 bits por canal** é rejeitado mesmo abaixo de 5 MB (o CDN da Shopify entrega
   assim por padrão).
 
@@ -159,8 +192,14 @@ a quebrar o envio inteiro no canal.
 
 Regras:
 - **`elements` deve ter ≥ 2 itens.** Plataforma rejeita carrossel com 1 só.
+  (Divergência com a doc oficial, ainda não resolvida: a página de mensagens e ações
+  chama de "Cartão" um `generic` com **um** elemento. O fixer continua tratando 1
+  elemento como pendência — nunca inventa o segundo cartão — até alguém confirmar no
+  canal real; decisão pendente do dono da skill.)
 - `image_aspect_ratio` aceita `"horizontal"` ou `"square"`.
 - Cada elemento pode ter `buttons` vazio ou com até 3 botões.
+- Limites da doc (o fixer só **avisa**, não corta): título e subtítulo do cartão até
+  **80** caracteres; até **10** cartões por galeria; título de botão até 20.
 
 > Nota de produção: carrossel `generic` NÃO aparece em nenhum dos 25 prompts
 > reais — o padrão real é botão único `web_url`. Validar continua certo, mas
@@ -184,9 +223,11 @@ Tipos de botão válidos:
 | `type`     | Campo obrigatório | Função |
 |------------|-------------------|--------|
 | `web_url`  | `url`             | Abre link externo. É o tipo mais comum em produção (7/7); o WhatsApp limita a **1 botão `web_url` por mensagem**. |
-| `postback` | `payload`         | Dispara um `flow_id` ao clicar. **PERMITIDO e válido** (até 3 num button template). A IA raramente usa, mas não é proibido. |
+| `postback` | `payload`         | Dispara um `flow_id` ao clicar. **PERMITIDO e válido** (até 3 num button template). A IA raramente usa, mas não é proibido. O `payload` é o ID do fluxo/etapa **ou** uma string JSON `{"actions":[...]}` com as aspas escapadas (monte com `json.dumps`). |
+| `phone_number` | `payload`     | Liga para um número: `payload` = telefone com código do país (`+551133445566`). **Tipo válido.** O editor de fluxos não o entrega no WhatsApp; no JSON o resultado por canal não foi conferido pela doc — o fixer não avisa nem altera. |
 
-Botão sem o campo obrigatório → violação.
+Botão sem o campo obrigatório → violação. Fonte dos 3 tipos:
+https://docs.nextags.com.br/comecar/mensagens-e-acoes/ ("Texto com botões").
 
 **Limites de UI (button template) — observados em produção, validar:**
 - **`text` é OBRIGATÓRIO** no payload do button. Button sem `text` → pendência.
@@ -218,13 +259,20 @@ objeto com a chave `action` + campos específicos.
 | Definir campo personalizado | `{"action":"set_field_value","field_name":"<campo>","value":"<valor>"}` | `field_name`, `value` |
 | Limpar campo personalizado | `{"action":"unset_field_value","field_name":"<campo>"}` | `field_name` |
 | Disparar fluxo | `{"action":"send_flow","flow_id":"<ID>"}` | `flow_id` |
-| Transferir para humano | `{"action":"transfer_conversation_to","value":"human"}` | `value` |
+| Transferir para humano / devolver ao robô | `{"action":"transfer_conversation_to","value":"human"}` ou `"value":"bot"` | `value` (`human` ou `bot`) |
 | Atribuir a admin | `{"action":"assign_conversation","admin_id":"<id>"}` | `admin_id` |
 | Remover atribuição | `{"action":"unassign_conversation"}` | nenhum |
 
 > `unset_field_value` e `remove_tag` são oficiais mas raríssimas (0 uso no
 > corpus real). Usar só para LIMPAR um campo/tag ao reverter um estado; não
 > fazem parte do fluxo normal.
+
+> `set_field_value` também preenche os campos do sistema `phone`, `email`,
+> `first_name`, `last_name` e `full_name` (pelo nome). `flow_id` e `admin_id`
+> aceitam inteiro **ou** texto. `transfer_conversation_to` com `value:"bot"`
+> devolve a conversa ao robô e é **preservado**: o fixer só normaliza a caixa
+> (`"BOT"` → `"bot"`); qualquer outro valor desconhecido continua virando `human`.
+> (https://docs.nextags.com.br/comecar/mensagens-e-acoes/, tabela "Ações")
 
 **Validade vs. boa prática (duas camadas).** As 8 ações acima são
 sintaticamente válidas no runtime — esta skill NÃO quebra um JSON por
@@ -305,8 +353,8 @@ não tentar "consertar" para uma ação inventada.
    plataforma (testado pelo cliente) — NÃO remover, NÃO tratar como
    violação. Emojis também NÃO são markdown — preservar.
 5. **Carrossel ≥ 2 elementos.**
-6. **Botões `web_url` precisam de `url`.** Botões `postback` precisam de
-   `payload`.
+6. **Botões `web_url` precisam de `url`.** Botões `postback` e `phone_number`
+   precisam de `payload`. Até 3 botões por mensagem.
 7. **`attachment.type` apenas:** `image`, `video`, `audio`, `file`,
    `template`.
 8. **`attachment.type` FORA de `payload`** (no mesmo nível). Type dentro
@@ -315,6 +363,11 @@ não tentar "consertar" para uma ação inventada.
    canal. Quando a extensão é ambígua, validar Content-Type ou remover.
 10. **Typing indicator** é inteiro (não string) e fica entre 1 e 30
     segundos.
+11. **Mensagem só do WhatsApp** (`"messaging_product":"whatsapp"`, `"to":null`)
+    em `messages` é válida e passa intacta (seção 2b).
+12. **Janela de 24 h do WhatsApp:** mensagem livre só sai até 24 h após a última
+    do contato; fora disso só Modelo aprovado, via fluxo que começa com o modelo.
+    O fixer não tem como saber a janela: é regra de operação, não de schema.
 
 ---
 

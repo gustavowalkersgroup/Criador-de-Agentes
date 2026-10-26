@@ -8,6 +8,8 @@ Tela "Instagram > comentários":
 - **Responder a:** Todos os comentários.
 - Mais opções (decisão do cliente): "Responda apenas uma vez a cada usuário em uma postagem" (limita também a resposta pública), "Excluir comentários com palavras-chave" (spam), "Responder depois" (Imediatamente).
 - Observação: dá para usar `Fluxo` direto na mensagem privada, mas o agente classificador é necessário para decidir e gravar os campos.
+- Nomes atuais da tela (help, 24/10/2026): Ferramentas › **Automações de Comentários do Instagram** › Criar automação, em 4 passos (Post, Comentário, Direct, Revisar). Direct = Mensagem | Fluxo | **Agente de IA**; resposta no post = Frases | Fluxo | **Agente de IA** (a opção Agente de IA só aparece com a IA ligada na conta). Limites: até 60 posts por automação; frases da resposta pública ≤300 caracteres, até 10 (sorteadas); mensagem do Direct ≤640 caracteres. Os rótulos acima podem diferir dos do cliente: confira na tela (`help.nextags.com.br/tutoriais/instagram-e-facebook/comentario-para-direct`, `/resposta-publica`, `/escolher-posts-e-palavras`).
+- Dependência documentada: **a resposta pública só sai quando o Direct é enviado**; se o Direct não sai, o comentário fica sem resposta no post. No desenho com classificador, o caso `NAO` não manda DM: confira em teste que a resposta pública ainda sai nesse caso (e, se não sair, trate como decisão do cliente).
 
 ## 2. Agente 1: Prompt INSTAGRAM (resposta pública)
 - Saída: texto puro, 1 a 3 frases, começando com `@autor`.
@@ -47,7 +49,8 @@ Reclamação: empatia, sem defender a marca nem prometer solução; `prioridade_
 
 ## 7. Limites da Meta (conferir sempre)
 - Resposta privada: 1 mensagem por comentário, até 7 dias; em Live, só durante a transmissão.
-- Depois que o cliente responde, abre janela de 24 h.
+- Depois que o cliente responde, abre janela de 24 h (mensagens automáticas); a equipe humana responde até 7 dias pela Caixa de Entrada (`help.nextags.com.br/tutoriais/instagram-e-facebook/mensagens-fora-da-janela`).
+- Antes de a pessoa responder, o Instagram permite só 1 mensagem automática: no Fluxo, a primeira etapa precisa ter só 1 mensagem.
 
 ## 8. Variáveis NexTags usadas
 `{{ig_user_name}}`, `{{username}}`, `{{first_name}}`, `{{last_fb_comment}}`, `{{last_commented_post_text}}`, `{{last_post_id}}`, `{{last_comment_id}}`, `{{decisao_dm}}`, `{{resumo_atendimento}}`, `{{resposta_ia}}`.

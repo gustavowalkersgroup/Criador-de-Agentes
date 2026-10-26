@@ -102,6 +102,18 @@ options: ["Sim — vou listar quais", "Não usa tools",
 Se "Sim", pergunta aberta: "Liste as tools disponíveis e o que cada uma faz
 (nome + 1-2 linhas descrevendo input/output)."
 
+### 2.1b Provedor de IA conectado (pode entrar na mesma rodada do 2.1)
+Pergunta aberta: "Quais provedores de IA estão conectados na conta (OpenAI, Gemini,
+Claude, xAI, DeepSeek) e qual modelo o agente usa hoje? Use o nome como aparece em
+Modelo (provedor), nos ajustes do agente."
+
+Por quê: recursos do AI Hub dependem do provedor. **Arquivos** (base de conhecimento) só
+com OpenAI; **Servidores MCP** com OpenAI, Gemini, Claude ou xAI (com DeepSeek sozinho a
+aba não aparece); **transcrever voz** com OpenAI, Gemini ou xAI. Se o projeto precisa de um
+recurso que o provedor não tem, registre como pendência no relatório. Pode ficar como
+pendência se o cliente não souber (fonte: help.nextags.com.br › Qual modelo de IA devo
+usar?).
+
 ### 2.2 ID do fluxo de PIPELINE (UM só, para todo handoff humano)
 Pergunta aberta: "Qual o `flow_id` do fluxo de **pipeline** (transferência para
 humano)? É um só — a fila é decidida pelo CUF `motivo_transferencia`, que o próprio

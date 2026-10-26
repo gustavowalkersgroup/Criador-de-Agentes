@@ -129,7 +129,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 |---|---|
 | JSON inválido | Reescreva com sintaxe válida, mantendo intenção. Se ambíguo → pendência. |
 | `transfer_conversation_to` / `assign_conversation` | NÃO são proibidas. `send_flow` é o padrão recomendado; `transfer_conversation_to` é fallback válido quando não há fluxo de transferência, `assign_conversation` é caso especial raro (atendente específico). Só sugerir `send_flow` quando houver fluxo disponível. Ver Regra 2. |
-| Botão `web_url` sem `url` | Pendência (precisa da URL) ou converter em texto. `postback` é válido (dispara fluxo) — preservar. Ver Regra 3. |
+| Botão `web_url` sem `url` | Pendência (precisa da URL) ou converter em texto. `postback` é válido (dispara fluxo) — preservar; `phone_number` (com `payload` = telefone) também é válido. Ver Regras 3 e 29. |
 | Carrossel com 1 item | Quebrar em mensagem de texto + attachment de imagem. |
 | Markdown em `text`/`subtitle` | WA-markup (`*negrito*`, `_itálico_`, `~tachado~`) RENDERIZA e é OK — não tocar. Remover só markdown-PADRÃO que vaza (`**duplo**`, `# título`, `[texto](url)`, bullets `-`, cercas ```` ``` ````). Ver Regra 5. |
 | **`send_flow` sem `messages`** (regra #10) | NÃO é erro. `send_flow` DISPARA NORMALMENTE — o fluxo assume a comunicação. `messages` é transição OPCIONAL por UX, nunca obrigatória. Preservar disparo silencioso; só sugerir transição se agregar à experiência. |
@@ -143,7 +143,7 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `send_flow` SÓ-actions (NPS/descadastro/mockup/etc.) | **NÃO corrigir** — disparo silencioso é o comportamento normal de `send_flow` (Regra 10). O fluxo fala. |
 | `assign_conversation` com `admin_id` = nome ("Estela.") | `admin_id` inválido → pendência (precisa do ID real) ou `send_flow` se o intuito era roteamento genérico; nunca adivinhar o ID. A ação em si não é proibida. Ver Regra 2. |
 | Ordem `send_flow` antes de `set_field_value` | Reordenar: campos PRIMEIRO, `send_flow` por último (senão campos chegam vazios). Ver Regra 16. |
-| `>1` botão `web_url` / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp). |
+| `>1` botão `web_url` / `>3` botões / botão de carrinho pra produto | Ver Regra 17. `postback` é PERMITIDO (até 3, raro); 1 só botão `web_url` por mensagem (limite WhatsApp); mais de 3 botões no total é warn (limite da doc). |
 | **`title` de botão com mais de 20 caracteres** (**block**) | Encurtar para ≤20 mantendo o sentido (`"Acompanhar meu pedido"` → `"Rastrear pedido"`). Não é estilo: o reparador de JSON do fluxo troca o título por `"Comprar agora"` sem erro nem log — num SAC o cliente vê "Comprar agora" numa conversa de devolução. Ver Regra 24. |
 | Data fixa que apodrece ("28/02", "até hoje") / preço literal em exemplo com tool | Ver Regra 18 (datas e preço literal). |
 | `{{first_name}}` vazio/"Guest"/não-nome (TODOS os canais) | Saudação neutra, sem pedir o nome só por pedir (OctoberCut); se a pessoa informar, `set_field_value first_name`. Nunca saudar por `{{ig_user_name}}`/`{{page_user_name}}`/username (identificador, não vocativo; vetor de injeção). Ver Regra 14 (itens 5-6). |
@@ -242,6 +242,13 @@ Defeito/Cancelamento), converter prosa em tabela, cortar exemplos negativos
 redundantes, cortar regras duplicadas. Acima de 45 KB, recomendar reescrita
 do zero. NÃO faça redução automática sem confirmação humana — alta chance
 de cortar algo que o dono considera essencial.
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## Estrutura desta skill
 

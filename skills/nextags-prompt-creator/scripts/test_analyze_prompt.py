@@ -86,6 +86,82 @@ def test_two_web_url_buttons_warns():
     assert any(d.get("severity") == "warn" for d in it["details"])
 
 
+# ---- Doc oficial: tipos de botão e formatos válidos -------------------
+# Fonte: https://docs.nextags.com.br/comecar/mensagens-e-acoes/
+
+def _btn_content(buttons_json):
+    return ('{"messages":[{"message":{"attachment":{"type":"template","payload":'
+            '{"template_type":"button","text":"x","buttons":' + buttons_json + '}}}}]}\n')
+
+
+def test_phone_number_button_with_payload_ok():
+    f = ap.analyze(_btn_content('[{"type":"phone_number","title":"Ligar","payload":"+551133445566"}]'))
+    assert "button_misuse" not in _types(f)
+
+
+def test_phone_number_button_without_payload_blocks():
+    f = ap.analyze(_btn_content('[{"type":"phone_number","title":"Ligar"}]'))
+    it = _issue(f, "button_misuse")
+    assert it is not None
+    assert any(d.get("severity") == "block" and "phone_number" in d.get("problem", "")
+               for d in it["details"])
+
+
+def test_unknown_button_type_still_blocks_and_lists_phone_number():
+    f = ap.analyze(_btn_content('[{"type":"call","title":"Ligar","payload":"1"}]'))
+    it = _issue(f, "button_misuse")
+    assert it is not None
+    d = it["details"][0]
+    assert d["severity"] == "block" and "phone_number" in d["problem"]
+
+
+def test_four_buttons_warns_not_blocks():
+    btns = ('[{"type":"postback","title":"A","payload":"1"},{"type":"postback","title":"B","payload":"2"},'
+            '{"type":"postback","title":"C","payload":"3"},{"type":"postback","title":"D","payload":"4"}]')
+    f = ap.analyze(_btn_content(btns))
+    it = _issue(f, "button_misuse")
+    assert it is not None
+    d = [x for x in it["details"] if "4 botões" in x.get("problem", "")]
+    assert d and d[0]["severity"] == "warn"
+    assert not any(x["severity"] == "block" for x in it["details"])
+
+
+def test_three_buttons_ok():
+    btns = ('[{"type":"postback","title":"A","payload":"1"},{"type":"postback","title":"B","payload":"2"},'
+            '{"type":"postback","title":"C","payload":"3"}]')
+    f = ap.analyze(_btn_content(btns))
+    assert "button_misuse" not in _types(f)
+
+
+def test_postback_payload_with_actions_json_ok():
+    payload = '{\\"actions\\":[{\\"action\\":\\"add_tag\\",\\"tag_name\\":\\"vip\\"}]}'
+    f = ap.analyze(_btn_content('[{"type":"postback","title":"Quero","payload":"' + payload + '"}]'))
+    assert "button_misuse" not in _types(f)
+
+
+def test_whatsapp_only_message_with_null_to_not_flagged():
+    content = ('{"messages":[{"messaging_product":"whatsapp","recipient_type":"individual","to":null,'
+               '"type":"interactive","interactive":{"type":"button","body":{"text":"Confirma?"},'
+               '"action":{"buttons":[{"type":"reply","reply":{"id":"1000001","title":"Confirmo"}}]}}}]}\n')
+    f = ap.analyze(content)
+    assert f["json_blocks"], "bloco deveria ser extraído"
+    assert not any(it.get("severity") == "block" for b in f["json_blocks"] for it in b["issues"]
+                   if "severity" in it)
+
+
+def test_quick_replies_message_not_flagged():
+    content = ('{"messages":[{"message":{"text":"Qual sabor?","quick_replies":'
+               '[{"content_type":"text","title":"Chocolate","payload":"1000001"}]}}]}\n')
+    f = ap.analyze(content)
+    assert f["json_blocks"][0]["issues"] == []
+
+
+def test_transfer_to_bot_is_advisory_only():
+    f = ap.analyze('{"messages":[],"actions":[{"action":"transfer_conversation_to","value":"bot"}]}\n')
+    types = _types(f)
+    assert "nonexistent_actions" not in types and "advisory_transfer_actions" in types
+
+
 # ---- Promessa de envio sem a action que entrega -----------------------
 
 def test_promessa_sem_send_flow_warns():

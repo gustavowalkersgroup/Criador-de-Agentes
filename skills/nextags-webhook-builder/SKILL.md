@@ -147,6 +147,7 @@ cobrado **dentro** da janela; toda mensagem não-template que o fluxo mande depo
 - o fluxo disparado pelo `send_flow` deve mandar **uma mensagem completa** por evento
   (status + previsão + rastreio + próximo passo), não uma sequência de balões;
 - dedup continua sendo regra nº2: disparo duplicado agora é custo dobrado, além de spam;
+- fora da janela de 24 h (o caso normal de um transacional), o flow disparado só entrega se **começar com Modelo de Mensagem aprovado**; dentro da janela, o Modelo de utilidade também é cobrado (help `canais/janela-de-24-horas`);
 - esta skill não altera o conteúdo do fluxo; se o fluxo quebra a mensagem em várias,
   registre como pendência para quem edita o fluxo (ver `nextags-prompt-octobercut`).
 
@@ -204,6 +205,7 @@ Leia `references/padrao_transacional.md` §1. Regra:
 ### Fase 2 — Escolher o gatilho e a fonte de dados
 Leia §2 (tabela por plataforma). **Não invente webhook onde não existe** (Magazord, Conecta Venda = só polling) nem faça cron onde há push (Yampi emite webhook de carrinho).
 Sem credencial nativa da loja? Confira se a loja está no integrador NexTags e use o **Gateway Proxy** (`references/gateway_proxy_nextags.md`) — evidência de produção: Cantarola Backend consome `…/v1/gateway/stores/{storeId}/products`.
+Plataforma que manda 1 webhook simples, sem assinatura, com a lógica toda no flow? O **webhook de entrada nativo** da NexTags dispensa o n8n (mas o link é um segredo, não confere assinatura e não deduplica por estágio): ver `references/padrao_transacional.md` §2.1.
 
 ### Fase 3 — Gerar o workflow a partir do template
 Copie de `assets/`:
@@ -224,10 +226,11 @@ Crie a Data Table `<Cliente> <Plataforma> Orders State` (schema em §3). Chave =
 - [ ] **CUFs canônicos criados na conta** (`campos_canonicos.md` §5) — rodar `setup_cufs_canonicos.js` em dry-run, conferir, depois criar. A API **não tem DELETE** de CUF.
 - [ ] **Tags canônicas** criadas: `transacional` + `Pedido Aprovado`/`Pedido Enviado`/`Pedido Entregue` (`POST /accounts/tags`).
 - [ ] **`GET /accounts/flows`** para validar que cada `flow_id` existe de verdade (`/send/{flow_id}` devolve `success:true` até para id falso).
-- [ ] **`GET /accounts/me`** para confirmar que o token é da conta certa (token errado = 200 na conta errada).
+- [ ] Flow de destino **publicado** (o contato recebe a versão publicada) e, no WhatsApp, começando por **Modelo de Mensagem aprovado** (ou por Condição `Interagiu nas últimas 24h`): fora da janela de 24 h mensagem livre não chega. Variável vazia no Modelo = `#131008`.
+- [ ] **`GET /accounts/me`** para confirmar que o token é da conta certa (token errado = 200 na conta errada). A resposta traz `page_id` e `name` (não há `id`).
 - [ ] CUFs tipo **TEXTO** (`type: 0`); todas as variáveis do template preenchidas (var vazia = `#131008` derruba o flow).
-- [ ] HTTP: `retryOnFail:true` + `waitBetweenTries:5000` + `onError:continueErrorOutput` + `specifyBody:'json'`.
-- [ ] Anti-429: rate limit NexTags ~**100 req/60s** (Privilège); throttle em polling/backfill.
+- [ ] HTTP: `retryOnFail:true` + `waitBetweenTries:5000` + `onError:continueErrorOutput` + `specifyBody:'json'`. Ponha timeout no node: retry em `POST /contacts` + `send_flow` pode duplicar o envio (`padrao_transacional.md` §7).
+- [ ] Anti-429: rate limit NexTags ~**100 req/min por conta, somando todas as integrações** (Privilège; doc `comecar/limites-e-erros`); throttle em polling/backfill; `429`/`5xx` com espera crescente 1-2-4-8 s, nunca em laço.
 - [ ] Guard de telefone (inválido e **fixo**) + guards de idade/conversão no carrinho.
 - [ ] HMAC no webhook de entrada onde a plataforma assina (Bling/Martz).
 - [ ] UTM em todo link (`link_envio_pattern.md` da mcp-builder).
@@ -235,6 +238,7 @@ Crie a Data Table `<Cliente> <Plataforma> Orders State` (schema em §3). Chave =
 
 ### Fase 7 — Validar E2E (não confie na API)
 `/send/{flow_id}` retorna `success:true` **até pra flow_id falso** — validar com **recebimento real no WhatsApp** (contato celular real; webchat não tem telefone, fixo não recebe). Testar replay (mandar o mesmo webhook 2x → cliente recebe 1x) e testar a transição de estágio (Pago → Enviado dispara os dois).
+Quando algo não chega, olhe nesta ordem: **Fluxos › Registro de Erros** (falhas da conta, com tipo, descrição, contato e data), o histórico do contato na Caixa de Entrada (Fluxos/Passos Executados) e, na requisição externa, o **Testar Agora**. (doc `webhooks/seguranca-e-testes`)
 
 ## 📜 Princípios
 - **Disparo proativo = `send_flow`.** Texto solto trava o NexTags. (Regra nº1)
@@ -248,6 +252,13 @@ Crie a Data Table `<Cliente> <Plataforma> Orders State` (schema em §3). Chave =
 - **Idempotente:** `search_workflows` antes de criar; atualize em vez de duplicar.
 - **Token real nunca em arquivo da skill** — placeholders `<NEXTAGS_ACCESS_TOKEN>`, `<NEXTAGS_GATEWAY_TOKEN>`, `<TELEFONE>`, `<IP_N8N>`, `<FLOW_ID_...>`.
 
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
+
 ## 📂 Estrutura desta skill
 ```
 nextags-webhook-builder/
@@ -255,7 +266,7 @@ nextags-webhook-builder/
 ├── references/
 │   ├── campos_canonicos.md           ← fonte de verdade dos campos/tags (cópia idêntica em 4 skills)
 │   ├── padrao_transacional.md        ← o padrão completo validado (arquitetura, dedup, número, entrega, resiliência, matriz de evidências)
-│   ├── antipadroes.md                ← catálogo de erros reais (22 antipadrões)
+│   ├── antipadroes.md                ← catálogo de erros reais (24 antipadrões)
 │   ├── gateway_proxy_nextags.md      ← Gateway Proxy NexTags (Tray/Nuvemshop/Yampi/Bagy sem credencial nativa)
 │   └── api_nextags.md                ← endpoints da API NexTags + receitas (CUF idempotente, tag, flows, disparo atômico)
 └── assets/

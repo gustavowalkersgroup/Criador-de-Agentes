@@ -77,6 +77,12 @@ projeto. As demais ações de transferência **não são proibidas**:
 - **`unassign_conversation`** — válida; remove a atribuição. Não é o caminho
   comum de transferência, mas não é erro.
 
+`transfer_conversation_to` aceita **dois** valores em `value`: `human` (passa
+a conversa para a equipe) e `bot` (devolve a conversa ao robô). `bot` é
+legítimo: nunca "corrigir" para `human` nem para `send_flow` — mandaria o
+cliente para a fila errada. (Doc oficial:
+https://docs.nextags.com.br/comecar/mensagens-e-acoes/, tabela "Ações".)
+
 **Validação extra de `admin_id` (quando aparecer `assign_conversation`):**
 se o valor de `admin_id` não for um ID numérico/hash válido — ex.: um nome
 como `"Estela."` (caso real, Gabriela) — aí sim há problema: o `admin_id`
@@ -193,6 +199,15 @@ fluxo ao clicar, são PERMITIDOS — ver Regra 17 — e não exigem `url`.)
 - **Botões `postback`** (disparam um fluxo ao clicar): **permitidos, até 3
   por mensagem**, mas a IA **raramente** usa (o padrão é texto + `send_flow`,
   ou 1 botão `web_url`). Não bloquear quando aparecer.
+- **Total de botões: até 3 por mensagem, de qualquer tipo** (doc oficial,
+  https://docs.nextags.com.br/comecar/mensagens-e-acoes/, "Limites"). O
+  analisador avisa (`button_misuse`, warn) acima de 3; nunca bloqueia.
+- **Botão `phone_number`** (liga para um número) é um tipo VÁLIDO: `payload` =
+  telefone com código do país (`+551133445566`). Sem `payload` → block. O editor
+  de fluxos não entrega esse botão no WhatsApp, mas a doc não confirma o resultado
+  no JSON; por isso não há aviso e ele **não é violação**.
+- O `payload` de um `postback` é o ID de um fluxo/etapa **ou** uma string JSON
+  `{"actions":[...]}` com as aspas escapadas. Os dois são válidos.
 - **CTA ≤ 20 caracteres** ("Comprar Agora", "Finalizar Pedido", "Quero o meu").
   Não é preferência de estilo: acima de 20 o reparador de JSON do fluxo troca o
   título por "Comprar agora" sem avisar. Regra 24 explica o mecanismo.
@@ -218,6 +233,15 @@ produtos com imagem. Para 1 item, use texto + attachment de imagem.
 
 **Como corrigir:** transforme em uma sequência de mensagens com texto e a
 imagem como attachment.
+
+> **Divergência com a doc oficial (decisão pendente).** A página
+> https://docs.nextags.com.br/comecar/mensagens-e-acoes/ chama de "Cartão" um
+> `generic` com **um** elemento e só limita a galeria a 10. Esta regra (bloqueio
+> com <2) vem do schema histórico da skill ("a plataforma rejeita carrossel com 1
+> só"), sem teste citado; no WhatsApp, Cartão/Galeria depende do canal (ver
+> https://help.nextags.com.br/tutoriais/fluxos/cartoes-e-galeria/). Até
+> confirmar no canal real, a regra **não muda**; não "corrigir" para 2+ cartões
+> inventando conteúdo.
 
 **Antes:**
 ```json
@@ -830,6 +854,10 @@ formatos quebram a entrega em pelo menos um canal.
 - ❌ Proibidos: `.webp`, `.avif`, `.svg`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.heif`.
 - ❌ Além do formato, a **Meta bloqueia por tamanho**: imagem acima de **5 MB** e vídeo acima
   de **15 MB** não são enviados. 1 MB a mais já basta — e não aparece erro para o cliente.
+  (15 MB é a margem conservadora usada nos prompts; o limite documentado do WhatsApp é
+  **16 MB** para vídeo e áudio, 5 MB para imagem. Instagram: imagem 8 MB, vídeo 25 MB.
+  Messenger: imagem 8 MB, vídeo/áudio/arquivo 25 MB. Vale sempre o menor entre canais.
+  Tabela completa: https://help.nextags.com.br/tutoriais/canais/tipos-de-arquivo-e-limites/)
 - ❌ PNG com **16 bits por canal** é rejeitado mesmo abaixo de 5 MB (o CDN da Shopify entrega
   assim por padrão).
 
@@ -1278,3 +1306,37 @@ as instruções antigas. Ferramenta e guia completos: skill `nextags-prompt-octo
 ```
 
 > 🔧 NOTA PARA EDITORES: cada bolha é cobrada pela Meta desde 01/10/2026; não reintroduzir typing 4 entre textos.
+
+---
+
+## 29. Formatos válidos da doc oficial que NÃO são violação
+
+Fonte: https://docs.nextags.com.br/comecar/mensagens-e-acoes/ e
+https://docs.nextags.com.br/ia/respostas-do-agente-em-json/ (conferidas em 26/10/2026).
+Ao auditar um JSON de exemplo, **não reportar nem "corrigir"**:
+
+| Formato | Por que é válido |
+|---|---|
+| Botão `phone_number` com `payload` = telefone + código do país | Um dos 3 tipos de botão (`web_url`, `postback`, `phone_number`). |
+| `postback` com `payload` = string JSON `{"actions":[...]}` (aspas escapadas) | A doc ensina "ações num botão". Montar com `json.dumps`, nunca escapar à mão. |
+| `quick_replies` (até 11) numa mensagem de qualquer tipo | `content_type:"text"`, `title`, `payload` (mesmo `payload` do botão). |
+| Item de `messages` no formato da Cloud API do WhatsApp, com `"to": null` | "Mensagem só do WhatsApp": a NexTags preenche o destinatário. Não exige `message`. |
+| `transfer_conversation_to` com `value:"bot"` | Devolve a conversa ao robô (ver Regra 2). |
+| `set_field_value` em `phone`, `email`, `first_name`, `last_name`, `full_name` | Campos do sistema aceitos pelo nome. Não são CUF desconhecido. |
+| `flow_id` e `admin_id` como inteiro **ou** texto | O contrato aceita os dois. |
+| Número solto entre mensagens com outro valor além de `4` (ex.: `3`) | A doc define o número como segundos de "digitando". `4` é a convenção da casa ao **gerar**; não é erro encontrar outro valor. (OctoberCut continua pedindo uma mensagem só.) |
+
+Limites que a doc declara e o analisador/fixer só **avisam** (nunca cortam
+conteúdo): 3 botões por mensagem, título de botão 20 caracteres, título e subtítulo
+de cartão 80, 10 cartões por galeria, 11 respostas rápidas.
+
+**O que a doc NÃO confirma e, por isso, não vira regra:** como cada caso é
+convertido por canal no JSON (galeria com mais de um cartão, `phone_number` e mais de
+um botão quando um é `web_url` não saem no WhatsApp **no editor de fluxos**; no JSON
+"o resultado de cada caso não foi conferido" — testar no canal real).
+
+**Mudança de abordagem anunciada pela doc (decisão do dono, não do fixer).** O guia
+`ia/respostas-do-agente-em-json` diz que hoje o **Tipo de resposta da IA** e as **Ações
+de IA** do AI Hub fazem o trabalho do JSON e que a skill oficial da NexTags orienta a
+**não pedir JSON no prompt**; o bloco antigo continua funcionando ("teste antes de
+mudar"). Esta skill segue exigindo o bloco oficial (Regra 12) até o dono decidir.

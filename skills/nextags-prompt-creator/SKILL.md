@@ -96,6 +96,7 @@ Read `references/perguntas_obrigatorias.md` and ask in chunks of at most three q
 - tools/MCP, inputs, outputs, source of truth, side effects and failure behavior;
 - pipeline flow ID (one flow for human handoff), NPS and existing NexTags flows;
 - CUFs to read/write, tags, media, hours and real SLA;
+- AI provider(s) connected to the account and the exact model names shown in AI Hub (features depend on the provider: Arquivos/knowledge base only with OpenAI; MCP servers with OpenAI, Gemini, Claude or xAI; voice transcription with OpenAI, Gemini or xAI);
 - catalog/order/cart/freight/payment data and dynamic vs static facts;
 - commercial restrictions, claims, privacy, identity verification and sensitive actions;
 - approval owner, source version, validity and review process.
@@ -169,7 +170,7 @@ Do not place changelog, version history, TODOs, unresolved internal notes, imple
 
 Use a seven-stage consultative funnel only when needed: relevant opening → objective/context → concrete problem → impact/priority → evidence-based advice → decision/next step → contextual follow-up. Use SPIN as a map, not an interrogation. Use Challenger only as verified observation → hypothesis → validation question → conditional recommendation. Use Voss-style labels selectively as hypotheses, not diagnosis. Objections follow recognize → understand → fact/trade-off → alternative → accept refusal.
 
-The agent must shorten the funnel for simple purchases, suspend commercial mode during P0/P1, and never convert a refusal into pressure. Follow-up must have a real contextual reason, new information or unresolved task, and respect opt-out.
+The agent must shorten the funnel for simple purchases, suspend commercial mode during P0/P1, and never convert a refusal into pressure. Follow-up must have a real contextual reason, new information or unresolved task, and respect opt-out. Free messages only go out inside the 24-hour window (WhatsApp, Instagram, Messenger; TikTok 2 days): a proactive follow-up outside it needs an approved Template sent by a flow that starts with it, never free text from the agent.
 
 ### Tool and action rules
 
@@ -208,9 +209,16 @@ Generate only the files the project needs:
 - `relatorio-<projeto>.md`;
 - `manifesto-politicas.yaml`, `contrato-estado.yaml`, `matriz-fontes.yaml` or `testes.md` when needed.
 
-The report must include pending placeholders, source conflicts, architecture choice, selected/rejected modules and reasons, CUFs, tags, flows with account-specific IDs, tools and action levels, claims and sources, selected tests, risks, validation result and deployment checklist. Include a section **Contrato e testes de qualidade** for e-commerce.
+The report must include pending placeholders, source conflicts, architecture choice, selected/rejected modules and reasons, CUFs, tags, flows with account-specific IDs, tools and action levels, claims and sources, selected tests, risks, validation result and deployment checklist. Include a section **Contrato e testes de qualidade** for e-commerce. The report also carries **Subir o prompt e configurar o AI Hub** (template §6): how the prompt reaches the agent (`nextags-prompt-push` or paste in AI Hub), the panel settings only the user changes (model, Max tokens, temperature), tools to link, default agent and Testar Agora. Never send `model` or `max_output_tokens` through `POST /agents/{id}` unless the user asks (incident of 2026-10-23).
 
 Before delivery, verify files exist, rerun validation, and present the prompt before the report. In chat, summarize agent type, pending items, and whether CUFs/tags/flows/tools must be created or validated.
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## 8. Maintenance
 

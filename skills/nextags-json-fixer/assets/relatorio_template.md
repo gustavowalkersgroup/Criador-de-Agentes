@@ -65,7 +65,7 @@
 - [x] URLs de imagem são absolutas (http://, https://) e em JPEG/PNG (rejeita WebP/AVIF/SVG/GIF).
 - [x] `template_type` ∈ {generic, button}.
 - [x] Carrossel com ≥ 2 elementos.
-- [x] Botões `web_url` com `url`; `postback` com `payload`.
+- [x] Botões `web_url` com `url`; `postback` e `phone_number` com `payload`.
 - [x] Typing indicator é inteiro entre 1–30 segundos.
 - [x] Markdown removido de `text`/`title`/`subtitle`.
 - [x] Nomes de ações normalizados (8 ações canônicas).

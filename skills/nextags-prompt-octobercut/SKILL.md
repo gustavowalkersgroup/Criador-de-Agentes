@@ -12,6 +12,11 @@ utilidade dentro da janela de 24h também. Cada bolha (balão) que o agente mand
 gera uma cobrança. O objetivo desta skill é **diminuir o número de bolhas por
 atendimento sem piorar a experiência**.
 
+A cobrança tem uma cota: as **primeiras 1.000 mensagens de atendimento (sem modelo)
+de cada mês, em cada número, são grátis** e a cota não acumula; a cobrança vale acima
+disso (`help.nextags.com.br/tutoriais/canais/precos-das-conversas`). O OctoberCut
+reduz o custo do que passa da cota.
+
 O detalhe da regra da Meta, com datas, tabela e valores, está em
 `references/meta_pricing_out2026.md`. Leia quando precisar justificar uma
 decisão ou calcular economia.
@@ -54,6 +59,13 @@ as Regras Absolutas das outras skills NexTags.
 - Carrossel `generic` (≥ 2 cards) é **1 item** em `messages`, mas a
   renderização no WhatsApp depende do canal: valide no celular antes de usar
   como "vitrine de 1 mensagem".
+- Doc oficial dos fluxos: bloco de texto do editor aceita até **640 caracteres**; o botão
+  `Telefonar` não existe no WhatsApp; em "Todos os canais" o WhatsApp sai da lista se houver
+  mais de um botão com um deles `web_url` (mantenha **1 botão de link** na vitrine e no
+  checkout) ou carrossel com mais de um cartão; no WhatsApp, cartão/carrossel só pelo menu
+  *Mais conteúdos e ações*, e a prévia mostra só o primeiro cartão. No JSON a conversão
+  acontece no envio e a doc não confere cada caso: valide no celular (`help.nextags.com.br/tutoriais/fluxos/texto-e-botoes`,
+  `/cartoes-e-galeria`; `docs.nextags.com.br/comecar/mensagens-e-acoes`).
 
 ## Fluxo de trabalho
 
@@ -104,7 +116,8 @@ inventa conteúdo** nem remove imagens. Use o resultado como exemplo de
 python <SKILL_DIR>/scripts/octobercut.py estimate --before 7 --after 2 --rate 0.035 --volume 1000
 ```
 
-`--rate` é o custo por mensagem em R$. O padrão 0,035 é o que se deduz das
+O `estimate` **não desconta a cota grátis** (1.000 mensagens de atendimento por mês em cada número): aplique
+depois. `--rate` é o custo por mensagem em R$. O padrão 0,035 é o que se deduz das
 estimativas internas (R$ 0,25 por 7 mensagens). A Meta revisa o rate card
 até trimestralmente, então confirme o valor vigente antes de apresentar o
 número a um cliente.
@@ -132,6 +145,13 @@ mande "3 blocos separados por typing 4" ou "pergunte o nome UMA vez", o OctoberC
 vence. Para realinhar uma cópia antiga, use `prompts/ajustar-skills-octobercut.md`
 na raiz do repo. O schema JSON **não muda**: typing `4` continua sintaticamente
 válido; é regra de custo, aplicada no prompt.
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## O que esta skill NÃO faz
 

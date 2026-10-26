@@ -26,7 +26,16 @@ from typing import Any
 
 VALID_ATTACHMENT_TYPES = {"image", "video", "audio", "file", "template"}
 VALID_TEMPLATE_TYPES = {"generic", "button"}
-VALID_BUTTON_TYPES = {"web_url", "postback"}
+# Doc oficial (docs.nextags.com.br/comecar/mensagens-e-acoes): web_url (url),
+# postback (payload = ID de fluxo/etapa OU string JSON {"actions":[...]}) e
+# phone_number (payload = telefone com código do país).
+VALID_BUTTON_TYPES = {"web_url", "postback", "phone_number"}
+# Limites declarados na mesma página ("Limites"). Só avisam: não cortam nada.
+MAX_BUTTONS = 3
+MAX_BUTTON_TITLE = 20
+MAX_CARD_TEXT = 80          # título e subtítulo do cartão
+MAX_CARDS = 10              # cartões numa galeria
+MAX_QUICK_REPLIES = 11
 VALID_IMAGE_ASPECT_RATIOS = {"horizontal", "square"}
 
 # Formatos de imagem PERMITIDOS pela plataforma NexTags. Qualquer outro
@@ -46,6 +55,9 @@ CANONICAL_ACTIONS: dict[str, list[str]] = {
     "assign_conversation":      ["admin_id"],
     "unassign_conversation":    [],
 }
+
+# Valores aceitos em transfer_conversation_to.value (equipe humana ou robô).
+VALID_TRANSFER_VALUES = {"human", "bot"}
 
 # Aliases que o agente costuma gerar errado → forma canônica.
 ACTION_ALIASES: dict[str, str] = {
@@ -252,6 +264,13 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
             fixes.append(f"{path}.text: markdown removido")
             msg["text"] = cleaned
 
+    # Respostas rápidas (até 11, em qualquer tipo de mensagem). Só confere o limite.
+    qr = msg.get("quick_replies")
+    if isinstance(qr, list) and len(qr) > MAX_QUICK_REPLIES:
+        pending.append(
+            f"{path}.quick_replies: {len(qr)} respostas rápidas (limite {MAX_QUICK_REPLIES})."
+        )
+
     # Attachment
     if "attachment" in msg:
         att = msg["attachment"]
@@ -333,6 +352,10 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                         f"Considere converter pra attachment 'image' ou "
                         f"adicionar um segundo card."
                     )
+                if len(elements) > MAX_CARDS:
+                    pending.append(
+                        f"{path}: {len(elements)} cartões (limite {MAX_CARDS} numa galeria)."
+                    )
                 # aspect ratio
                 ar = payload.get("image_aspect_ratio")
                 if ar is not None and ar not in VALID_IMAGE_ASPECT_RATIOS:
@@ -363,8 +386,18 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                                 pending.append(
                                     f"{el_path}.image_url: {reason}"
                                 )
+                    for field in ("title", "subtitle"):
+                        v = el.get(field)
+                        if isinstance(v, str) and len(v) > MAX_CARD_TEXT:
+                            pending.append(
+                                f"{el_path}.{field} com {len(v)} caracteres (limite {MAX_CARD_TEXT})."
+                            )
                     btns = el.get("buttons")
                     if isinstance(btns, list):
+                        if len(btns) > MAX_BUTTONS:
+                            pending.append(
+                                f"{el_path}: {len(btns)} botões (limite {MAX_BUTTONS} por cartão)."
+                            )
                         for bidx, b in enumerate(btns):
                             fix_button(b, fixes, pending,
                                        f"{el_path}.buttons[{bidx}]")
@@ -382,6 +415,10 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                         f"considere converter pra texto simples."
                     )
                 else:
+                    if len(btns) > MAX_BUTTONS:
+                        pending.append(
+                            f"{path}: {len(btns)} botões (limite {MAX_BUTTONS} por mensagem)."
+                        )
                     for bidx, b in enumerate(btns):
                         fix_button(b, fixes, pending,
                                    f"{path}.buttons[{bidx}]")
@@ -406,11 +443,20 @@ def fix_button(btn: Any, fixes: list[str], pending: list[str],
     elif btype == "postback":
         if not btn.get("payload"):
             pending.append(f"{path}: botão `postback` sem `payload` (flow_id).")
+    elif btype == "phone_number":
+        if not btn.get("payload"):
+            pending.append(
+                f"{path}: botão `phone_number` sem `payload` (telefone com código do país)."
+            )
     if "title" in btn and isinstance(btn["title"], str):
         cleaned, changed = strip_markdown(btn["title"])
         if changed:
             fixes.append(f"{path}.title: markdown removido")
             btn["title"] = cleaned
+        if len(btn["title"]) > MAX_BUTTON_TITLE:
+            pending.append(
+                f"{path}.title com {len(btn['title'])} caracteres (limite {MAX_BUTTON_TITLE}): encurtar."
+            )
 
 
 def fix_messages_array(messages: Any, fixes: list[str],
@@ -453,6 +499,13 @@ def fix_messages_array(messages: Any, fixes: list[str],
             out.append({"message": {"text": item}})
             continue
         if isinstance(item, dict):
+            # Mensagem só do WhatsApp (objeto da Cloud API, `"to": null`): a
+            # NexTags preenche o destinatário. É válida e passa INTACTA — não
+            # embrulhar em `message` nem descartar.
+            # docs.nextags.com.br/comecar/mensagens-e-acoes
+            if item.get("messaging_product") == "whatsapp":
+                out.append(item)
+                continue
             # Tentar identificar wrappers ausentes
             if "message" not in item:
                 # talvez seja o objeto message direto
@@ -505,11 +558,19 @@ def fix_actions_array(actions: Any, fixes: list[str],
         for req in CANONICAL_ACTIONS[name]:
             if req not in act or act[req] in (None, "", []):
                 pending.append(f"{path}: ação `{name}` sem campo obrigatório `{req}`.")
-        # Caso especial: transfer_conversation_to.value deve ser "human"
+        # transfer_conversation_to.value: `human` (equipe) ou `bot` (devolve ao
+        # robô) — docs.nextags.com.br/comecar/mensagens-e-acoes. `bot` NUNCA pode
+        # virar `human`: mandaria o cliente para a fila errada.
         if name == "transfer_conversation_to" and act.get("value") not in (None, ""):
-            if act["value"] != "human":
+            val = act["value"]
+            low = val.strip().lower() if isinstance(val, str) else val
+            if low in VALID_TRANSFER_VALUES:
+                if val != low:
+                    fixes.append(f"{path}.value='{val}' → '{low}' (caixa baixa)")
+                    act["value"] = low
+            else:
                 fixes.append(
-                    f"{path}.value='{act['value']}' → 'human' (único valor suportado)"
+                    f"{path}.value='{val}' → 'human' (valores suportados: human, bot)"
                 )
                 act["value"] = "human"
         out.append(act)

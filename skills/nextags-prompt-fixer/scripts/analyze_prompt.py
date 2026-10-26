@@ -363,6 +363,8 @@ def find_actions_in_text(text: str) -> dict:
 # Limite de título de botão: o passo "Filtro JSON" do fluxo (reparador de JSON)
 # troca qualquer title com mais de 20 caracteres por "Comprar agora", sem erro.
 TITULO_BOTAO_MAX = 20
+# Até 3 botões por mensagem (docs.nextags.com.br/comecar/mensagens-e-acoes, "Limites").
+BOTOES_MAX = 3
 
 
 def walk_json(obj, path: str = "$"):
@@ -376,9 +378,10 @@ def walk_json(obj, path: str = "$"):
 
 
 def check_buttons_misuse(parsed) -> list[dict]:
-    """Valida botões. web_url precisa de url; postback precisa de payload
-    (postback é PERMITIDO — decisão do cliente). Também avisa quando há mais
-    de 1 botão web_url no mesmo template (restrição do WhatsApp p/ link) e
+    """Valida botões. web_url precisa de url; postback e phone_number precisam
+    de payload (postback é PERMITIDO — decisão do cliente; phone_number é tipo
+    válido da doc oficial). Também avisa quando há mais de 3 botões no
+    template e quando há mais de 1 botão web_url (restrição do WhatsApp p/ link) e
     bloqueia título com mais de 20 caracteres: o reparador de JSON do fluxo
     troca esse título por 'Comprar agora' sem avisar ninguém."""
     issues = []
@@ -426,13 +429,30 @@ def check_buttons_misuse(parsed) -> list[dict]:
                             "severity": "block",
                             "title": btn.get("title", ""),
                         })
+                elif btn_type == "phone_number":
+                    # Tipo válido na doc oficial (docs.nextags.com.br/comecar/mensagens-e-acoes):
+                    # `payload` = telefone com código do país. O fluxo não entrega este botão
+                    # no WhatsApp, mas o resultado no JSON não foi conferido pela doc: sem aviso.
+                    if not btn.get("payload"):
+                        issues.append({
+                            "path": f"{path}.buttons[{idx}]",
+                            "problem": "botão phone_number sem `payload` (telefone com código do país)",
+                            "severity": "block",
+                            "title": btn.get("title", ""),
+                        })
                 else:
                     issues.append({
                         "path": f"{path}.buttons[{idx}]",
-                        "problem": f"tipo de botão inválido: '{btn_type}' (use web_url ou postback)",
+                        "problem": f"tipo de botão inválido: '{btn_type}' (use web_url, postback ou phone_number)",
                         "severity": "block",
                         "title": btn.get("title", ""),
                     })
+            if len(buttons) > BOTOES_MAX:
+                issues.append({
+                    "path": f"{path}.buttons",
+                    "problem": f"{len(buttons)} botões no mesmo template — o limite é {BOTOES_MAX} por mensagem",
+                    "severity": "warn",
+                })
             if web_url_count > 1:
                 issues.append({
                     "path": f"{path}.buttons",

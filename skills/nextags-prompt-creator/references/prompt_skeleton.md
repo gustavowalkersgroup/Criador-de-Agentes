@@ -510,8 +510,8 @@ ETAPA 2 — Extensão do arquivo
 - Caso contrário: NÃO envie imagem.
 
 ETAPA 3 — Tamanho (limite da Meta)
-- Imagem: máximo 5 MB. Vídeo: máximo 15 MB. 1 MB acima e a Meta bloqueia o
-  envio, sem erro visível pro cliente.
+- Imagem: máximo 5 MB. Vídeo: máximo 16 MB (MP4 ou 3GP, vídeo H.264 e áudio
+  AAC). Acima disso a Meta bloqueia o envio, sem erro visível pro cliente.
 - Imagem de catálogo em resolução cheia costuma estourar. Prefira a URL
   redimensionada do CDN quando existir (ex.: sufixo de tamanho).
 - Na dúvida sobre o peso, envie texto e link em vez da mídia.
@@ -549,6 +549,17 @@ Princípio: na dúvida, REMOVER A IMAGEM.
 - **`4` cria nova bolha; `\n` quebra linha DENTRO da mesma bolha.** Não confundir.
   Como cada bolha é cobrada pela Meta (OctoberCut), o `4` continua válido no schema
   mas **não deve ser usado**: organize a resposta com `\n\n` dentro de um só `text`.
+- **Limites do formato (doc oficial, para quem gera o prompt; não copiar para o prompt):**
+  botões até 3 por texto (título ≤20), respostas rápidas até 11, cartão com título e
+  subtítulo ≤80 e até 3 botões, galeria até 10 cartões, mídia só por link `https://`
+  público (sem login). Cartão e galeria não vão para Telegram e TikTok; arquivo e áudio
+  não vão para TikTok; no Instagram o fluxo manda imagem, vídeo, áudio e GIF, mas não
+  documento. Fontes: `docs.nextags.com.br › Mensagens e ações em JSON` e
+  `help.nextags.com.br › Tipos de arquivo e limites por canal`. Limites de mídia no
+  WhatsApp: imagem JPEG/PNG 5 MB, vídeo 16 MB, áudio 16 MB, documento 100 MB (25 MB
+  pela Caixa de Entrada).
+- **Nunca ponha senha, chave de API, token ou dado sigiloso no prompt**: o agente pode
+  repeti-lo ao cliente (`help.nextags.com.br › Escrever a mensagem do sistema`).
 
 ---
 
@@ -631,6 +642,11 @@ encerre sem insistir (se houver fluxo de reengajamento/CRM, deixe ele cuidar do 
 ```
 
 **Notas:**
+- A retomada acima só vale **dentro da janela de 24 h** da última mensagem do cliente
+  (WhatsApp, Instagram e Messenger; TikTok 2 dias). Fora dela, mensagem livre não sai: a
+  retomada tem de ser um Modelo aprovado, enviado por um fluxo que comece com o modelo
+  (`help.nextags.com.br › A janela de 24 horas`). Mensagem que termina com pergunta
+  convida o cliente a responder, e cada resposta dele abre mais 24 h.
 - Preço/disponibilidade SEMPRE da tool (fonte de verdade). Nos exemplos do prompt use placeholder `R$ 0,00` para o LLM não copiar valor falso.
 - Catálogo de NOMES pode ser hardcoded (mapa de categorias); preço, NÃO.
 

@@ -134,7 +134,7 @@ Toda vez que um workflow n8n fizer `POST https://app.nextagsai.com.br/api/contac
 | `first_name` | Primeiro nome do contato          |
 | `last_name`  | Sobrenome(s) do contato           |
 | `email`      | E-mail                            |
-| `phone`      | Telefone E164 (`+5511999999999`)  |
+| `phone`      | Telefone completo (`+5511999999999` roda em produção, Quirk #25; a doc oficial pede só dígitos: `5511999999999`, ver `help.nextags.com.br/tutoriais/contatos/formato-do-telefone`) |
 
 O restante (CPF/CNPJ, número do pedido, status, valor, rastreio, etc.) vai em `actions` como `set_field_value`.
 
@@ -179,9 +179,16 @@ Doutrina consolidada de como uma tool sai do n8n e chega visível/chamável pela
    `tool_descriptions_guide.md`).
 6. **Settings:** `availableInMCP: true` — necessário pro workflow poder ser lido/auditado
    via MCP do n8n.
-7. **Conferir do lado NexTags:** depois de publicar, confirmar que a tool aparece pra
-   NexTags com `GET /agents/mcp` (ver `../nextags-webhook-builder/references/api_nextags.md`)
-   — não basta o workflow estar ativo no n8n, precisa aparecer nesse endpoint.
+7. **Ligar no AI Hub e conferir do lado NexTags:** o servidor MCP **não se cadastra por API**
+   (`GET /agents/mcp` só lista os servidores da conta: `id`, `name`, `created_by`,
+   `created_at`; não lista tools). No painel: AI Hub › Ferramentas de IA › Servidores MCP ›
+   Adicionar Novo → **URL** (`https://`), **Nome** (≤60), **Authentication** (Nenhum | Access
+   token/API key | Custom headers) → Continuar (a NexTags lê as tools) → **Allowed tools**
+   (vêm todas marcadas: **desmarque as de escrita** no agente de SAC) → Continuar → marcar o
+   servidor (tipo *MCP Server*) em **Ferramentas de IA** do agente → Salvar. A aba só existe
+   com OpenAI, Claude, Gemini ou xAI conectado (DeepSeek sozinho, não). Fonte:
+   `help.nextags.com.br/tutoriais/ia/mcp-no-agente`. Depois, `GET /agents/mcp` deve listar o
+   servidor (ver `../nextags-webhook-builder/references/api_nextags.md`).
    **Sem credencial nativa da loja** (Tray/Nuvemshop/Yampi-Dooki/Bagy): antes de pedir a
    chave da plataforma ao cliente, avalie o **Gateway Proxy NexTags**
    (`../nextags-webhook-builder/references/gateway_proxy_nextags.md`) como fonte alternativa
@@ -360,7 +367,9 @@ A tool description que retorna `handle`/`slug` DEVE conter literalmente a frase 
   `tipo_setor` Seleção única, `motivo_transferencia` Texto, `prioridade_pipeline` Seleção
   única, `resumo_pipeline` Texto/Long Text). Setup idempotente por API:
   `GET /accounts/custom_fields` → diff → `POST /accounts/custom_fields {name, type}` (ver
-  `campos_canonicos.md` §7.5). A API não tem DELETE — dry-run antes de criar.
+  `campos_canonicos.md` §7.5). A API não tem DELETE — dry-run antes de criar. **A API só cria
+  tipos 0–4** (Texto, Número, Data, Data e hora, Sim/Não): Seleção única/múltipla e Texto longo
+  (5–7) se criam na tela (`docs.nextags.com.br/comecar/campos-e-variaveis`).
 
 Diagrama completo do fluxo de entrada, fluxo de pipeline, enum por painel e checklist de
 auditoria: `references/handoff_pattern.md`. Guard contra o loop do roteador (Quirk #27):
@@ -445,9 +454,9 @@ operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`. Conteúd
 - **Tools expostas + como conferir:**
   - Lista de tools com nome técnico, `classe` semântica e se é leitura ou escrita (com gate
     aplicado, se houver)
-  - Como conferir no painel NexTags e via API: `GET /agents/mcp` (ver
-    `../nextags-webhook-builder/references/api_nextags.md`) pra confirmar que a NexTags
-    enxerga o MCP; `curl` direto no endpoint do MCP pra confirmar handshake
+  - Como conferir: passos do AI Hub do item 7 acima (URL, Authentication, Allowed tools,
+    ligar no agente, Salvar); `GET /agents/mcp` lista o servidor cadastrado (não as tools);
+    `curl` direto no endpoint do MCP pra confirmar handshake
 - Próximos passos sugeridos:
   - **Se cliente também precisa de prompt:** "use `nextags-prompt-creator` em seguida — passa nome da loja, site, descrição do negócio"
   - **Se infra é pra plugar num prompt existente:** "URL do MCP acima — configura na NexTags como conector"
@@ -457,10 +466,11 @@ operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`. Conteúd
 **Leia OBRIGATORIAMENTE** `references/model_config_checklist.md` e passe pelo user a config canônica do agente no NexTags ANTES de marcar projeto entregue:
 
 - Modelo: **Claude Sonnet 4.6** (ou GPT 5.4 não-mini) — NUNCA "mini" com prompt longo
-- Temperature: **2** (escala 0-10) — máximo 3
+- Temperatura: **baixa** — a tela atual vai de 0 a 2 (padrão 0,4); confira a escala no painel
+  antes de aplicar o "2 (escala 0-10)" antigo, que na faixa 0–2 seria o MÁXIMO (ver o checklist)
 - Verbosity: média
-- Reasoning: alta
-- Max tokens: máximo
+- Reasoning effort: alta (se o modelo mostrar o ajuste: Nenhum/Baixa/Média/Alta; padrão Baixa)
+- Max tokens: alto (1–32768; padrão 2048)
 
 Sintomas de config errada (agente pula tool, parafraseia 7x, inventa dado, loop de transferência) custam mais horas pra debugar do que mudar config corretamente no setup. Lição cara aprendida na Veuske 2026-06-11: temp 8 + GPT mini fez Pedro mandar 404 pro cliente e travar em loop. Mudou pra temp 2 + Sonnet 4.6 → resolvido no primeiro teste.
 
@@ -474,28 +484,7 @@ Operador compartilha keys/tokens inline no chat porque precisa velocidade. **Nã
 
 ### 🔐 Mas NUNCA escreva tokens reais em docs da skill
 
-Esta skill é versionada no GitHub. **Qualquer arquivo em `references/`, `assets/` ou `api_recipes/` é público.** Tokens reais nesses arquivos:
-
-- ❌ São bloqueados pelo Secret Scanning do GitHub na hora do push
-- ❌ Quando passam, ficam expostos no histórico git pra sempre (mesmo após `git rm`)
-- ❌ Exigem revogação + rotação do token comprometido
-
-**Regra absoluta:** quando documentar um exemplo em recipe/quirks/pattern que envolve token, use placeholder no formato `<tipo>_<descrição>`. Exemplos:
-
-| ❌ Errado (token literal de produção) | ✅ Certo (placeholder) |
-|---|---|
-| `value: 'shpat_<TOKEN_LITERAL_AQUI>'` | `value: 'shpat_<32-hex-do-cliente>'` |
-| `Client Secret: shpss_<SECRET_LITERAL>` | `Client Secret: shpss_<32-hex>` (não colar em docs) |
-| `X-ACCESS-TOKEN: <NEXTAGS_LITERAL>` | `X-ACCESS-TOKEN: <NEXTAGS_ACCESS_TOKEN>` |
-| `User-Token: <YAMPI_LITERAL>` | `User-Token: <YAMPI_USER_TOKEN>` |
-
-**Onde tokens reais ficam:**
-- ✅ Workflows n8n (hardcoded em `headerParameters` — privado da instância n8n)
-- ✅ Data tables n8n (`Shopify Tokens`, `<Cliente> API Keys`, etc.)
-- ✅ Memórias de projeto (`C:\Users\User\.claude\projects\<projeto>\memory\*.md`) — fica só na sua máquina, fora do git da skill
-- ✅ Relatórios do cliente (`C:\Users\User\Documents\WALKERS\<cliente>\*.md`) — fora do git da skill
-
-**Auto-check antes de comitar mudanças na skill:**
+Skill versionada no GitHub: tudo em `references/`, `assets/` e `api_recipes/` é público (o Secret Scanning bloqueia o push; o que passa fica no histórico git e exige rotação). Use placeholder `<tipo>_<descrição>` (ex.: `shpat_<32-hex-do-cliente>`); token real só em workflows/data tables do n8n, memórias de projeto e relatórios do cliente. Tabela de exemplos e detalhes: `references/tokens_em_docs.md`. Auto-check antes de comitar:
 
 ```bash
 grep -rE 'shpat_[a-f0-9]{32}|shpss_[a-f0-9]{32}|shpca_[a-f0-9]+|atkn_|TR56[a-zA-Z0-9]{30,}|sk_[a-zA-Z0-9]{30,}|[0-9]{7}\.[a-zA-Z0-9]{30,}' references/ assets/
@@ -511,7 +500,9 @@ A tool/MCP entrega dados **SLIM** (o mínimo pra IA conversar e decidir). A
 a IA dispara `send_flow` pro fluxo pré-montado — ela **não** monta payload
 gigante e a tool **não** devolve tudo cru. É o que justifica o slim e a economia
 de token (ver `references/slim_response_patterns.md`). Coleta de 1-2 campos = IA
-grava com `set_field_value`; coleta complexa = fluxo.
+grava com `set_field_value`; coleta complexa = fluxo ou **Função de IA** (até 30 dados
+ligados a campos, pode agendar e acionar fluxo; criada no AI Hub, não por API:
+`help.nextags.com.br/tutoriais/ia/funcoes-do-agente`).
 
 ### Descrições de tools são vida ou morte
 
@@ -557,7 +548,8 @@ nextags-mcp-builder/
 │   ├── link_envio_pattern.md             ← UTM obrigatório em TODOS os links
 │   ├── handoff_pattern.md                ← roteamento canônico (roteador único + revalidador) e handoff IA→humano, pro n8n
 │   ├── mcp_github_repo_pattern.md        ← 🆕 GitHub como banco (cliente sem ERP/API) — padrão Poé
-│   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/temp 2/verbosity média)
+│   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/temperatura baixa/verbosity média)
+│   ├── tokens_em_docs.md                 ← NUNCA token real em docs da skill (placeholders + onde ficam)
 │   ├── no_hardcode_with_tools.md         ← NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
 │   ├── image_validation.md               ← JPEG/PNG só; limites da Meta (5 MB imagem, 15 MB vídeo) e como converter
 │   └── api_recipes/                      ← recipes específicas
@@ -584,6 +576,13 @@ nextags-mcp-builder/
     ├── parse_openapi.py                  ← parser OpenAPI 3.x
     └── validate_brief.py                 ← valida brief mínimo
 ```
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## 🤝 Skills complementares
 

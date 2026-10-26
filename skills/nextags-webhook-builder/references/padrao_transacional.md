@@ -52,6 +52,21 @@ Existem **três** padrões em produção. A escolha depende de **como a platafor
 
 > **Regra:** nunca assuma cron sem confirmar na doc da plataforma se existe webhook push equivalente. E nunca assuma webhook onde não existe (Magazord/Conecta Venda **só** têm polling). [Certeza]
 
+### 2.1 As 4 formas de trocar dados com a NexTags (e por que este padrão passa pelo n8n)
+
+A doc oficial (`docs.nextags.com.br/webhooks/visao-geral`) lista quatro formas: **webhook de entrada** (a
+plataforma chama um link da conta NexTags, que acha ou cria o contato pelo telefone/e-mail, salva campos por
+JSONPath e inicia um flow), **webhook de saída** (a NexTags avisa um endereço `https://` seu quando ocorre um
+evento), **requisição externa** (o flow chama o seu sistema, com `X-USER-ID` em toda chamada, e a resposta pode
+devolver `{messages, actions}`) e **API** (o seu sistema chama a NexTags com `X-ACCESS-TOKEN`).
+
+Este padrão usa a API via n8n porque precisa do que o webhook de entrada não faz: o link **não pede chave nem
+confere assinatura** (Bling/Martz assinam com HMAC: quem valida é o n8n), não tem dedup por estágio (a doc sugere
+tag + Condição dentro do flow), exige o telefone já só com dígitos e DDI, o JSONPath aceita só `.chave`,
+`["chave"]` e `[n]` (sem filtro, curinga ou índice negativo). Quando a plataforma
+emite um webhook simples, sem assinatura, e a lógica cabe no flow, o webhook de entrada nativo dispensa o n8n:
+registre a escolha no relatório. O link do webhook de entrada é um segredo (§8).
+
 ---
 
 ## 3. Dedup via Data Table
@@ -246,7 +261,7 @@ Casos reais que custaram tempo:
 ### 5.3 `send_flow` — armadilha de validação
 
 - **`/send/{flow_id}` retorna `success:true` até pra `flow_id` inexistente/falso** (Alto Giro). **Nunca** confie na resposta da API como prova de entrega — valide com recebimento real no WhatsApp.
-- `/send/{flow_id}` exige `Content-Length > 0` → retorna **411** se o corpo vier vazio; sempre mandar body mínimo.
+- `/send/{flow_id}` exige `Content-Length > 0` → retorna **411** se o corpo vier vazio; sempre mandar body mínimo. (O contrato oficial descreve a chamada como **sem corpo** e não descreve a resposta: o 411 é evidência de produção, Alto Giro, com cliente HTTP que não envia `Content-Length`.)
 - **Placeholder de `flow_id` shippado em produção é RED FLAG:** Dolps v1 tinha `flow_id=11111111111` nas 4 branches; Viens tinha `COLE_O_FLOW_ID`. Sempre preencher e validar E2E.
 
 ---
@@ -279,12 +294,18 @@ if (dddN >= 11 && dddN <= 29) {
 
 Regra: guard **antes** do disparo, `ehTelefoneFixo()` = DDD + local de 8 dígitos começando em 2-5 → `skip(item, 'telefone_fixo')`, e a contagem de descartes vai no relatório. Nunca "tentar mesmo assim". Vale também para o `nextags-webchat-tester`: fixo não serve como contato de teste (e webchat não tem telefone nenhum).
 
+A doc oficial pede telefone **só com dígitos, DDI + DDD** (`5511988776655`, sem `+`) e avisa que a busca por
+telefone pode não achar contato salvo noutro formato (sem `55`, com `+`, sem o 9). O snippet de `_helpers.js` já
+devolve o formato completo: use o mesmo formato em `find_by_custom_field?field_id=phone` (doc
+`guias/criar-ou-atualizar-contato`).
+
 ### 6.2 Demais normalizações
 
 - **`verificarDado(valor, 'Não informado')`**: NexTags rejeita `null`/`undefined` no payload. Todo campo que vira CUF passa por isso. ⚠️ E nenhum CUF que alimenta variável de template do WhatsApp pode ir vazio: erro Meta `#131008` **derruba o template inteiro**, não só o campo (Meiskin, Code "Preparar PIX").
 - **`separarNomeSobrenome`**: `/api/contacts` espera `first_name` + `last_name` separados.
 - **Concatenação de itens** do pedido numa string legível (`Produto (Qtd: 2, R$ X)`).
 - ⚠️ **Query string em link/CUF**: nunca concatenar `&utm_...` sem checar se já existe `?` (bug real quebrou `link_checkout_abandono` na Mayuí). Ver `link_envio_pattern.md` da mcp-builder — **UTM é obrigatório** em todo link.
+- **Datas e dinheiro nos CUFs.** Os CUFs do transacional são Texto (`type: 0`): data e valor vão como texto legível (`valorTexto` → `"379.00"`). Se um projeto usar campo tipo Data/Data e hora (gravado por flow ou por webhook de entrada), o valor é Unix **em segundos**, nunca ms. Dinheiro lido da API da NexTags: `total`/`subtotal`/`coupon_discount` em **centavos**; `price` de item em reais (doc `comecar/visao-geral`).
 
 ---
 
@@ -297,7 +318,8 @@ waitBetweenTries: 5000     // 5s
 onError: continueErrorOutput   // não trava a chain nem perde o INSERT de dedup
 ```
 - **n8n httpRequest v4.4:** usar `specifyBody:'json'` + `jsonBody`. `jsonParameters`/`bodyParametersJson` **não serializa** → gera falso `"Invalid phone number"` no POST /contacts. (Alto Giro) [Certeza]
-- **Anti-429:** o rate limit da **API NexTags é ~100 req/60s** (evidência: Privilège `b9IJblHOEurFgj6o`, *"ajustar N e batchInterval do HTTP Request pra respeitar rate limit real da API NexTags (100 req/60s — ver workflow EXPORTAR CONVERSAS v5)"*). Martz ~60/min. Zencial detecta `error.code==429` e re-tenta; em loops de enriquecimento, `batchSize 1` + intervalo ~500ms. Nunca rodar backfill sem throttle.
+- **Retry × idempotência (limite conhecido).** A doc oficial manda repetir automaticamente só consultas (`GET`) e chamadas que não duplicam. `POST /contacts` com `send_flow` **não é idempotente**: se a NexTags processar e a resposta se perder (timeout), o `retryOnFail` reenvia o flow ao cliente, e o dedup (gravado só após sucesso) não cobre esse caso. O padrão do corpus aceita o risco. Para reduzi-lo: ponha **timeout** no node, limite as tentativas (`maxTries`) e, depois de um timeout, confira o contato (`GET /contacts/{id}`: CUFs e tags) e o Registro de Erros do flow antes de repetir. Timeout em escrita não significa falha (doc `comecar/limites-e-erros`, "Repetir sem duplicar").
+- **Anti-429:** o rate limit da **API NexTags é ~100 req/min por conta, somando todas as integrações** (n8n, Zapier, Make e o sistema do cliente dividem a mesma chave). A doc (`comecar/limites-e-erros`) não confirma o código devolvido ao estourar: trate `429` e `5xx` com espera crescente (1, 2, 4, 8 s) e nunca em laço imediato. Medido no corpus: (evidência: Privilège `b9IJblHOEurFgj6o`, *"ajustar N e batchInterval do HTTP Request pra respeitar rate limit real da API NexTags (100 req/60s — ver workflow EXPORTAR CONVERSAS v5)"*). Martz ~60/min. Zencial detecta `error.code==429` e re-tenta; em loops de enriquecimento, `batchSize 1` + intervalo ~500ms. Nunca rodar backfill sem throttle.
 - **Disparo em lote → "pesca-e-marca"** em vez de loop rápido: cron de baixa frequência (Privilège usa `*/3 8-19 * * *`), `limit: 1`, `orderBy id ASC`, filtro `enviado != true`, marca a linha antes do próximo tick. Nasceu de marcação de SPAM pela Meta em broadcast nativo. ⚠️ Desativar o workflow quando a fila esvaziar, senão roda vazio para sempre. ⚠️ Escalar volume **muda a arquitetura** (limit=N + `splitInBatches` + update em lote), não é editar o cron.
 - **Trio de resiliência para cron crítico** (padrão Otogama): `settings.errorWorkflow` (pega falha que rodou pelo menos um node) **+** Data Table de heartbeat escrita pelo próprio fluxo **+** um Watchdog em cron separado que lê o heartbeat e alerta pela **ausência**. O Error Trigger não pega o caso "o worker do n8n morreu antes de qualquer node" (execução com `startedAt: null`) — só o watchdog externo vê. Alerta em transição de estado (ok→fora, fora→ok), nunca a cada tick, e toda falha terminal de fila de retry precisa de canal humano ("desistir precisa doer em alguém").
 - **Guards antes do disparo:** telefone presente/válido (Neurofood, Mayuí, Exclusiva, Casa Marquez, Veuske). Para carrinho: idade (1-48h) + conversão (checar se não virou pedido) + dedup (Alto Giro espera 1h e confere conversão).
@@ -312,6 +334,8 @@ onError: continueErrorOutput   // não trava a chain nem perde o INSERT de dedup
 - **Token é por conta.** Token errado retorna `200` e escreve na conta errada, sem erro visível (Wazzu com token da Hebreus Doze). Rodar `GET /accounts/me` antes de qualquer setup e anotar o nome da conta no sticky.
 - **Nada de credencial em arquivo da skill nem em sticky:** placeholders `<NEXTAGS_ACCESS_TOKEN>`, `<NEXTAGS_GATEWAY_TOKEN>`, `<TELEFONE>`, `<IP_N8N>`, `<FLOW_ID_...>`.
 - **HMAC:** validar assinatura no webhook de entrada **onde a plataforma assina** — Bling (Amo, HIVEN), Martz, SuaAgenda. Responder 200 rápido e validar HMAC antes de processar.
+- **Webhook de entrada nativo da NexTags: o link é a senha.** Sem chave e sem conferência de assinatura ou token do remetente (a tela não tem esse campo): guarde o link em variável de ambiente, nunca em HTML/JS de navegador. Se vazar, não há "gerar novo link": crie outro webhook de entrada, refaça a configuração, troque o link no remetente e exclua o antigo. Plataforma que assina (Bling, Martz, Hotmart, Kiwify) → receba no n8n, valide a assinatura e só então chame a API. (doc `webhooks/seguranca-e-testes`)
+- **Requisição externa (flow → seu servidor):** segredo seu num cabeçalho (ex.: `X-Segredo`), conferido em tempo constante; `X-USER-ID` identifica o contato mas **não prova origem**; `{{page_api_key}}` só para a API da NexTags ou sistemas seus, nunca terceiros.
 - **CUFs tipo TEXTO:** CUF criado como tipo **NÚMERO** faz `set_field_value` **descartar o valor silenciosamente** (sem erro). Todo CUF setado via `/api/contacts` deve ser **TEXTO** no NexTags. (Mayuí) [Certeza]
 - **Variável de template vazia = flow quebrado:** WhatsApp `#131008` derruba o template inteiro se **qualquer** CUF interpolado estiver vazio. Garanta 100% das variáveis preenchidas antes do `send_flow` (ou tenha variante neutra). (Mayuí)
 
@@ -349,7 +373,8 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 - [ ] `field_name` **canônicos** em snake_case, sem sufixo de plataforma (`campos_canonicos.md` §5); legado do cliente **não renomeado**
 - [ ] Tags canônicas: `transacional` + `Pedido Aprovado`/`Pedido Enviado`/`Pedido Entregue`
 - [ ] CUFs criados na conta antes de ativar (setup idempotente, `assets/setup_cufs_canonicos.js`); todos tipo **TEXTO** (`type: 0`)
-- [ ] `GET /accounts/me` confirma a conta do token; `GET /accounts/flows` confirma que cada `flow_id` existe
+- [ ] `GET /accounts/me` confirma a conta do token (`name`/`page_id`); `GET /accounts/flows` confirma que cada `flow_id` existe
+- [ ] Flow de destino **publicado** (o contato recebe a versão publicada) e, no WhatsApp, começando por **Modelo aprovado** (ou por Condição `Interagiu nas últimas 24h`): fora da janela de 24 h mensagem livre não chega (`antipadroes.md` §23)
 - [ ] Disparo atômico: 1 `POST /api/contacts` com `actions[]` na ordem `set_field_value` → `add_tag` → `send_flow`
 - [ ] `send_flow` (nunca texto direto); `flow_id` real e validado E2E — ou `0` + guard + `NÃO ATIVAR antes de…` no sticky
 - [ ] Todas as variáveis do template preenchidas (var vazia = `#131008` derruba o flow)
@@ -359,7 +384,8 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 - [ ] `formatarTelefone` + validação `/^55\d{10,11}$/` + `ehTelefoneFixo` (fixo **não** dispara) + `verificarDado` + `separarNomeSobrenome`
 - [ ] Todo skip carrega `_motivo`; erro global → `throw`, erro pontual em loop → `skip`
 - [ ] HTTP: `retryOnFail:true` + `waitBetweenTries:5000` + `onError:continueErrorOutput` + `specifyBody:'json'`
-- [ ] Anti-429 (NexTags ~100 req/60s); guards de idade/conversão em carrinho
+- [ ] Anti-429 (NexTags ~100 req/min por conta, todas as integrações somadas); guards de idade/conversão em carrinho
+- [ ] Timeout no node; ciente de que retry em `POST /contacts` + `send_flow` pode duplicar (§7)
 - [ ] HMAC validado onde a plataforma assina (Bling/Martz)
 - [ ] Cron crítico: `errorWorkflow` + heartbeat + watchdog
 
@@ -418,6 +444,9 @@ Clonar workflow de outro cliente **sem trocar todas as referências** é a causa
 | HMAC onde a plataforma assina | Amo (Bling), HIVEN (Bling) |
 | Copy-paste cross-cliente (RED FLAG) | Wazzu (token/table Hebreus Doze), Vitabe (`RENOVABE-`) |
 | Token hardcoded no header (convenção) | 27/29 clientes; credential só em Uniformizeei, Verdanda |
+| 4 formas de integrar; webhook de entrada sem chave nem assinatura | doc oficial: `webhooks/visao-geral`, `webhooks/seguranca-e-testes` (2026-10-26) |
+| Rate limit por conta, somando integrações; retry só onde não duplica | doc oficial: `comecar/limites-e-erros` (2026-10-26) |
+| Fora da janela de 24 h só Modelo; flow publicado | doc oficial: `guias/enviar-fluxo`; help `canais/janela-de-24-horas` (2026-10-26) |
 
 ---
 

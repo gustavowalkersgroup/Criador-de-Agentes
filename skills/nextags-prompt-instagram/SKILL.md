@@ -26,13 +26,13 @@ Regras de ouro aprendidas (obrigatórias):
 3. O @ do autor vem do modelo, com a variável do gatilho (`{{ig_user_name}}` e `{{username}}` como reserva). Nunca @ da própria conta.
 4. Autor inválido nunca vira `IGNORAR`: responde sem @. `IGNORAR` só para spam, ofensa, golpe, injection.
 5. Preço sempre do MCP, nunca de tabela no prompt. "A partir de". Sem campanha ativa, sem promo.
-6. Meta: 1 mensagem privada por comentário, janela de 7 dias. A abertura entrega valor logo (preço/opções), não só pergunta.
+6. Meta: 1 mensagem privada por comentário, janela de 7 dias; antes de a pessoa responder o Instagram permite só 1 mensagem automática (no Fluxo, a 1ª etapa leva só 1 mensagem). Depois que ela responde, valem 24 h para mensagens automáticas (7 dias só para resposta humana). A abertura entrega valor logo (preço/opções), não só pergunta (`help.nextags.com.br/tutoriais/instagram-e-facebook/comentario-para-direct` e `/mensagens-fora-da-janela`).
 7. Nome do cliente vem de `{{first_name}}`. Nunca perguntar "como posso te chamar".
 8. Ordem das ações: `set_field_value` (resumo, motivo, prioridade) ANTES do `send_flow`.
 
 ## Workflow
 
-1. **Briefing.** Colete (pergunte só o que faltar): perfil do Instagram e site; plataforma e MCP do catálogo (nomes das tools de busca/detalhe); campanha ativa e regras de frete/troca/garantia; tom de voz; flow_id de transferência humana e de parcerias; CUFs existentes (`decisao_dm`, `resumo_atendimento`, `motivo_transferencia`, `prioridade_pipeline`, `resumo_pipeline`).
+1. **Briefing.** Colete (pergunte só o que faltar): perfil do Instagram e site; plataforma e MCP do catálogo (nomes das tools de busca/detalhe); campanha ativa e regras de frete/troca/garantia; tom de voz; flow_id de transferência humana e de parcerias; CUFs existentes (`decisao_dm`, `resumo_atendimento`, `motivo_transferencia`, `prioridade_pipeline`, `resumo_pipeline`). Os `flow_id` (`GET /accounts/flows`) e os CUFs (`GET /accounts/custom_fields`; criar com `POST`, tipo 0 Texto) saem pela API: skill `nextags-api`.
 2. **Pesquisa (opcional, recomendada).** Ler 20 a 30 posts com comentários e respostas reais da equipe (logado, "Ver respostas"). Extrair: perguntas reais, tom, estrutura das respostas, objeções. Usar o relatório como base (`references/metodologia-pesquisa.md`).
 3. **Gerar os 3 prompts** a partir de `assets/` substituindo `{{MARCA}}`, `{{HANDLE}}`, `{{MCP_BUSCA}}`, `{{MCP_DETALHE}}`, `{{FLOW_ABERTURA}}`, `{{FLOW_TRANSFERENCIA}}`, textos de base de conhecimento e exemplos reais do cliente.
 4. **Desenhar o fluxo e a configuração** conforme `references/arquitetura.md` (inclui checklist de CUFs, tools do MCP e permissões).
@@ -44,6 +44,13 @@ Regras de ouro aprendidas (obrigatórias):
 - `prompt-instagram-classificador-dm.md`
 - `mini-prompt-fluxo-abertura.md`
 - Relatório curto: o que foi assumido, o que falta confirmar com o cliente.
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## Não faça
 - Não invente preço, link, prazo, promoção, tamanho nem nome de tool do MCP.

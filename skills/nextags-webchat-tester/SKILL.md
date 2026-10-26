@@ -72,18 +72,26 @@ A página `/webchat/` é um app Vue que fala por **WebSocket**. Sequência:
 7. **ler respostas** — frames do WS: `JSON.parse(frame).data.message[]` traz `text` e/ou `attachment` (type `image` | `template`/card). `dir`: 1 = cliente, 0 = bot.
 8. **fallback de leitura por HTTP** (se o push do WS engasgar): `POST {BASE}/php/no_login.php` param `{"page_id":<page_id>,"ms_id":ms_id,"hash":hash,"op":"webChat","op1":"conversation","op2":"get","minMessageTime":0,"data":{...}}` → `data[]` mensagens guardadas (cada `.message` é string JSON; faça `JSON.parse`).
 
-`channel` é sempre **9** (webchat). O webchat é **público** (sem login/token).
+`channel` é sempre **9** (webchat). O `/webchat/?p=<id>` do painel é **público** (sem login/token). No site do cliente a conversa só abre nos endereços da lista **Authorized websites** do webchat (fora dela aparece "Você não tem permissão suficiente para realizar operações neste recurso.": é permissão, não bug do agente; `help.nextags.com.br/tutoriais/canais/sites-autorizados`).
 
 ## Gotchas (aprendidos na marra)
 
 - **Ping keepalive obrigatório:** respostas que chamam MCP demoram (10–40s) e o servidor **derruba a conexão ociosa** no meio. Mande `ws.ping()` a cada ~6s enquanto espera. (O script já faz.)
 - **Janela de espera generosa:** respostas com tool/card podem levar 30–60s. Use `espera=45..75`.
-- **"Kickstarter":** se NADA volta (0 frames e `getConversation` só com a sua mensagem), provavelmente o **agente não está sendo acionado** (gatilho/welcome desligado no NexTags). Não é o seu código — peça pro usuário conferir o acionamento do agente.
+- **"Kickstarter":** se NADA volta (0 frames e `getConversation` só com a sua mensagem), provavelmente o **agente não está sendo acionado** (gatilho/welcome desligado no NexTags). Não é o seu código — peça pro usuário conferir o acionamento do agente: o agente precisa ser o **Agente Padrão**, com o provedor de IA **Conectado** e a **Resposta Automática por IA** ligada e salva em Configurações › Integrações (`help.nextags.com.br/tutoriais/ia/agente-padrao`; diagnóstico: `help.nextags.com.br/perguntas/ia/ia-nao-responde`). Se um atendente assumir a conversa (Humano), o robô para de responder.
 - **Cada conversa = contato novo:** `createUser` por conversa reseta contexto e CUFs (ex.: `setor_agente` e `tipo_setor` que controlam roteamento e revalidação). Misturar cenários no mesmo contato contamina o teste. Cada execução do script = novo contato = CUFs vazios = roteador decide de novo.
 - **send_flow não aparece nos frames:** a ação `send_flow` é executada no servidor; você **não** vê o action no WS. O sinal de que um **handoff/transferência disparou** é uma mensagem com o **texto característico do OUTRO agente/fluxo** aparecendo na sequência (ex.: a Maya respondendo num fluxo iniciado pela Lara). Use isso pra confirmar que a transferência foi REAL e não "fantasma" (texto "vou te passar" sem o agente novo assumir).
 - **Não dispare transferências pra HUMANO em teste:** flows de pipeline criam **ticket real** na fila e card real no painel. Se precisar testar handoff/transferência, use um flow de pipeline de TESTE ou valide pelos CUFs gravados via API `GET /contacts/{id}/custom_fields` (leia `motivo_transferencia`, `prioridade_pipeline`, `resumo_pipeline`).
+- **Teste manual sem script:** no AI Hub, menu ⋮ do **agente padrão** › **Testar Agora** abre o chat da conta (só aparece para o padrão). Roteiro de perguntas e ajuste: `help.nextags.com.br/tutoriais/ia/testar-agente`. Este script continua sendo o caminho para bateria repetível e leitura de MCP/cards.
 - **Ordem dos frames pode interleaving:** mensagens próximas chegam quase juntas e podem sair fora de ordem no log; julgue pelo conteúdo, não pela ordem exata.
-- **Tool calling via MCP funciona no webchat; revise config antes de culpar o MCP:** Se o agente não chama a tool no webchat, primeiro revise: (1) **temperature do modelo** — deve estar ≤ 3 (não 5+); (2) **modelo** — não use mini se a tool é crítica; (3) **prompt** — hardcode duplicando a tool em exemplo JSON (padrão dos prompts de produção). Se mesmo após revisar a ferramenta não é disparada no webchat, **confirme no WhatsApp real (celular) ANTES de mexer no MCP** — o caso Veuske foi config de modelo, não bug da stack. Use n8n executions pra forense: ela reflete o que o canal testado disparou de fato. O webchat é ótimo pra checar prompt/persona/roteamento/render de card; é confiável para tool calling.
+- **Tool calling via MCP funciona no webchat; revise config antes de culpar o MCP:** Se o agente não chama a tool no webchat, primeiro revise: (1) **temperatura do modelo** — baixa (a tela atual vai de 0 a 2, padrão 0,4; o "≤ 3 (não 5+)" antigo era da escala 0–10, ver `nextags-mcp-builder/references/model_config_checklist.md`); (2) **modelo** — não use mini se a tool é crítica; (3) **prompt** — hardcode duplicando a tool em exemplo JSON (padrão dos prompts de produção). Se mesmo após revisar a ferramenta não é disparada no webchat, **confirme no WhatsApp real (celular) ANTES de mexer no MCP** — o caso Veuske foi config de modelo, não bug da stack. Use n8n executions pra forense: ela reflete o que o canal testado disparou de fato. O webchat é ótimo pra checar prompt/persona/roteamento/render de card; é confiável para tool calling.
+
+## Fontes oficiais da NexTags
+
+Antes de afirmar qualquer fato da plataforma (endpoint, limite, formato, canal, janela de 24 h), confira a fonte atual:
+- API: skill `nextags-api` (`references/endpoints.md`, `live_shapes.md`), contrato oficial `docs.nextags.com.br/openapi.json`.
+- Doc oficial (docs e help): MCP da documentação (`search`, `fetch`, `detalhar_endpoint`) ou o `.md` de cada página (troque a `/` final por `.md`); índices em `docs.nextags.com.br/llms.txt` e `help.nextags.com.br/llms.txt`.
+- Se esta skill divergir da doc oficial, vale a doc: corrija a skill.
 
 ## Como interpretar o resultado
 

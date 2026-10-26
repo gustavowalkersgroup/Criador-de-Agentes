@@ -321,6 +321,8 @@ estes nomes**, mudando só se o cliente pedir.
 | `tipo_setor` | Seleção única (6) | **o REVALIDADOR, NUNCA a IA** | `humano` \| `bot` |
 | `resposta_ia` | Texto (0) | **o FLUXO** (passo Filtro JSON) | resposta da IA já filtrada, enviada por `{{resposta_ia}}`. **O prompt não menciona esse campo.** |
 
+⚠️ A API cria CUF só dos tipos 0 a 4: os de **Seleção única (6)** acima (`prioridade_pipeline`, `tipo_setor`) são criados na tela (Fluxos › aba Campo Personalizados). Fonte: docs.nextags.com.br/comecar/campos-e-variaveis.
+
 ⚠️ **`setor_agente` e `tipo_setor` são a exceção: a IA NUNCA grava neles.** O fluxo de
 entrada relê esses campos em CADA mensagem para decidir quem atende — se a IA escrever ali,
 ela se re-roteia e pode fechar o ciclo (loop infinito de transferência, bug real em produção
