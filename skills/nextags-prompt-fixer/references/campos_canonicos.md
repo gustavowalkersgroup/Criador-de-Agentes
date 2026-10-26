@@ -46,7 +46,7 @@ Início (toda mensagem)
 
 | Regra | Detalhe |
 |---|---|
-| **O roteador é o único que grava `setor_agente`** | Roda em TODA mensagem lendo o histórico da conversa. Saída texto puro, 1 palavra, minúsculas. Modelo leve (GPT-4.1 nano ou equivalente), temperatura 0. |
+| **O roteador é o único que grava `setor_agente`** | Roda em TODA mensagem lendo o histórico da conversa. Saída texto puro, 1 palavra, minúsculas. Modelo leve (GPT-4.1 nano ou equivalente), Reasoning effort mínimo. |
 | **O revalidador é o único que grava `tipo_setor`** | 2ª camada, só roda no `else`. Fonte `{{chat_history_details_large}}` (200 últimas mensagens com remetente). Saída `humano` \| `bot`. |
 | **Nenhuma IA transfere para outra IA** | Agentes (Vendas, SAC, extras) NUNCA gravam `setor_agente` nem `tipo_setor` e NUNCA disparam fluxo que "troca de IA". A única transferência que a IA faz é para HUMANO, via §2. |
 | **`resposta_ia` é do FLUXO** | Gravado pelo passo "Filtro JSON" (Executar código JS), nunca pelo prompt. É um **reparador de JSON** que existe para evitar vazamento — que JSON cru, markdown ou raciocínio da IA cheguem ao cliente. Ele tolera cerca ```json, texto fora das chaves, chave desbalanceada e vírgula sobrando; o JSON reparado sai por `{{resposta_ia}}`. O prompt não menciona esse campo. Duas consequências para o prompt em §1.2. |

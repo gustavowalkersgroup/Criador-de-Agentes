@@ -24,7 +24,7 @@ Conversa com um agente de webchat **NexTags** (white-label da plataforma **tapth
 - **Roteamento** — cada execução = contato novo = `setor_agente` vazio → roteador classifica de novo.
 - **Render de card e imagem** — template e URL de backend chegam corretamente.
 - **Transferência fantasma** — detecta quando o prompt anuncia "vou te passar" mas não emite `send_flow`.
-- **Tool calling via MCP** — funciona no webchat (o caso Veuske 2026-06-11 foi config de modelo — temperature alta + modelo mini — não limitação do canal).
+- **Tool calling via MCP** — funciona no webchat (o caso Veuske 2026-06-11 foi config de modelo — modelo mini com temperature alta, ajuste que não existe mais no painel — não limitação do canal).
 
 **NAO testa:**
 - **Fluxos n8n que dependem de telefone** (transacionais, disparos, `send_flow` por API para um número) — o contato de webchat não tem número. Testar com contato WhatsApp real (celular).
@@ -84,7 +84,7 @@ A página `/webchat/` é um app Vue que fala por **WebSocket**. Sequência:
 - **Não dispare transferências pra HUMANO em teste:** flows de pipeline criam **ticket real** na fila e card real no painel. Se precisar testar handoff/transferência, use um flow de pipeline de TESTE ou valide pelos CUFs gravados via API `GET /contacts/{id}/custom_fields` (leia `motivo_transferencia`, `prioridade_pipeline`, `resumo_pipeline`).
 - **Teste manual sem script:** no AI Hub, menu ⋮ do **agente padrão** › **Testar Agora** abre o chat da conta (só aparece para o padrão). Roteiro de perguntas e ajuste: `help.nextags.com.br/tutoriais/ia/testar-agente`. Este script continua sendo o caminho para bateria repetível e leitura de MCP/cards.
 - **Ordem dos frames pode interleaving:** mensagens próximas chegam quase juntas e podem sair fora de ordem no log; julgue pelo conteúdo, não pela ordem exata.
-- **Tool calling via MCP funciona no webchat; revise config antes de culpar o MCP:** Se o agente não chama a tool no webchat, primeiro revise: (1) **temperatura do modelo** — baixa (a tela atual vai de 0 a 2, padrão 0,4; o "≤ 3 (não 5+)" antigo era da escala 0–10, ver `nextags-mcp-builder/references/model_config_checklist.md`); (2) **modelo** — não use mini se a tool é crítica; (3) **prompt** — hardcode duplicando a tool em exemplo JSON (padrão dos prompts de produção). Se mesmo após revisar a ferramenta não é disparada no webchat, **confirme no WhatsApp real (celular) ANTES de mexer no MCP** — o caso Veuske foi config de modelo, não bug da stack. Use n8n executions pra forense: ela reflete o que o canal testado disparou de fato. O webchat é ótimo pra checar prompt/persona/roteamento/render de card; é confiável para tool calling.
+- **Tool calling via MCP funciona no webchat; revise config antes de culpar o MCP:** Se o agente não chama a tool no webchat, primeiro revise: (1) **Reasoning effort e Verbosity** — Reasoning alto e Verbosity média (a temperatura não é mais ajustável no painel: padrão ~0,98; ver `nextags-mcp-builder/references/model_config_checklist.md`); (2) **modelo** — não use mini se a tool é crítica; (3) **prompt** — hardcode duplicando a tool em exemplo JSON (padrão dos prompts de produção). Se mesmo após revisar a ferramenta não é disparada no webchat, **confirme no WhatsApp real (celular) ANTES de mexer no MCP** — o caso Veuske foi config de modelo, não bug da stack. Use n8n executions pra forense: ela reflete o que o canal testado disparou de fato. O webchat é ótimo pra checar prompt/persona/roteamento/render de card; é confiável para tool calling.
 
 ## Fontes oficiais da NexTags
 

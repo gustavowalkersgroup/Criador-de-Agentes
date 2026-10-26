@@ -234,14 +234,10 @@ produtos com imagem. Para 1 item, use texto + attachment de imagem.
 **Como corrigir:** transforme em uma sequência de mensagens com texto e a
 imagem como attachment.
 
-> **Divergência com a doc oficial (decisão pendente).** A página
-> https://docs.nextags.com.br/comecar/mensagens-e-acoes/ chama de "Cartão" um
-> `generic` com **um** elemento e só limita a galeria a 10. Esta regra (bloqueio
-> com <2) vem do schema histórico da skill ("a plataforma rejeita carrossel com 1
-> só"), sem teste citado; no WhatsApp, Cartão/Galeria depende do canal (ver
-> https://help.nextags.com.br/tutoriais/fluxos/cartoes-e-galeria/). Até
-> confirmar no canal real, a regra **não muda**; não "corrigir" para 2+ cartões
-> inventando conteúdo.
+> **Decisão do dono (26/10/2026): carrossel exige 2 ou mais cartões.** Um `generic` com um
+> só elemento não é carrossel (a doc o chama de "Cartão"): nesse caso use button template
+> (ou imagem + botão). O bloqueio com menos de 2 cartões continua. O dono já usa carrossel de
+> 2 ou mais cartões no WhatsApp em produção, pelo JSON do agente.
 
 **Antes:**
 ```json
@@ -1331,9 +1327,11 @@ conteúdo): 3 botões por mensagem, título de botão 20 caracteres, título e s
 de cartão 80, 10 cartões por galeria, 11 respostas rápidas.
 
 **O que a doc NÃO confirma e, por isso, não vira regra:** como cada caso é
-convertido por canal no JSON (galeria com mais de um cartão, `phone_number` e mais de
-um botão quando um é `web_url` não saem no WhatsApp **no editor de fluxos**; no JSON
-"o resultado de cada caso não foi conferido" — testar no canal real).
+convertido por canal no JSON. A tabela da doc (galeria com mais de um cartão, `phone_number`
+e mais de um botão quando um é `web_url` não saem no WhatsApp) vale para a lista de canais do
+**editor de fluxos**. No JSON do agente, o dono tem carrossel de 2 ou mais cartões funcionando
+no WhatsApp em produção (confirmado em 26/10/2026); os demais casos seguem sem confirmação:
+testar no canal real.
 
 **Mudança de abordagem anunciada pela doc (decisão do dono, não do fixer).** O guia
 `ia/respostas-do-agente-em-json` diz que hoje o **Tipo de resposta da IA** e as **Ações

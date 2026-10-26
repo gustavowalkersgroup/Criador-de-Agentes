@@ -135,9 +135,11 @@ produtos com imagem. Para 1 item, use texto + attachment de imagem.
 **Limites oficiais** (docs.nextags.com.br › Mensagens e ações em JSON): título e
 subtítulo do cartão até **80 caracteres**, até **3 botões** por cartão, até **10
 cartões** na galeria. `image_aspect_ratio` é `horizontal` ou `square`. Cartão e galeria
-não vão para Telegram e TikTok, e **galeria com mais de um cartão não vai para o
-WhatsApp** no editor de fluxo (a doc não confirma o comportamento no JSON): em agente de
-WhatsApp, teste o carrossel no celular antes de prometê-lo ao cliente.
+não vão para Telegram e TikTok. **Carrossel (`generic` com 2 ou mais cartões) funciona no
+WhatsApp pelo JSON do agente:** o dono já tem vários em produção (confirmado em 26/10/2026).
+A restrição da doc ("galeria com mais de um cartão não vai para o WhatsApp") vale para a lista
+de canais do editor de fluxo, não para o JSON. **Um cartão só não é carrossel:** use button
+template (ou imagem + botão).
 
 **Como corrigir:** transforme em uma sequência de mensagens com texto e a
 imagem como attachment.

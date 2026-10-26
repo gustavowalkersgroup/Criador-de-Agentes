@@ -56,15 +56,16 @@ as Regras Absolutas das outras skills NexTags.
 - Texto simples aceita até 4.096, mas acima de ~1.000 fica cansativo no
   celular. Mire **300–900**; passou de 1.000, enxugue antes de quebrar.
 - Título de botão continua **≤ 20 caracteres** (regra 24 das Regras Absolutas).
-- Carrossel `generic` (≥ 2 cards) é **1 item** em `messages`, mas a
-  renderização no WhatsApp depende do canal: valide no celular antes de usar
-  como "vitrine de 1 mensagem".
+- Carrossel `generic` (≥ 2 cards) é **1 item** em `messages` e funciona no WhatsApp pelo
+  JSON do agente (produção do dono, 26/10/2026). Um card só não é carrossel: use button
+  template. Confira o render no canal da conta antes de padronizar.
 - Doc oficial dos fluxos: bloco de texto do editor aceita até **640 caracteres**; o botão
   `Telefonar` não existe no WhatsApp; em "Todos os canais" o WhatsApp sai da lista se houver
   mais de um botão com um deles `web_url` (mantenha **1 botão de link** na vitrine e no
   checkout) ou carrossel com mais de um cartão; no WhatsApp, cartão/carrossel só pelo menu
-  *Mais conteúdos e ações*, e a prévia mostra só o primeiro cartão. No JSON a conversão
-  acontece no envio e a doc não confere cada caso: valide no celular (`help.nextags.com.br/tutoriais/fluxos/texto-e-botoes`,
+  *Mais conteúdos e ações*, e a prévia mostra só o primeiro cartão. No JSON do agente,
+  carrossel de 2 ou mais cartões funciona no WhatsApp (produção do dono, 26/10/2026); a restrição
+  acima é do editor de fluxo. Em dúvida, valide no celular (`help.nextags.com.br/tutoriais/fluxos/texto-e-botoes`,
   `/cartoes-e-galeria`; `docs.nextags.com.br/comecar/mensagens-e-acoes`).
 
 ## Fluxo de trabalho

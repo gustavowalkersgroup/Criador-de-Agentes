@@ -116,13 +116,13 @@ FLUXO, espelhando `prioridade_pipeline`.
 
 | Prompt | Formato | Modelo sugerido |
 |---|---|---|
-| ROTEADOR | 1 palavra (`vendas` \| `sac` \| `ignorar`), texto puro, sem JSON/tools | leve (GPT-4.1 nano ou equivalente), temperatura 0 |
-| REVALIDADOR | 1 palavra (`humano` \| `bot`), texto puro, sem JSON/tools | leve, temperatura 0 |
+| ROTEADOR | 1 palavra (`vendas` \| `sac` \| `ignorar`), texto puro, sem JSON/tools | leve (GPT-4.1 nano ou equivalente), Reasoning effort mínimo |
+| REVALIDADOR | 1 palavra (`humano` \| `bot`), texto puro, sem JSON/tools | leve, Reasoning effort mínimo |
 | AGENTE(S) | JSON canônico NexTags, AVISOS ATIVOS, DADOS DESTA CONVERSA, transferência completa | {modelo do projeto} |
 
 Use o nome do modelo **exatamente como aparece** em Modelo (provedor), nos ajustes do
 agente: a lista vem do provedor e muda quando ele lança ou aposenta um modelo. A
-temperatura vai de 0 a 2 (o agente novo vem com 0,4).
+temperatura não é mais ajustável no painel (padrão do provedor, ~0,98); o que se ajusta é Max tokens, Reasoning effort e Verbosity.
 
 ### 4.5 Como criar por API
 
@@ -198,7 +198,7 @@ cada resposta (itens de `messages` que não são typing).
 | # | Passo | Onde / como |
 |---|---|---|
 | 1 | Subir o prompt | Colar em **Mensagem do sistema (Prompt)** e **Salvar**, ou usar a skill `nextags-prompt-push` (`POST /agents/{id}` só com `{"prompt": ...}`; guarda backup do anterior e confere que o modelo não mudou). **Não** enviar `model` nem `max_output_tokens` pela API sem o usuário pedir (incidente de 23/10/2026): modelo e tokens o usuário ajusta no painel. |
-| 2 | Ajustes do agente | Ícone de ajustes à direita de Mensagem do sistema: **Modelo** de cada provedor conectado (nome exato da lista), **Temperatura** 0–2 (vem 0,4), **Max tokens** 1–32768 (vem 2048; resposta cortada = aumentar), **Reasoning effort** e **Verbosity** (só aparecem em alguns modelos). Valores deste projeto: {modelo / temperatura / Max tokens}. Mude uma coisa por vez. |
+| 2 | Ajustes do agente | Ícone de ajustes à direita de Mensagem do sistema: **Modelo** de cada provedor conectado (nome exato da lista), **Max tokens** 1–32768 (vem 2048; resposta cortada = aumentar), **Reasoning effort** e **Verbosity** (só aparecem em alguns modelos). Valores deste projeto: {modelo / Max tokens / Reasoning effort}. Mude uma coisa por vez. |
 | 3 | Tipo de resposta da IA | Este método faz o agente emitir o JSON NexTags pelo próprio prompt. No **Testar Agora**, confira que chegam bolhas, botões e imagens, e não texto com chaves e aspas. {Marcar Imagem/Vídeo/Áudio/Arquivo, Texto + Botões ou Carrossel só se o usuário decidir; imagens, vídeos e arquivos só saem com o link no prompt.} |
 | 4 | Ferramentas de IA | Marcar no agente e **Salvar**: Servidores MCP (**Allowed tools**; a aba só existe com OpenAI, Gemini, Claude ou xAI conectado), Funções de IA, Arquivos (base de conhecimento; só com OpenAI; até 25 MB cada), Web Search. {Listar o que este projeto usa.} Diga no prompt quando consultar cada uma. |
 | 5 | Ações de IA | Vazio por padrão: o handoff deste método é `send_flow` pelo JSON, com o trio canônico. Só criar regras de Ações de IA se o usuário decidir mover etiqueta/transferência para o painel. {Decisão: sim / não.} |

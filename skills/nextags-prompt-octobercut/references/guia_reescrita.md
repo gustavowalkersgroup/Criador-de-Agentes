@@ -59,7 +59,7 @@ repetição de saudação).
 - Variações (cores, tamanhos, kits): listar em texto dentro do template;
   fotos só se pedirem.
 - Vários produtos: até 2–3 indicações numa mensagem de texto só, ou
-  carrossel (≥ 2 cards, validar render no WhatsApp), ou fluxo de catálogo.
+  carrossel (≥ 2 cards; funciona no WhatsApp pelo JSON do agente), ou fluxo de catálogo.
 - Checkout: frase de confirmação vai no `text` do button template.
 
 ## 6. Suporte (rastreio, troca, segunda via)

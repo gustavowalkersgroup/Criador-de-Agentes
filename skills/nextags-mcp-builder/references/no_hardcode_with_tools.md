@@ -11,7 +11,7 @@ Sintomas idênticos a "modelo não usa tool":
 - Agente cita preço/estoque/fragrância de memória (desatualizado)
 - Agente inventa handle/URL (404 no cliente)
 - Agente nunca chama a tool, mesmo com regras explícitas "SEMPRE chame a tool"
-- Config (modelo, temperature) e MCP estão perfeitos — não é isso
+- Config (modelo, reasoning) e MCP estão perfeitos — não é isso
 
 ## Caso Veuske (evidência forense)
 

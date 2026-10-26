@@ -33,9 +33,10 @@ mensagem de serviço**, e cada uma é cobrada.
   centavo de dólar por mensagem. A Meta pode revisar o valor a cada trimestre.
 - **Janela grátis de entrada (entry point)** continua valendo: conversa iniciada
   por anúncio Click-to-WhatsApp ou botão de CTA do Facebook não paga entrega
-  de mensagem nesse período. Prazo: a Meta falava em 72h; a Central de Ajuda da
-  NexTags (24/10/2026) diz **até 7 dias** quando a empresa responde dentro da
-  janela. Confirme o prazo vigente na tabela da Meta antes de prometer.
+  de mensagem nesse período. Prazo: **72h**, contadas quando a empresa responde dentro de 24h do
+  primeiro contato (regra da Meta; o dono decidiu seguir a Meta, 26/10/2026). A Central de Ajuda
+  da NexTags (24/10/2026) diz "até 7 dias": diverge da Meta, vale a Meta. Confirme na tabela da
+  Meta antes de prometer.
 - Mensagem enviada pelo cliente não é cobrada.
 - **Cota grátis:** as primeiras **1.000 mensagens de atendimento (sem modelo) do mês,
   em cada número**, não são cobradas; a cota não acumula e a cobrança vale acima dela

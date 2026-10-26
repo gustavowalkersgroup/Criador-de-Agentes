@@ -5,6 +5,28 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.14.1] - 2026-10-26
+
+Decisões do dono depois de comparar com a skill oficial da NexTags (`guiipego/nextags`, `criar-agente-ia`).
+
+### Adicionado
+
+- `nextags-prompt-creator/references/ia_hub_nativo.md`: modo nativo do AI Hub (Tipo de resposta da IA + Ações de IA +
+  Prompt da ação) como alternativa a pilotar, mapeamento do handoff para regras, riscos, nove lições da skill oficial
+  (aprovação só do último resumo, frase de transferência fixa, um mecanismo de transferência só, não automatizar
+  Bloquear/Arquivar, campo condicional em regra separada, `**` no prompt é copiado, entre outras) e a decisão pendente
+  de pôr o bloco dinâmico no fim do prompt (cache de prefixo). O padrão Walkers (JSON + `send_flow` + trio) não mudou.
+
+### Corrigido
+
+- Temperatura removida de todas as skills: o ajuste não existe mais no painel (padrão do provedor, ~0,98); sobram Max tokens,
+  Reasoning effort e Tipo de resposta (`model_config_checklist.md`, `nextags-mcp-builder`, `nextags-webchat-tester`,
+  relatório do creator, skeleton e as 4 cópias de `campos_canonicos.md`).
+- Carrossel: 2 ou mais cartões funciona no WhatsApp pelo JSON do agente (produção do dono); um cartão só não é carrossel e o
+  bloqueio continua. A restrição da doc vale para o editor de fluxo (creator, fixer, octobercut).
+- `whatsapp-template-utilidade`: variável no fim do corpo não passa; o padrão "pedido enviado" ganhou frase de fechamento.
+- `nextags-prompt-octobercut`: janela grátis de entrada de 72h (Meta); a Central de Ajuda diz 7 dias e diverge.
+
 ## [1.14.0] - 2026-10-26
 
 As skills do grupo foram conferidas contra a documentação oficial (docs.nextags.com.br e

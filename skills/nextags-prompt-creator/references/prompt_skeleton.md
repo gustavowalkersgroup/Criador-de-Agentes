@@ -1006,7 +1006,7 @@ duas vezes seguidas; após um handoff de estágio, SILÊNCIO TOTAL nos turnos se
 > Classifica CADA mensagem e grava 1 palavra em `setor_agente` — é o ÚNICO que
 > escreve nesse campo. NÃO resolve nada, não conversa, não cumprimenta.
 > Saída: **1 palavra apenas**. Sem JSON. Sem tools. Sem MCP. Sem bloco oficial.
-> Modelo leve (GPT-4.1 nano ou equivalente), temperatura 0, verbosidade mínima.
+> Modelo leve (GPT-4.1 nano ou equivalente), Reasoning effort e verbosidade mínimos.
 > ⚠️ NÃO aplica as regras JSON da plataforma — é texto puro, sem schema.
 
 ```
@@ -1098,7 +1098,7 @@ Ver SKILL.md §5.1.
 > 2ª camada: só roda quando o roteador respondeu `ignorar`. Grava
 > `tipo_setor` = `humano` | `bot` — é o ÚNICO que escreve nesse campo.
 > Saída: **1 palavra**. Sem JSON, sem tools, sem bloco oficial. Modelo leve,
-> temperatura 0. `humano` volta para a condição de roteamento; `bot` arquiva a
+> Reasoning effort mínimo. `humano` volta para a condição de roteamento; `bot` arquiva a
 > conversa, aguarda 1h e bloqueia o contato.
 > (evidência: doc "PROMPT — REVALIDADOR (HUMANO x BOT)", Drive, 2026-07-21)
 

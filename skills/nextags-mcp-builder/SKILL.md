@@ -466,8 +466,7 @@ operador: `C:\Users\User\Documents\WALKERS\<cliente>\relatorio-mcp.md`. Conteúd
 **Leia OBRIGATORIAMENTE** `references/model_config_checklist.md` e passe pelo user a config canônica do agente no NexTags ANTES de marcar projeto entregue:
 
 - Modelo: **Claude Sonnet 4.6** (ou GPT 5.4 não-mini) — NUNCA "mini" com prompt longo
-- Temperatura: **baixa** — a tela atual vai de 0 a 2 (padrão 0,4); confira a escala no painel
-  antes de aplicar o "2 (escala 0-10)" antigo, que na faixa 0–2 seria o MÁXIMO (ver o checklist)
+- Temperatura: não existe mais no painel (padrão do provedor, ~0,98; confirmado em 26/10/2026) — não peça para ajustar
 - Verbosity: média
 - Reasoning effort: alta (se o modelo mostrar o ajuste: Nenhum/Baixa/Média/Alta; padrão Baixa)
 - Max tokens: alto (1–32768; padrão 2048)
@@ -548,7 +547,7 @@ nextags-mcp-builder/
 │   ├── link_envio_pattern.md             ← UTM obrigatório em TODOS os links
 │   ├── handoff_pattern.md                ← roteamento canônico (roteador único + revalidador) e handoff IA→humano, pro n8n
 │   ├── mcp_github_repo_pattern.md        ← 🆕 GitHub como banco (cliente sem ERP/API) — padrão Poé
-│   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/temperatura baixa/verbosity média)
+│   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/reasoning alta/verbosity média)
 │   ├── tokens_em_docs.md                 ← NUNCA token real em docs da skill (placeholders + onde ficam)
 │   ├── no_hardcode_with_tools.md         ← NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
 │   ├── image_validation.md               ← JPEG/PNG só; limites da Meta (5 MB imagem, 15 MB vídeo) e como converter

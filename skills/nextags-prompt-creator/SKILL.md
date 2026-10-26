@@ -145,6 +145,7 @@ Read only the references relevant to the selected modules:
 | E-commerce adversarial scenarios | `references/testes_adversariais_ecommerce.md` |
 | Tone and commercial claims audit | `references/auditoria_tom_e_claims.md` |
 | Walkers account flow catalog | `references/fluxos_canonicos_walkers.md` |
+| Native AI Hub mode (Tipo de resposta + Ações de IA), lessons from the official NexTags skill, pending cache-order decision | `references/ia_hub_nativo.md` |
 | Full V7 methodology | `references/arquitetura_suprema_v7.md` |
 
 Use `references/prompt_skeleton.md` as a modular skeleton, never as a universal prompt. Include only selected modules.
@@ -209,7 +210,7 @@ Generate only the files the project needs:
 - `relatorio-<projeto>.md`;
 - `manifesto-politicas.yaml`, `contrato-estado.yaml`, `matriz-fontes.yaml` or `testes.md` when needed.
 
-The report must include pending placeholders, source conflicts, architecture choice, selected/rejected modules and reasons, CUFs, tags, flows with account-specific IDs, tools and action levels, claims and sources, selected tests, risks, validation result and deployment checklist. Include a section **Contrato e testes de qualidade** for e-commerce. The report also carries **Subir o prompt e configurar o AI Hub** (template §6): how the prompt reaches the agent (`nextags-prompt-push` or paste in AI Hub), the panel settings only the user changes (model, Max tokens, temperature), tools to link, default agent and Testar Agora. Never send `model` or `max_output_tokens` through `POST /agents/{id}` unless the user asks (incident of 2026-10-23).
+The report must include pending placeholders, source conflicts, architecture choice, selected/rejected modules and reasons, CUFs, tags, flows with account-specific IDs, tools and action levels, claims and sources, selected tests, risks, validation result and deployment checklist. Include a section **Contrato e testes de qualidade** for e-commerce. The report also carries **Subir o prompt e configurar o AI Hub** (template §6): how the prompt reaches the agent (`nextags-prompt-push` or paste in AI Hub), the panel settings only the user changes (model, Max tokens, Reasoning effort, Verbosity), tools to link, default agent and Testar Agora. Never send `model` or `max_output_tokens` through `POST /agents/{id}` unless the user asks (incident of 2026-10-23).
 
 Before delivery, verify files exist, rerun validation, and present the prompt before the report. In chat, summarize agent type, pending items, and whether CUFs/tags/flows/tools must be created or validated.
 

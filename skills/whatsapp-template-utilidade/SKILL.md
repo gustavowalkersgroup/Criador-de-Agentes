@@ -27,13 +27,13 @@ Atenciosamente, equipe NomeDaEmpresa
 ```
 2. RODAPÉ SEMPRE PREENCHIDO no padrão `Empresa | Digite STOP para sair` (STOP sempre em maiúsculas; empresa | opt-out; **máx. 60 caracteres**, `help.nextags.com.br/tutoriais/disparos/criar-modelo`). O rodapé conta para a proporção texto/variáveis, então ajuda a aprovar mais variáveis com menos texto fixo.
 3. Se aparecer o erro 'Esse modelo contém muitas variáveis para sua extensão' (o botão Enviar para análise fica desabilitado): corpo curto com 3 variáveis + rodapé de 33 caracteres ainda foi recusado. Resolveu ao acrescentar uma frase neutra de abertura em linha própria, com cerca de 46 caracteres ou mais, por exemplo 'Segue uma atualização sobre o seu atendimento.' Frases usadas e aceitas: 'Temos uma atualização sobre o seu atendimento.', 'Aqui está uma atualização sobre o seu atendimento.', 'Segue uma informação sobre o seu atendimento conosco.' Frases com menos de 45 caracteres são arriscadas.
-4. O formato acima já começa e termina com texto: a doc da NexTags lista "variável na ponta" (corpo que começa ou termina com variável) entre os motivos comuns de recusa (`help.nextags.com.br/tutoriais/disparos/modelo-reprovado`).
+4. O formato acima começa e termina com texto, e isso é obrigatório: variável no início ou no fim do corpo é recusada (`help.nextags.com.br/tutoriais/disparos/modelo-reprovado`). Depois da última variável precisa vir texto fixo; uma frase de fechamento é o seguro. Confirmado em produção (26/10/2026): o padrão "pedido enviado" terminando em `{{4}}` não passou.
 5. Ao definir o texto por script, usar '\n' real no setter nativo do textarea para criar as quebras. Conferir a prévia à direita: cada variável deve aparecer em um parágrafo separado.
 
 ## Padrões que passaram (Utilidade, com entregas reais)
 | Tipo | Texto fixo | Exemplos | Botão |
 |---|---|---|---|
-| Transacional real (pedido enviado) | 'Seu pedido {{2}} foi enviado e já está em transporte. Código: {{3}}. Prazo: {{4}}' | Ana Paula / #57275 / NL123456789BR / 5 dias | Rastrear Pedido + Preciso de Ajuda |
+| Transacional real (pedido enviado) | 'Seu pedido {{2}} foi enviado e já está em transporte. Código: {{3}}. Prazo: {{4}}. Qualquer dúvida, é só responder por aqui.' | Ana Paula / #57275 / NL123456789BR / 5 dias | Rastrear Pedido + Preciso de Ajuda |
 | Pedido aprovado com confirmação | 'Parabéns! O seu pedido {{1}} foi aprovado. Você confirma esse pedido feito por {{2}}?' | X2645 / nome / rodapé com a marca | Confirmar + Preciso de Ajuda |
 | Coringa | 'Olá {{1}}, tudo bem?' + frase neutra + {{2}} + {{3}} + 'Atenciosamente, equipe X' (cada variável em linha própria, ver formato obrigatório) | aviso de entrega ('Seu produto saiu para entrega'), pedido enviado, cadastro confirmado, agendamento, pagamento aprovado | Continuar, Ver detalhes ou Entendi |
 | Carrinho | 'Atualização sobre {{2}}. O {{3}}. Clique no botão abaixo para receber' | aviso de cadastro/agendamento (SNS, exame agendado) | Continuar ou Pagar agora |
