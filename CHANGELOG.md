@@ -30,6 +30,10 @@ Vitrine e carrossel como a plataforma entrega de verdade, português sem erro e 
 - `resumo_pipeline` sempre em português do Brasil, mesmo com cliente em outro idioma (caso Ame Pet: cliente russo, resumo em russo).
   Regra 21 e `campos_canonicos.md` (4 cópias), bloco do skeleton, seção `resumo_em_portugues` (warn, só cobra se o prompt grava
   `resumo_pipeline`) e pendência no `fix_json.py` quando o resumo vem em alfabeto não latino.
+- `whatsapp-template-utilidade` (v3, trazida do Cowork): frase neutra de abertura recomendada (14 de 14 como Utilidade; a 'informação ... conosco'
+  foi reclassificada 6 de 6 num lote), nome do modelo digitado com teclas reais (por script o botão ficava desabilitado), vídeo,
+  upload de arquivo no `browser_batch`, botão por script, checagem após o lote e regra de reler a lista de status. Nomes de clientes e
+  de pessoas ficam fora do texto; os limites e a alternativa pela NexTags já no repo foram mantidos.
 - +9 testes no `octobercut.py`, +5 no analisador, +9 no `fix_json.py`.
 
 ## [1.14.3] - 2026-10-26
