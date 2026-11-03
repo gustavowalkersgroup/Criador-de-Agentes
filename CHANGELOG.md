@@ -5,6 +5,29 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.15.0] - 2026-11-03
+
+Vitrine e carrossel como a plataforma entrega de verdade, português sem erro e descadastro de disparos.
+
+### Alterado
+
+- **Imagem + texto + botão = 2 blocos com espera de 2s** (`[imagem, 2, button template]`). Sem o `2` o texto com o botão chega
+  antes da imagem (Ame Pet, Uzzelui). O `2` é o único typing permitido: `octobercut.py merge` mantém ou insere, os analisadores
+  (`octobercut_bolhas`) bloqueiam a falta, e o `fix_json.py` insere a espera sozinho.
+- **Carrossel**: 1 cartão passa a ser permitido (antes bloqueava com menos de 2). Todo carrossel exige uma mensagem de texto
+  antes, dizendo o que vem nos cartões, senão o WhatsApp manda um "." antes do cartão. Limites do template: abertura 1024,
+  texto do cartão (título + subtítulo) 160, botão do cartão 25. `octobercut.py merge` nunca move esse texto para depois do carrossel.
+- `analyze_prompt.py` (2 cópias idênticas): `carousel_misuse` agora checa texto antes e limites; `octobercut_bolhas` aceita o `2`
+  entre imagem e botão e bloqueia o botão sem espera. Regra 4 e Regra 28, bloco OctoberCut, skeleton e template atualizados.
+
+### Adicionado
+
+- Regra 31 (creator e fixer): português do Brasil sem erro; se o cliente corrigir a IA, uma frase gentil explicando e volta ao
+  assunto, sem prolongar. Bloco em `prompt_skeleton.md` §9.5 e seção `correcao_e_portugues` (warn).
+- Regra 32 (creator e fixer): STOP/SAIR dispara só o `send_flow` do fluxo de descadastro da conta, sem texto da IA. Bloco em
+  `prompt_skeleton.md` §9.6, pergunta 2.5 (ID do fluxo, ou achar por "SAIR" via `nextags-api`) e seção `descadastro_stop_sair` (warn).
+- +9 testes no `octobercut.py`, +4 no analisador, +8 no `fix_json.py`.
+
 ## [1.14.3] - 2026-10-26
 
 O agente já acumula o histórico da conversa; `{{chat_history*}}` só serve para puxar o histórico uma vez.

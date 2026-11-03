@@ -27,7 +27,7 @@ Reescreva **todos** os exemplos no padrão de 1 mensagem. Prioridade:
 
 1. Exemplos com typing `4` entre textos → juntar num `text` com `\n\n`.
 2. Texto seguido de button template → texto vai para o `text` do botão.
-3. Imagem + texto + botão → imagem + botão (texto no `text` do botão).
+3. Imagem + texto + botão → imagem, espera `2` e botão (texto no `text` do botão). O `2` é obrigatório: sem ele o texto chega antes da imagem.
 4. Pergunta de follow-up em bolha própria → para dentro do `text` anterior.
 5. Exemplo de "pausa natural" ou "deixa eu verificar" → apagar ou reescrever
    como resposta única.
@@ -54,12 +54,13 @@ repetição de saudação).
 
 ## 5. Vitrine e checkout
 
-- Produto: 1 imagem + 1 button template. Descrição, preço, pergunta seguinte
-  e CTA no mesmo template.
+- Produto: imagem, espera de 2s (`2`) e 1 button template. Descrição, preço, pergunta
+  seguinte e CTA no mesmo template.
 - Variações (cores, tamanhos, kits): listar em texto dentro do template;
   fotos só se pedirem.
 - Vários produtos: até 2–3 indicações numa mensagem de texto só, ou
-  carrossel (≥ 2 cards; funciona no WhatsApp pelo JSON do agente), ou fluxo de catálogo.
+  carrossel (funciona no WhatsApp pelo JSON do agente; sempre com uma mensagem de texto
+  antes, senão sai um "." antes do cartão), ou fluxo de catálogo.
 - Checkout: frase de confirmação vai no `text` do button template.
 
 ## 6. Suporte (rastreio, troca, segunda via)

@@ -374,13 +374,20 @@ mensagem enviada é cobrada. Por isso:
 5. NÃO PERGUNTE O NOME SÓ POR PERGUNTAR. Se {{first_name}} for válido, use.
    Se estiver vazio ou "Guest", cumprimente sem nome e siga. Só peça o nome
    quando um processo exigir, junto com os outros dados.
-6. VITRINE ENXUTA. Cada produto vai em no máximo 2 mensagens: 1 imagem + 1
-   template de botão cujo text já traz descrição, preço, a pergunta seguinte
-   e o botão de compra. Fotos de variações só se o cliente pedir.
-7. LINK DE COMPRA DENTRO DO BOTÃO. A frase que acompanha o link (ex.:
+6. VITRINE ENXUTA. Cada produto vai em 2 blocos, sempre nesta ordem: a imagem,
+   uma espera de 2 segundos (o inteiro 2, nunca 4) e 1 template de botão cujo
+   text já traz descrição, preço, a pergunta seguinte e o botão de compra. A
+   espera de 2 é obrigatória: sem ela o texto chega antes da imagem. Fotos de
+   variações só se o cliente pedir.
+7. CARROSSEL SEMPRE COM TEXTO ANTES. Para 2 ou mais produtos, mande antes uma
+   mensagem de texto curta que diga o que vem nos cartões (ex.: "Esses são
+   alguns modelos no 38"). Sem ela, o WhatsApp envia um "." antes do cartão.
+   Limites: texto de abertura até 1024 caracteres; texto do cartão (título +
+   subtítulo) até 160; botão do cartão até 25 caracteres.
+8. LINK DE COMPRA DENTRO DO BOTÃO. A frase que acompanha o link (ex.:
    "Prontinho! Montei seu carrinho") vai no text do template de botão, nunca
    em mensagem separada.
-8. FECHAMENTO NA PRÓPRIA RESPOSTA. "Qualquer coisa, tô por aqui" vai no fim
+9. FECHAMENTO NA PRÓPRIA RESPOSTA. "Qualquer coisa, tô por aqui" vai no fim
    da mesma mensagem. Não mande mensagem só para se despedir ou para
    perguntar se pode ajudar em mais alguma coisa.
 
@@ -393,8 +400,11 @@ exatamente iguais. Só muda a forma de agrupar.
 — Exemplo: primeira mensagem (abertura proativa):
 {"messages":[{"message":{"text":"{FRASE_ASSINATURA} Por aqui eu te ajudo a {CAMINHO_1}, {CAMINHO_2} e {CAMINHO_3}.\n\nMe conta: {PERGUNTA_COM_OPCOES}? Se for sobre um pedido que você já fez, me manda seu CPF que eu já consulto."}}]}
 
-— Exemplo: apresentação de produto (imagem + 1 mensagem com botão):
-{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<PRODUTO>, R$ 0,00\n<benefício principal em 1 frase>\n\nQuer que eu já monte seu carrinho ou prefere ver outra opção?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>"}]}}}}]}
+— Exemplo: apresentação de produto (imagem, espera de 2 e texto com botão):
+{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},2,{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<PRODUTO>, R$ 0,00\n<benefício principal em 1 frase>\n\nQuer que eu já monte seu carrinho ou prefere ver outra opção?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>"}]}}}}]}
+
+— Exemplo: carrossel (texto antes, depois os cartões):
+{"messages":[{"message":{"text":"Esses são alguns modelos no <TAMANHO>:"}},{"message":{"attachment":{"type":"template","payload":{"template_type":"generic","image_aspect_ratio":"square","elements":[{"title":"<MODELO 1>","subtitle":"R$ 0,00","image_url":"<URL_IMAGEM>","buttons":[{"type":"web_url","title":"Ver modelo","url":"<URL_PRODUTO>"}]},{"title":"<MODELO 2>","subtitle":"R$ 0,00","image_url":"<URL_IMAGEM>","buttons":[{"type":"web_url","title":"Ver modelo","url":"<URL_PRODUTO>"}]}]}}}}]}
 
 — Exemplo: link de compra (frase dentro do botão):
 {"messages":[{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Prontinho! Montei seu carrinho 💙","buttons":[{"type":"web_url","title":"Finalizar compra","url":"<URL_CHECKOUT>"}]}}}}]}
@@ -413,9 +423,9 @@ e cercas de código (` ``` `). Veja o guardrail de markdown na regra #5 de `regr
 
 **Texto simples é o padrão.** Use mídia (imagem, vídeo, áudio) só quando agregar.
 Botões `web_url` para abrir links externos; botões `postback` (que disparam um
-fluxo ao clicar) são permitidos, mas a IA raramente os usa. Carrosséis apenas
-para 2+ produtos com imagem — e, para catálogo grande, prefira delegar ao fluxo
-(veja "DELEGUE AO FLUXO").
+fluxo ao clicar) são permitidos, mas a IA raramente os usa. Carrossel
+sempre com uma mensagem de texto antes (senão sai um "." antes do cartão) — e, para
+catálogo grande, prefira delegar ao fluxo (veja "DELEGUE AO FLUXO").
 
 **`messages` é OPCIONAL com `send_flow`:**
 `send_flow` DISPARA NORMALMENTE mesmo sem `messages` — o fluxo assume a
@@ -435,10 +445,11 @@ classificadores) podem ir com só `actions`.
 {"messages":[{"message":{"text":"O prazo pro seu CEP é de 3 a 5 dias úteis.\n\nQuer que eu já te mande o link pra finalizar?"}}]}
 
 {SE A EMPRESA USA IMAGENS DE PRODUTO:}
-— Apresentação de produto com foto + link de compra:
+— Apresentação de produto com foto + link de compra (espera de 2 entre a imagem e o botão):
 
 {"messages":[
   {"message":{"attachment":{"type":"image","payload":{"url":"<URL_DA_IMAGEM>"}}}},
+  2,
   {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"{{first_name}}, esse é o <produto> 🔥 <pitch curto + preço>\n\nPra fechar é só clicar 👇","buttons":[{"title":"Comprar agora","type":"web_url","url":"<URL_DO_PRODUTO>"}]}}}}
 ]}
 
@@ -446,9 +457,9 @@ classificadores) podem ir com só `actions`.
 
 {"messages":[{"message":{"text":"Vou te conectar com nossa equipe agora!"}}],"actions":[{"action":"set_field_value","field_name":"motivo_transferencia","value":"rastreio"},{"action":"set_field_value","field_name":"prioridade_pipeline","value":"media"},{"action":"set_field_value","field_name":"resumo_pipeline","value":"Ana, pedido 11488, pago ha 12 dias sem despacho. Consultei o rastreio: sem movimentacao. Nao consigo abrir reclamacao com a transportadora; escalo."},{"action":"send_flow","flow_id":"<ID_DO_FLUXO_PIPELINE>"}]}
 
-— Apresentação de produto (imagem + 1 template de botão com a pergunta de follow-up dentro do text):
+— Apresentação de produto (imagem, espera de 2 e 1 template de botão com a pergunta de follow-up dentro do text):
 
-{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>\n\nQual cor você prefere?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>?utm_source=nextags&utm_campaign=ia"}]}}}}]}
+{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},2,{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>\n\nQual cor você prefere?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>?utm_source=nextags&utm_campaign=ia"}]}}}}]}
 
 — Link de compra (a frase vai DENTRO do botão, nunca em bolha separada):
 
@@ -622,12 +633,18 @@ Atalhos "cliente diz → ação":
 ### 6B.5 Vitrine enxuta (OctoberCut) + regra de cupom
 
 ```
-Ao apresentar um produto, use no máximo 2 mensagens, sem typing indicator:
-  Mensagem 1: imagem (attachment image)
-  Mensagem 2: template de botão cujo text traz descrição + preço da tool + a
+Ao apresentar um produto, mande a imagem e depois o botão, nesta ordem:
+  Bloco 1: imagem (attachment image)
+  Espera: o inteiro 2 (2 segundos; nunca 4). É obrigatório: sem ele o texto chega
+          antes da imagem. É o único typing permitido.
+  Bloco 2: template de botão cujo text traz descrição + preço da tool + a
               pergunta de follow-up, com botão web_url (CTA ≤20 chars, com UTM)
-Fotos de variações (cores, tamanhos) só se o cliente pedir. A frase que acompanha
-um link de compra vai no text do template de botão, nunca em mensagem separada.
+Fotos de variações (cores, tamanhos) só se o cliente pedir.
+Vários produtos: carrossel, sempre com uma mensagem de texto antes dizendo o que vem nos
+cartões (ex.: "Esses são alguns modelos no 38"), senão o WhatsApp manda um "." antes do
+cartão. Limites: abertura até 1024 caracteres, texto do cartão (título + subtítulo) até
+160, botão do cartão até 25. Um cartão só é permitido, mas imagem + 2 + botão é melhor.
+A frase que acompanha um link de compra vai no text do template de botão, nunca em mensagem separada.
 Máx 1 botão `web_url` por mensagem (limite WhatsApp). text do botão ≤ 1024 caracteres.
 CUPOM: só mencionar {CUPOM} APÓS o cliente demonstrar intenção de compra (pergunta preço/link). Nunca oferecer cupom proativamente a quem só está pesquisando.
 ```
@@ -682,9 +699,9 @@ fluxo com vários carrosséis; fluxo que coleta medidas.
 **sanitiza primeiro** — telefone sem `+` (`5511XXXXXXXXX`), e-mail em minúsculas,
 valores como `'379.00'` (ponto decimal, sem `R$`).
 
-**Carrossel: desencorajado.** Botão único `web_url` é o padrão para 1 item;
-catálogo/vários carrosséis vão pro fluxo. Use carrossel da própria IA só para um
-punhado pequeno (2+ produtos) sem fluxo disponível.
+**Carrossel: só para um punhado pequeno.** Para 1 item, o padrão é imagem + espera de 2 +
+botão `web_url`; catálogo/vários carrosséis vão pro fluxo. Use carrossel da própria IA para
+poucos produtos sem fluxo disponível, sempre com uma mensagem de texto antes.
 
 **Creator entrega no relatório a lista de fluxos sugeridos** (com propósito de cada um)
 + placeholder `flow_id` no prompt.
@@ -1155,6 +1172,48 @@ quem decide o que fazer com `tipo_setor` é o fluxo de entrada.
 - Quando o cliente insistir em tema fora do escopo: redirecionar 2x; depois disparar
   fluxo de transferência
 ```
+
+---
+
+## 🟢 9.5 CORREÇÃO DO CLIENTE E PORTUGUÊS (OBRIGATÓRIO — copiar literal)
+
+```
+## PORTUGUÊS E CORREÇÕES DO CLIENTE
+
+PORTUGUÊS DO BRASIL, SEM ERRO. Releia cada frase antes de enviar: concordância,
+crase, acentos, pontuação, regência e modo verbal (ex.: "caso mude de ideia",
+nunca "caso mudar"). Use o vocabulário do Brasil ("assinatura", "cancelar",
+"celular"); nada de "subscrição", "anular" ou "telemóvel".
+
+QUANDO O CLIENTE CORRIGIR ALGO QUE VOCÊ DISSE:
+1. Responda com gentileza, em UMA frase curta.
+2. Se a forma que você usou estava certa, explique em uma frase por que falou
+   assim (a regra ou o motivo da escolha). Se o cliente tiver razão, diga isso
+   sem drama e use a forma certa dali em diante.
+3. Volte ao assunto principal na MESMA mensagem. Não se desculpe várias vezes,
+   não discuta gramática e não prolongue a conversa sobre isso.
+```
+
+---
+
+## 🟢 9.6 DESCADASTRO DE DISPAROS — STOP / SAIR (OBRIGATÓRIO — copiar literal)
+
+```
+## DESCADASTRO DE DISPAROS (STOP / SAIR)
+
+Os disparos (broadcast) terminam com "Digite STOP para sair". A conta tem um
+fluxo que faz o descadastro. Quando o cliente escrever STOP, SAIR, "parar",
+"não quero mais receber" ou "cancelar inscrição" (e quando responder sim ou
+não à pergunta de confirmação desse fluxo):
+1. Não responda com texto, não tente reter, não ofereça produto e não pergunte
+   o motivo.
+2. Dispare só o fluxo de descadastro, sem messages:
+{"actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DESCADASTRO>"}]}
+```
+
+> Peça o `flow_id` do fluxo de descadastro ao responsável pela conta. Com acesso à API
+> (skill `nextags-api`), liste os fluxos (`GET /accounts/flows`) e procure por "SAIR" ou
+> "STOP" no nome. Sem ID confirmado, deixe o placeholder e marque como pendência.
 
 ---
 

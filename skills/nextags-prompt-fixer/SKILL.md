@@ -130,7 +130,8 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | JSON inválido | Reescreva com sintaxe válida, mantendo intenção. Se ambíguo → pendência. |
 | `transfer_conversation_to` / `assign_conversation` | NÃO são proibidas. `send_flow` é o padrão recomendado; `transfer_conversation_to` é fallback válido quando não há fluxo de transferência, `assign_conversation` é caso especial raro (atendente específico). Só sugerir `send_flow` quando houver fluxo disponível. Ver Regra 2. |
 | Botão `web_url` sem `url` | Pendência (precisa da URL) ou converter em texto. `postback` é válido (dispara fluxo) — preservar; `phone_number` (com `payload` = telefone) também é válido. Ver Regras 3 e 29. |
-| Carrossel com 1 item | Quebrar em mensagem de texto + attachment de imagem. |
+| Carrossel sem texto antes | Acrescentar uma frase curta de abertura que diga o que vem nos cartões (senão o WhatsApp manda um "."). Carrossel com 1 item é permitido; imagem + `2` + botão fica melhor. |
+| Imagem seguida direto de button template | Inserir a espera `2` entre os dois (imagem, 2, texto + botão). |
 | Markdown em `text`/`subtitle` | WA-markup (`*negrito*`, `_itálico_`, `~tachado~`) RENDERIZA e é OK — não tocar. Remover só markdown-PADRÃO que vaza (`**duplo**`, `# título`, `[texto](url)`, bullets `-`, cercas ```` ``` ````). Ver Regra 5. |
 | **`send_flow` sem `messages`** (regra #10) | NÃO é erro. `send_flow` DISPARA NORMALMENTE — o fluxo assume a comunicação. `messages` é transição OPCIONAL por UX, nunca obrigatória. Preservar disparo silencioso; só sugerir transição se agregar à experiência. |
 | **Exemplos JSON em fence `` ```json ``** (regra #11) | Remover os fences dos exemplos. LLM em runtime copia o padrão e quebra a plataforma. |
@@ -160,8 +161,11 @@ Tabela rápida de correções (detalhes em `references/regras_absolutas.md`):
 | `prioridade_pipeline` fora de `baixa\|media\|alta` (**block**) | Corrigir para o valor mais próximo do enum ou `baixa` (default) — Seleção única rejeita qualquer outro valor. Ver Regra 21. |
 | `trio_handoff_incompleto` | `send_flow` de transferência sem os 3 `set_field_value` (motivo/prioridade/resumo) antes: inserir os que faltam. Ver Regra 21 (campo stale). |
 | `send_flow_antes_de_set_field` | Reordenar: `set_field_value`(s) sempre antes do `send_flow` no mesmo array. Ver Regra 16. |
-| `octobercut_bolhas` / `octobercut_instrucao` / seção `formato_economico_octobercut` ausente | Cobrança da Meta por mensagem (desde 01/10/2026). Fundir textos separados por typing `4` num `text` só (`\n\n`); levar a frase vizinha para dentro do `text` do button template; vitrine = imagem + 1 botão; remover mensagem de espera e bolha de despedida; inserir o bloco OctoberCut após o bloco oficial; neutralizar instruções antigas ("3 blocos separados por typing 4", "pergunte o nome UMA vez", "uma pergunta por vez"). Preservar tom e regras da marca. `text` de botão >1024 caracteres é **block** (WhatsApp rejeita). Ferramenta: `nextags-prompt-octobercut` (`octobercut.py merge`). Ver Regra 28. |
+| `octobercut_bolhas` / `octobercut_instrucao` / seção `formato_economico_octobercut` ausente | Cobrança da Meta por mensagem (desde 01/10/2026). Fundir textos separados por typing `4` num `text` só (`\n\n`); levar a frase vizinha para dentro do `text` do button template; vitrine = imagem, espera `2` e 1 botão (sem o `2` o texto chega antes da imagem); remover mensagem de espera e bolha de despedida; inserir o bloco OctoberCut após o bloco oficial; neutralizar instruções antigas ("3 blocos separados por typing 4", "pergunte o nome UMA vez", "uma pergunta por vez"). Preservar tom e regras da marca. `text` de botão >1024 caracteres é **block** (WhatsApp rejeita). Ferramenta: `nextags-prompt-octobercut` (`octobercut.py merge`). Ver Regra 28. |
 | Meta-doc no prompt: `mudancas_versao`, `o_que_mudou`, `changelog`, `auditoria`, `versao_metadata`… (**block**) e `decoracao` (**block**), `cabecalho_profundo` / `cabecalho_longo` (warn) | Remover a seção inteira do prompt e levar o conteúdo pro relatório; versão só no nome do arquivo. Trocar linhas `=====`/`#####` por cabeçalho `##` ou linha em branco; achatar cabeçalhos para no máximo `###`. Ver Regra 15. |
+| `carousel_misuse` (**block**) | Carrossel sem mensagem de texto antes (sai um "." antes do cartão): escrever uma frase curta dizendo o que vem nos cartões. Limites do template: abertura 1024, texto do cartão (título + subtítulo) 160, botão do cartão 25. Carrossel de 1 cartão é permitido. Ver Regra 4. |
+| Seção `correcao_e_portugues` ausente | Inserir o bloco "PORTUGUÊS E CORREÇÕES DO CLIENTE" (`prompt_skeleton.md` §9.5, Regra 31): português do Brasil sem erro; se o cliente corrigir, uma frase gentil explicando e voltar ao assunto. |
+| Seção `descadastro_stop_sair` ausente | Inserir o bloco de STOP/SAIR (`prompt_skeleton.md` §9.6, Regra 32): a IA dispara só o `send_flow` do fluxo de descadastro da conta. Achar o ID perguntando ao responsável ou, via `nextags-api`, procurando "SAIR" em `GET /accounts/flows`. |
 | `promessa_sem_entrega` | Mensagem promete enviar algo e o JSON não entrega (sem `send_flow`, sem attachment): acrescentar a action que entrega ou reescrever a mensagem para não prometer. Ver Regra 27. |
 
 ### 4. Versionamento do arquivo corrigido
@@ -219,7 +223,7 @@ de Verdade", "Inputs Obrigatórios"), pergunte ao usuário se ele quer mesmo
 corrigir esse arquivo ou se enviou o errado.
 
 **Conflito entre violações.** Quando duas violações apontam para correções
-opostas (ex.: tem botão sem URL dentro de um carrossel com 1 item só), não
+opostas (ex.: tem botão sem URL dentro de um carrossel de 1 cartão), não
 tente resolver as duas ao mesmo tempo — vira pendência composta com
 descrição clara das opções.
 

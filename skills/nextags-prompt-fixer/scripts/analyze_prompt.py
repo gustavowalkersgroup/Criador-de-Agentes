@@ -249,6 +249,25 @@ REQUIRED_SECTIONS = {
             r"uma\s+resposta\s*=\s*uma\s+mensagem",
         ],
     },
+    # Regras 31 e 32 (regras_absolutas.md): warn — prompts antigos não reprovam de uma vez.
+    "correcao_e_portugues": {
+        "label": "Português do Brasil sem erro e correção do cliente (explicar em uma frase e voltar ao assunto)",
+        "severity": "warn",
+        "patterns": [
+            r"portugu[êe]s\s+do\s+brasil,?\s+sem\s+erro",
+            r"quando\s+o\s+cliente\s+corrigir",
+            r"corre[çc][õo]es\s+do\s+cliente",
+        ],
+    },
+    "descadastro_stop_sair": {
+        "label": "Descadastro de disparos (STOP / SAIR → send_flow do fluxo da conta, sem texto)",
+        "severity": "warn",
+        "patterns": [
+            r"descadastro\s+de\s+disparos",
+            r"\bSTOP\b[^.\n]{0,60}\bSAIR\b|\bSAIR\b[^.\n]{0,60}\bSTOP\b",
+            r"opt[\s-]?out",
+        ],
+    },
     "fora_de_escopo": {
         "label": "Manter-se no escopo / não sair do contexto",
         "severity": "warn",
@@ -463,19 +482,75 @@ def check_buttons_misuse(parsed) -> list[dict]:
     return issues
 
 
+CAROUSEL_BODY_MAX = 1024  # mensagem de texto que abre o carrossel (body do template)
+CARD_TEXT_MAX = 160       # texto do cartão: título + subtítulo
+CARD_CTA_MAX = 25         # título do botão do cartão
+MEDIA_WAIT = 2            # espera (typing) de 2s entre imagem e texto + botão
+
+
+def _is_media_wait(msgs, i) -> bool:
+    """O typing `2` entre uma imagem e um button template é obrigatório (não é bolha)."""
+    return (msgs[i] == MEDIA_WAIT and not isinstance(msgs[i], bool)
+            and 0 < i < len(msgs) - 1
+            and _is_image_msg(msgs[i - 1]) and _bubble_kind(msgs[i + 1]) == "button")
+
+
+def _is_image_msg(item) -> bool:
+    if not isinstance(item, dict) or not isinstance(item.get("message"), dict):
+        return False
+    att = item["message"].get("attachment")
+    return isinstance(att, dict) and att.get("type") in ("image", "video", "audio", "file")
+
+
+def _is_carousel_msg(item) -> bool:
+    if not isinstance(item, dict) or not isinstance(item.get("message"), dict):
+        return False
+    att = item["message"].get("attachment")
+    payload = att.get("payload") if isinstance(att, dict) and isinstance(att.get("payload"), dict) else {}
+    return isinstance(att, dict) and att.get("type") == "template" and payload.get("template_type") == "generic"
+
+
 def check_carousel_misuse(parsed) -> list[dict]:
-    """Carrosséis (template_type=generic) precisam de 2+ elementos."""
+    """Carrossel (template_type=generic): 1 cartão é permitido (imagem + texto + botão é melhor),
+    mas precisa de uma mensagem de texto antes (senão o WhatsApp manda um '.'), com os limites
+    do template: abertura até 1024, texto do cartão até 160 (título + subtítulo), botão até 25."""
     issues = []
-    for path, node in walk_json(parsed):
-        if isinstance(node, dict) and node.get("template_type") == "generic":
-            elements = node.get("elements") or []
-            if len(elements) < 2:
-                issues.append({
-                    "path": path,
-                    "problem": "carrossel com menos de 2 elementos",
-                    "severity": "block",
-                    "element_count": len(elements),
-                })
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("messages"), list):
+        return issues
+    msgs = parsed["messages"]
+    for i, item in enumerate(msgs):
+        if not _is_carousel_msg(item):
+            continue
+        path = f"$.messages[{i}].message.attachment.payload"
+        payload = item["message"]["attachment"]["payload"]
+        elements = [e for e in (payload.get("elements") or []) if isinstance(e, dict)]
+        if not elements:
+            issues.append({"path": path, "severity": "block", "element_count": 0,
+                           "problem": "carrossel sem cartões"})
+        prev = next((m for m in reversed(msgs[:i]) if _bubble_kind(m) != "typing"), None)
+        pk = _bubble_kind(prev) if prev is not None else None
+        if pk not in ("text", "button"):
+            issues.append({"path": path, "severity": "block", "element_count": len(elements),
+                           "problem": "carrossel sem mensagem de texto antes: o WhatsApp manda um '.' "
+                                      "antes do cartão. Abra com uma frase curta que diga o que vem "
+                                      "nos cartões (ex.: 'Esses são alguns modelos no 38')"})
+        else:
+            body = prev["message"]["text"] if pk == "text" else (prev["message"]["attachment"]["payload"].get("text") or "")
+            if len(body) > CAROUSEL_BODY_MAX:
+                issues.append({"path": path, "severity": "block", "element_count": len(elements),
+                               "problem": f"texto de abertura do carrossel com {len(body)} caracteres (máx. {CAROUSEL_BODY_MAX})"})
+        for n, el in enumerate(elements, start=1):
+            text_len = len(str(el.get("title") or "")) + len(str(el.get("subtitle") or ""))
+            if text_len > CARD_TEXT_MAX:
+                issues.append({"path": f"{path}.elements[{n - 1}]", "severity": "block",
+                               "element_count": len(elements),
+                               "problem": f"cartão {n} com {text_len} caracteres de texto (título + subtítulo; máx. {CARD_TEXT_MAX})"})
+            for b in el.get("buttons") or []:
+                title = b.get("title") if isinstance(b, dict) else None
+                if isinstance(title, str) and len(title) > CARD_CTA_MAX:
+                    issues.append({"path": f"{path}.elements[{n - 1}]", "severity": "block",
+                                   "element_count": len(elements),
+                                   "problem": f"botão do cartão {n} com {len(title)} caracteres (máx. {CARD_CTA_MAX}): '{title}'"})
     return issues
 
 
@@ -1247,7 +1322,7 @@ def check_octobercut_bubbles(parsed) -> list[dict]:
     messages = parsed["messages"]
     kinds = [_bubble_kind(m) for m in messages]
     issues = []
-    typing = kinds.count("typing")
+    typing = sum(1 for i, k in enumerate(kinds) if k == "typing" and not _is_media_wait(messages, i))
     if typing:
         issues.append({
             "path": "$.messages",
@@ -1265,6 +1340,23 @@ def check_octobercut_bubbles(parsed) -> list[dict]:
                     "problem": (f"`text` do button template com {len(text)} caracteres: o "
                                 f"WhatsApp rejeita acima de {BUTTON_TEXT_MAX}."),
                 })
+    for i, m in enumerate(messages):
+        if kinds[i] != "button" or i == 0:
+            continue
+        if _is_image_msg(messages[i - 1]):
+            issues.append({
+                "path": f"$.messages[{i}]",
+                "severity": "block",
+                "problem": (f"imagem seguida direto do button template: o texto pode chegar antes da "
+                            f"imagem. Coloque o typing {MEDIA_WAIT} entre os dois (imagem, {MEDIA_WAIT}, texto + botão)."),
+            })
+        elif (isinstance(messages[i - 1], int) and not isinstance(messages[i - 1], bool)
+              and messages[i - 1] != MEDIA_WAIT and i > 1 and _is_image_msg(messages[i - 2])):
+            issues.append({
+                "path": f"$.messages[{i - 1}]",
+                "severity": "block",
+                "problem": f"a espera entre imagem e botão é {MEDIA_WAIT} (2s), não {messages[i - 1]}.",
+            })
     real = [k for k in kinds if k != "typing"]
     for a, b in zip(real, real[1:]):
         if (a, b) in (("text", "text"), ("text", "button"), ("button", "text")):
@@ -1289,6 +1381,7 @@ OCTOBERCUT_PROSE_RULES = [
     (r"pergunt\w*\s+o\s+nome\s+uma\s+vez|uma\s+pergunta\s+(relevante\s+)?por\s+vez",
      "multiplica as trocas (pedir nome / uma pergunta por vez)"),
 ]
+OCTOBERCUT_MEDIA_WORDS = re.compile(r"imagem|foto|carross|bot[aã]o|vitrine|\b(2|dois)\s*(s|seg)", re.IGNORECASE)
 OCTOBERCUT_NEGATION = re.compile(
     r"\b(nunca\s+(use|divida)|n[ãa]o\s+(use|divida|pergunte|pe[çc]a)|sem\s+(typing|perguntar|pedir)|"
     r"em\s+vez\s+de|antes:|antig[oa]|substitu|no\s+m[áa]ximo)",
@@ -1306,6 +1399,8 @@ def check_octobercut_prose(content: str, json_blocks: list[dict]) -> list[dict]:
         if ln in covered or OCTOBERCUT_NEGATION.search(line):
             continue
         for rx, why in OCTOBERCUT_PROSE_RULES:
+            if "blocos" in why and OCTOBERCUT_MEDIA_WORDS.search(line):
+                continue
             if re.search(rx, line, re.IGNORECASE):
                 findings.append({
                     "line": ln,

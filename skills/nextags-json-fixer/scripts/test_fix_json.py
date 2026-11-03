@@ -256,9 +256,70 @@ def test_galeria_acima_de_10_cartoes_avisa():
     assert any("11 cartões" in p for p in pending)
 
 
+def _com_texto(data, texto="Esses são alguns modelos no 38:"):
+    data["messages"].insert(0, {"message": {"text": texto}})
+    return data
+
+
 def test_galeria_de_10_cartoes_ok():
-    _, _, pending = _run_one(_cartao(10))
+    _, _, pending = _run_one(_com_texto(_cartao(10)))
     assert pending == []
+
+
+def test_carrossel_de_1_cartao_com_texto_antes_ok():
+    _, _, pending = _run_one(_com_texto(_cartao(1)))
+    assert pending == []
+
+
+def test_carrossel_sem_texto_antes_vira_pendencia():
+    _, _, pending = _run_one(_cartao(2))
+    assert any("sem mensagem de texto antes" in p for p in pending)
+
+
+def test_carrossel_texto_de_abertura_acima_de_1024_avisa():
+    _, _, pending = _run_one(_com_texto(_cartao(2), "a" * 1025))
+    assert any("1025 caracteres" in p for p in pending)
+
+
+def test_cartao_texto_acima_de_160_e_cta_acima_de_25_avisam():
+    data = _com_texto(_cartao(2, title="t" * 80, subtitle="s" * 81))
+    _, _, pending = _run_one(data)
+    assert any("161 caracteres" in p for p in pending)
+    data = _com_texto(_cartao(2))
+    data["messages"][1]["message"]["attachment"]["payload"]["elements"][0]["buttons"] = [
+        {"type": "web_url", "title": "c" * 26, "url": "https://x.com"}]
+    _, _, pending = _run_one(data)
+    assert any("26 caracteres (limite 25)" in p for p in pending)
+    data["messages"][1]["message"]["attachment"]["payload"]["elements"][0]["buttons"][0]["title"] = "c" * 25
+    _, _, pending = _run_one(data)
+    assert pending == []
+
+
+def _img():
+    return {"message": {"attachment": {"type": "image", "payload": {"url": "https://x.com/a.jpg"}}}}
+
+
+def _btn():
+    return {"message": {"attachment": {"type": "template", "payload": {
+        "template_type": "button", "text": "Produto",
+        "buttons": [{"type": "web_url", "title": "Ver produto", "url": "https://x.com/p"}]}}}}
+
+
+def test_espera_2_inserida_entre_imagem_e_botao():
+    out, fixes, pending = _run_one({"messages": [_img(), _btn()]})
+    assert out["messages"][1] == 2 and pending == []
+    assert any("espera de 2s inserida" in f for f in fixes)
+
+
+def test_espera_errada_entre_imagem_e_botao_vira_2():
+    out, fixes, _ = _run_one({"messages": [_img(), 4, _btn()]})
+    assert out["messages"][1] == 2 and any("4 → 2" in f for f in fixes)
+
+
+def test_espera_2_correta_nao_gera_fix_nem_aviso_de_typing():
+    out, fixes, pending = _run_one({"messages": [_img(), 2, _btn()]})
+    assert out["messages"][1] == 2 and fixes == [] and pending == []
+    assert fj.octobercut_warnings(out) == []
 
 
 def test_cartao_titulo_e_subtitulo_acima_de_80_avisa():

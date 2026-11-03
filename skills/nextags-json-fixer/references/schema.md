@@ -191,15 +191,16 @@ a quebrar o envio inteiro no canal.
 ```
 
 Regras:
-- **`elements` deve ter ≥ 2 itens.** Plataforma rejeita carrossel com 1 só.
-  (Divergência com a doc oficial, ainda não resolvida: a página de mensagens e ações
-  chama de "Cartão" um `generic` com **um** elemento. O fixer continua tratando 1
-  elemento como pendência — nunca inventa o segundo cartão — até alguém confirmar no
-  canal real; decisão pendente do dono da skill.)
+- **`elements` pode ter 1 item** (a doc o chama de "Cartão"). Com 1 produto, imagem + espera
+  `2` + button template fica melhor, mas o carrossel de 1 cartão é permitido.
+- **Todo carrossel precisa de uma mensagem de texto antes**, curta, dizendo o que vem nos
+  cartões (ex.: "Esses são alguns modelos no 38"). Sem ela o WhatsApp envia um "." antes do
+  cartão. O fixer não inventa o texto: vira pendência. Texto de abertura até **1024**.
 - `image_aspect_ratio` aceita `"horizontal"` ou `"square"`.
 - Cada elemento pode ter `buttons` vazio ou com até 3 botões.
-- Limites da doc (o fixer só **avisa**, não corta): título e subtítulo do cartão até
-  **80** caracteres; até **10** cartões por galeria; título de botão até 20.
+- Limites (o fixer só **avisa**, não corta): título e subtítulo do cartão até **80** cada e
+  título + subtítulo até **160**; até **10** cartões por galeria; botão do cartão até **25**
+  caracteres (botão de button template continua até 20).
 
 > Nota de produção: carrossel `generic` NÃO aparece em nenhum dos 25 prompts
 > reais — o padrão real é botão único `web_url`. Validar continua certo, mas
@@ -352,7 +353,7 @@ não tentar "consertar" para uma ação inventada.
    `*negrito*` (asterisco ÚNICO), `_itálico_`, `~tachado~` RENDERIZA na
    plataforma (testado pelo cliente) — NÃO remover, NÃO tratar como
    violação. Emojis também NÃO são markdown — preservar.
-5. **Carrossel ≥ 2 elementos.**
+5. **Carrossel com mensagem de texto antes** (1 cartão é permitido). **Imagem + botão com espera `2`** entre os dois.
 6. **Botões `web_url` precisam de `url`.** Botões `postback` e `phone_number`
    precisam de `payload`. Até 3 botões por mensagem.
 7. **`attachment.type` apenas:** `image`, `video`, `audio`, `file`,

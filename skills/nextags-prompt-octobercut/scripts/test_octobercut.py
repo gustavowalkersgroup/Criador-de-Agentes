@@ -49,15 +49,16 @@ def test_frase_do_carrinho_vai_para_dentro_do_botao():
 def test_vitrine_imagem_botao_pergunta_vira_2():
     msgs = [IMG(), 4, BTN("Produto, R$ 0,00"), 4, T("Qual cor você prefere?")]
     out, _ = oc.merge_messages(msgs)
-    assert [oc.kind_of(m) for m in out] == ["image", "button"]
-    assert out[1]["message"]["attachment"]["payload"]["text"].endswith("Qual cor você prefere?")
+    assert [oc.kind_of(m) for m in out] == ["image", "typing", "button"]
+    assert out[1] == 2  # espera de 2s: sem ela o texto chega antes da imagem
+    assert out[2]["message"]["attachment"]["payload"]["text"].endswith("Qual cor você prefere?")
 
 
 def test_texto_antes_da_imagem_passa_para_depois():
     msgs = [T("Olha esse:"), IMG(), BTN("Produto, R$ 0,00")]
     out, _ = oc.merge_messages(msgs)
-    assert [oc.kind_of(m) for m in out] == ["image", "button"]
-    assert out[1]["message"]["attachment"]["payload"]["text"].startswith("Olha esse:")
+    assert [oc.kind_of(m) for m in out] == ["image", "typing", "button"]
+    assert out[2]["message"]["attachment"]["payload"]["text"].startswith("Olha esse:")
 
 
 def test_botao_nao_passa_de_1024():
@@ -83,6 +84,69 @@ def test_merge_payload_preserva_actions():
 def test_merge_sem_messages_nao_quebra():
     new, info = oc.merge_payload({"actions": [{"action": "send_flow", "flow_id": "1"}]})
     assert info["before"] is None and "messages" not in new
+
+
+def CAR(n=2, title="Sandália Prata", sub="R$ 199", cta="Ver modelo"):
+    els = [{"title": title, "subtitle": sub, "image_url": "https://x.com/a.jpg",
+            "buttons": [{"type": "web_url", "title": cta, "url": "https://x.com/p"}]} for _ in range(n)]
+    return {"message": {"attachment": {"type": "template", "payload": {
+        "template_type": "generic", "elements": els}}}}
+
+
+def test_merge_insere_espera_2_entre_imagem_e_botao():
+    out, notes = oc.merge_messages([IMG(), BTN("Produto, R$ 0,00")])
+    assert [oc.kind_of(m) for m in out] == ["image", "typing", "button"] and out[1] == 2
+
+
+def test_merge_troca_espera_errada_por_2():
+    out, _ = oc.merge_messages([IMG(), 4, BTN("Produto")])
+    assert out[1] == 2
+
+
+def test_merge_mantem_texto_antes_do_carrossel():
+    out, notes = oc.merge_messages([T("Esses são alguns modelos no 38:"), 4, CAR()])
+    assert [oc.kind_of(m) for m in out] == ["text", "carousel"]
+    assert not any("ATENÇÃO" in n for n in notes)
+
+
+def test_merge_avisa_carrossel_sem_texto():
+    _, notes = oc.merge_messages([CAR()])
+    assert any("ATENÇÃO" in n for n in notes)
+
+
+def test_carrossel_de_1_cartao_e_permitido():
+    ids = lambda msgs: {f["id"] for f in oc._media_findings(msgs, 1)}
+    assert ids([T("Esse é um modelo no 38:"), CAR(1)]) == set()
+
+
+def test_audit_imagem_botao_sem_espera():
+    ids = lambda msgs: {f["id"] for f in oc._media_findings(msgs, 1)}
+    assert "imagem_botao_sem_espera" in ids([IMG(), BTN("x")])
+    assert "imagem_botao_espera_errada" in ids([IMG(), 4, BTN("x")])
+    assert ids([IMG(), 2, BTN("x")]) == set()
+
+
+def test_audit_carrossel_sem_texto_antes_e_limites():
+    ids = lambda msgs: {f["id"] for f in oc._media_findings(msgs, 1)}
+    assert "carrossel_sem_texto_antes" in ids([CAR()])
+    assert "carrossel_sem_texto_antes" in ids([IMG(), CAR()])
+    assert "carrossel_texto_longo" in ids([T("a" * 1025), CAR()])
+    assert "cartao_texto_longo" in ids([T("ok"), CAR(title="a" * 100, sub="b" * 70)])
+    assert "cartao_cta_longo" in ids([T("ok"), CAR(cta="c" * 26)])
+    assert ids([T("ok"), CAR(title="a" * 80, sub="b" * 79, cta="c" * 25)]) == set()
+
+
+def test_audit_espera_2_nao_e_typing_proibido():
+    prompt = ('{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"u"}}}},2,'
+              '{"message":{"attachment":{"type":"template","payload":{"template_type":"button",'
+              '"text":"x","buttons":[{"type":"web_url","title":"Ver","url":"u"}]}}}}]}')
+    ids = {f["id"] for f in oc.audit_text(prompt)["findings"]}
+    assert "exemplo_com_typing" not in ids and "exemplo_fundivel" not in ids
+
+
+def test_prosa_imagem_e_botao_em_2_blocos_nao_e_violacao():
+    r = oc.audit_text("Produto: 2 blocos, imagem e depois o texto com botão.\n")
+    assert "blocos_multiplos" not in {f["id"] for f in r["findings"]}
 
 
 # ---- audit -----------------------------------------------------------
@@ -120,7 +184,7 @@ def test_bloco_canonico_passa_limpo():
     r = oc.audit_text(block)
     assert r["summary"]["blocks"] == 0, r["findings"]
     assert r["summary"]["warnings"] == 0, r["findings"]
-    assert r["summary"]["examples"] == 4
+    assert r["summary"]["examples"] == 5
 
 
 # ---- estimate --------------------------------------------------------

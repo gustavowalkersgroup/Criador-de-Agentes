@@ -56,10 +56,10 @@ antigo do `prompt_skeleton.md` §6B.5).
 {"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},4,{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>"}]}}}},4,{"message":{"text":"Qual cor você prefere?"}}]}
 ```
 
-**Depois (2):** imagem + 1 template de botão com a pergunta dentro.
+**Depois (2 blocos):** imagem, espera de 2s e 1 template de botão com a pergunta dentro.
 
 ```json
-{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>\n\nQual cor você prefere?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>"}]}}}}]}
+{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"<URL_IMAGEM>"}}}},2,{"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"<produto>, R$ 0,00\n<pitch curto>\n\nQual cor você prefere?","buttons":[{"type":"web_url","title":"Comprar agora","url":"<URL_PRODUTO>"}]}}}}]}
 ```
 
 Fotos das variações (cores, tamanhos) só se a cliente pedir.

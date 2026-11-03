@@ -67,7 +67,7 @@
 - [x] Detecção de ações proibidas (`transfer_conversation_to`,
       `assign_conversation`, `unassign_conversation`).
 - [x] Uso de botões apenas com `web_url` externo.
-- [x] Carrosséis com pelo menos 2 elementos.
+- [x] Carrosséis com texto antes e dentro dos limites; imagem + botão com espera de 2s.
 - [x] `attachment.type` FORA de `payload` (no mesmo nível).
 - [x] URLs de imagem em JPEG/PNG apenas — WebP/AVIF/SVG/GIF flagados.
 - [x] Ausência de markdown (`**`, `#`, `` ` ``, etc.) dentro de campos
@@ -114,7 +114,7 @@ avaliados pelos itens acima que pressupõem JSON/handoff; ver Regra 23 de
 | JSONs inválidos (sintaxe) | {INVALID_JSON_COUNT} |
 | Ações proibidas em JSON | {FORBIDDEN_ACTIONS_COUNT} |
 | Botões usados sem `web_url` | {BUTTON_MISUSE_COUNT} |
-| Carrosséis com menos de 2 itens | {CAROUSEL_MISUSE_COUNT} |
+| Carrosséis fora das regras (sem texto antes, limites do template) | {CAROUSEL_MISUSE_COUNT} |
 | Markdown dentro de JSON | {MARKDOWN_IN_JSON_COUNT} |
 | `type` dentro de `payload` (deve ficar fora) | {TYPE_INSIDE_PAYLOAD_COUNT} |
 | Imagens em formato proibido (WebP/AVIF/SVG/GIF) | {FORBIDDEN_IMAGE_FORMATS_COUNT} |

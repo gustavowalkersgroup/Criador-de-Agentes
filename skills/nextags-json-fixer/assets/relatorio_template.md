@@ -64,7 +64,7 @@
 - [x] `attachment.type` está FORA de `payload` (move pra fora se estiver dentro).
 - [x] URLs de imagem são absolutas (http://, https://) e em JPEG/PNG (rejeita WebP/AVIF/SVG/GIF).
 - [x] `template_type` ∈ {generic, button}.
-- [x] Carrossel com ≥ 2 elementos.
+- [x] Carrossel com mensagem de texto antes e limites do template (abertura 1024, cartão 160, botão 25).
 - [x] Botões `web_url` com `url`; `postback` e `phone_number` com `payload`.
 - [x] Typing indicator é inteiro entre 1–30 segundos.
 - [x] Markdown removido de `text`/`title`/`subtitle`.
