@@ -284,11 +284,38 @@ def test_generic_placeholder_blocks():
 
 # ---- Carrossel com 1 card = BLOCK -------------------------------------
 
-def test_carousel_one_card_blocks():
-    content = ('{"messages":[{"message":{"attachment":{"type":"template","payload":'
-               '{"template_type":"generic","elements":[{"title":"X","image_url":"http://i"}]}}}}]}\n')
-    f = ap.analyze(content)
-    assert "carousel_misuse" in _types(f)
+def _car(n=1, title="X", sub="R$ 9", cta="Ver modelo"):
+    els = ",".join('{"title":"%s","subtitle":"%s","image_url":"https://i.com/a.jpg",'
+                   '"buttons":[{"type":"web_url","title":"%s","url":"https://i.com"}]}' % (title, sub, cta)
+                   for _ in range(n))
+    return ('{"message":{"attachment":{"type":"template","payload":'
+            '{"template_type":"generic","elements":[%s]}}}}' % els)
+
+
+def _carousel_problems(messages_json):
+    f = ap.analyze('{"messages":[%s]}\n' % messages_json)
+    it = _issue(f, "carousel_misuse")
+    return [d["problem"] for d in it["details"]] if it else []
+
+
+def test_carousel_sem_texto_antes_blocks():
+    assert any("sem mensagem de texto antes" in p for p in _carousel_problems(_car(2)))
+    img = '{"message":{"attachment":{"type":"image","payload":{"url":"https://i.com/a.jpg"}}}}'
+    assert any("sem mensagem de texto antes" in p for p in _carousel_problems(img + "," + _car(2)))
+
+
+def test_carousel_com_texto_antes_ok_inclusive_1_cartao():
+    intro = '{"message":{"text":"Esses são alguns modelos no 38:"}}'
+    assert _carousel_problems(intro + "," + _car(1)) == []
+    assert _carousel_problems(intro + ",4," + _car(2)) == []
+
+
+def test_carousel_limites_do_template():
+    intro = '{"message":{"text":"Esses são alguns modelos:"}}'
+    assert any("máx. 1024" in p for p in _carousel_problems('{"message":{"text":"%s"}},%s' % ("a" * 1025, _car(2))))
+    assert any("máx. 160" in p for p in _carousel_problems(intro + "," + _car(2, title="a" * 90, sub="b" * 71)))
+    assert any("máx. 25" in p for p in _carousel_problems(intro + "," + _car(2, cta="c" * 26)))
+    assert _carousel_problems(intro + "," + _car(2, title="a" * 80, sub="b" * 80, cta="c" * 25)) == []
 
 
 # ---- JSON obrigatório é dinâmico: block se age, warn se só conversa ---
@@ -663,12 +690,21 @@ def test_octobercut_texto_mais_botao_warns():
     assert "octobercut_bolhas" in _types(ap.analyze(content))
 
 
-def test_octobercut_imagem_mais_botao_ok():
-    content = ('{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"https://x.com/a.jpg"}}}},'
+def test_octobercut_imagem_mais_botao_com_espera_2_ok():
+    content = ('{"messages":[{"message":{"attachment":{"type":"image","payload":{"url":"https://x.com/a.jpg"}}}},2,'
                '{"message":{"attachment":{"type":"template","payload":{"template_type":"button",'
                '"text":"Produto\\n\\nQual cor?","buttons":[{"type":"web_url","title":"Comprar agora",'
                '"url":"https://x.com/p"}]}}}}]}\n')
     assert "octobercut_bolhas" not in _types(ap.analyze(content))
+
+
+def test_octobercut_imagem_mais_botao_sem_espera_blocks():
+    btn = ('{"message":{"attachment":{"type":"template","payload":{"template_type":"button",'
+           '"text":"Produto","buttons":[{"type":"web_url","title":"Comprar agora","url":"https://x.com/p"}]}}}}')
+    img = '{"message":{"attachment":{"type":"image","payload":{"url":"https://x.com/a.jpg"}}}}'
+    for seq in (img + "," + btn, img + ",4," + btn):
+        it = _issue(ap.analyze('{"messages":[%s]}\n' % seq), "octobercut_bolhas")
+        assert it is not None and any(d["severity"] == "block" for d in it["details"]), seq
 
 
 def test_octobercut_botao_texto_longo_blocks():
@@ -694,6 +730,24 @@ def test_octobercut_secao_ausente_warns_e_presente_ok():
     assert keys.get("formato_economico_octobercut") == "warn"
     keys = {m["key"] for m in ap.analyze("## FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)\n")["missing_sections"]}
     assert "formato_economico_octobercut" not in keys
+
+
+def test_secoes_correcao_e_descadastro_warn_e_presentes():
+    keys = {m["key"] for m in ap.analyze("Você é a Ana.\n")["missing_sections"]}
+    assert {"correcao_e_portugues", "descadastro_stop_sair"} <= keys
+    ok = ("PORTUGUÊS DO BRASIL, SEM ERRO. QUANDO O CLIENTE CORRIGIR algo, explique em uma frase.\n"
+          "DESCADASTRO DE DISPAROS (STOP / SAIR): dispare o fluxo.\n")
+    keys = {m["key"] for m in ap.analyze(ok)["missing_sections"]}
+    assert not ({"correcao_e_portugues", "descadastro_stop_sair"} & keys)
+
+
+def test_resumo_em_portugues_so_cobra_se_tem_handoff():
+    def keys(c):
+        return {m["key"] for m in ap.analyze(c)["missing_sections"]}
+    assert "resumo_em_portugues" not in keys("Você é a Ana.\n")
+    assert "resumo_em_portugues" in keys("Grave resumo_pipeline e dispare send_flow.\n")
+    assert "resumo_em_portugues" not in keys(
+        "Grave resumo_pipeline; o resumo é SEMPRE em português do Brasil.\n")
 
 
 def test_skeleton_sem_warn_octobercut():

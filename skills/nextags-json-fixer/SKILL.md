@@ -15,9 +15,9 @@ carrosséis, botões e disparar ações.
 - **Não corrige o prompt** do agente. Pra isso use `nextags-prompt-fixer`.
 - **Não inventa conteúdo** que não estava no JSON original (textos, URLs,
   flow_ids, image_url). Se faltar, vira placeholder + pendência.
-- **Não altera a intenção** da resposta. Se o agente quis enviar um
-  carrossel com 1 card, a skill vira pendência (não inventa o segundo
-  card) — opcionalmente sugere converter pra imagem simples.
+- **Não altera a intenção** da resposta. Carrossel com 1 card é permitido e
+  fica como está (a skill só sugere imagem + espera 2 + botão, que fica melhor).
+  Carrossel sem frase de abertura vira pendência: a skill não inventa o texto.
 
 ## Quando essa skill se aplica
 
@@ -30,7 +30,7 @@ Use sempre que o usuário trouxer um JSON gerado por agente NexTags que:
   `{"text":"oi"}` direto, sem o wrapper `{messages:[{message:{...}}]}`).
 - Usa **tipo de attachment não suportado** (ex.: `"type":"sticker"`).
 - Tem **botão `web_url` sem `url`**, ou `postback` sem `payload`.
-- Tem **carrossel com menos de 2 elementos** (a plataforma exige ≥ 2).
+- Tem **carrossel sem mensagem de texto antes** (o WhatsApp manda um "." antes do cartão), ou **imagem seguida direto de texto com botão** (falta a espera `2`).
 - Usa **ação com nome errado** (ex.: `"addTag"` em vez de `"add_tag"`,
   `"transfer_to_human"` em vez de `"transfer_conversation_to"`).
 - Tem **typing indicator inválido** (string em vez de inteiro, ou valor
@@ -106,9 +106,12 @@ documenta o schema oficial completo com exemplos validados.
 | Botão com CTA (`title`) > 20 chars | Aviso (não trunca automaticamente; sinaliza). |
 | Mensagem só do WhatsApp em `messages` (`messaging_product:"whatsapp"`, `"to":null`) | **Válida — passa intacta**. Não embrulhar em `message`, não descartar. |
 | `quick_replies` | Preservadas; aviso só se >11. |
-| Cartão: título/subtítulo > 80, galeria > 10 cartões, cartão com > 3 botões | Pendência de aviso (limites da doc); não corta. |
+| Cartão: título/subtítulo > 80, título + subtítulo > 160, galeria > 10 cartões, cartão com > 3 botões, botão do cartão > 25, texto antes do carrossel > 1024 | Pendência de aviso (limites do template); não corta. |
+| Imagem seguida direto de button template, ou com espera diferente de `2` | **Corrige:** insere/troca pela espera `2` (imagem, 2, texto + botão); sem ela o texto chega antes da imagem. |
+| `resumo_pipeline` em outro alfabeto (russo, árabe, chinês...) | Pendência: o resumo vai para a equipe e é sempre em português do Brasil. Não traduz (não inventa conteúdo). |
+| Carrossel sem mensagem de texto antes | Pendência: escrever uma frase curta que diga o que vem nos cartões. Não inventa o texto. |
 | `transfer_conversation_to` com `value:"bot"` | **Válido** (devolve ao robô). Só normaliza a caixa. Outro valor desconhecido → `human`. |
-| Carrossel com 1 elemento | Converter pra `message` com `attachment` `image` + texto; OU pendência. |
+| Carrossel com 1 elemento | **Permitido**, não mexe. Imagem + 2 + botão fica melhor, mas é escolha do prompt. |
 | Carrossel com 0 elementos | Remover bloco; pendência. |
 | Nome de ação errado | Mapear pra nome canônico (ver `references/schema.md`). |
 | Ação com campo faltando (ex.: `set_field_value` sem `value`) | Pendência. |

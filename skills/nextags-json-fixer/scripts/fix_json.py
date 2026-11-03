@@ -35,6 +35,11 @@ MAX_BUTTONS = 3
 MAX_BUTTON_TITLE = 20
 MAX_CARD_TEXT = 80          # título e subtítulo do cartão
 MAX_CARDS = 10              # cartões numa galeria
+MAX_CARD_BODY = 160         # texto do cartão: título + subtítulo
+MAX_CARD_CTA = 25           # título do botão do cartão
+MAX_CAROUSEL_INTRO = 1024   # mensagem de texto que abre o carrossel
+NON_LATIN = re.compile(r"[\u0370-\u03ff\u0400-\u04ff\u0590-\u06ff\u0900-\u0dff\u0e00-\u0eff\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+MEDIA_WAIT = 2              # espera (typing) de 2s entre imagem e texto + botão
 MAX_QUICK_REPLIES = 11
 VALID_IMAGE_ASPECT_RATIOS = {"horizontal", "square"}
 
@@ -343,14 +348,8 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                     return msg
                 if len(elements) == 0:
                     pending.append(
-                        f"{path}: carrossel sem elementos — bloco precisa "
-                        f"ser removido ou ter ≥ 2 cards."
-                    )
-                elif len(elements) == 1:
-                    pending.append(
-                        f"{path}: carrossel com 1 card só (plataforma exige ≥ 2). "
-                        f"Considere converter pra attachment 'image' ou "
-                        f"adicionar um segundo card."
+                        f"{path}: carrossel sem cartões — bloco precisa "
+                        f"ser removido ou ter ao menos 1 card."
                     )
                 if len(elements) > MAX_CARDS:
                     pending.append(
@@ -386,6 +385,12 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                                 pending.append(
                                     f"{el_path}.image_url: {reason}"
                                 )
+                    body_len = sum(len(el[f]) for f in ("title", "subtitle") if isinstance(el.get(f), str))
+                    if body_len > MAX_CARD_BODY:
+                        pending.append(
+                            f"{el_path}: texto do cartão com {body_len} caracteres "
+                            f"(título + subtítulo; limite {MAX_CARD_BODY})."
+                        )
                     for field in ("title", "subtitle"):
                         v = el.get(field)
                         if isinstance(v, str) and len(v) > MAX_CARD_TEXT:
@@ -400,7 +405,7 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
                             )
                         for bidx, b in enumerate(btns):
                             fix_button(b, fixes, pending,
-                                       f"{el_path}.buttons[{bidx}]")
+                                       f"{el_path}.buttons[{bidx}]", MAX_CARD_CTA)
 
             elif ttype == "button":
                 if "text" in payload and isinstance(payload["text"], str):
@@ -426,7 +431,7 @@ def fix_message_object(msg: Any, fixes: list[str], pending: list[str],
 
 
 def fix_button(btn: Any, fixes: list[str], pending: list[str],
-               path: str) -> None:
+               path: str, max_title: int = MAX_BUTTON_TITLE) -> None:
     if not isinstance(btn, dict):
         pending.append(f"{path}: botão não é objeto.")
         return
@@ -453,9 +458,9 @@ def fix_button(btn: Any, fixes: list[str], pending: list[str],
         if changed:
             fixes.append(f"{path}.title: markdown removido")
             btn["title"] = cleaned
-        if len(btn["title"]) > MAX_BUTTON_TITLE:
+        if len(btn["title"]) > max_title:
             pending.append(
-                f"{path}.title com {len(btn['title'])} caracteres (limite {MAX_BUTTON_TITLE}): encurtar."
+                f"{path}.title com {len(btn['title'])} caracteres (limite {max_title}): encurtar."
             )
 
 
@@ -521,6 +526,62 @@ def fix_messages_array(messages: Any, fixes: list[str],
             out.append(item)
             continue
         pending.append(f"{path}: tipo inesperado ({type(item).__name__}).")
+    return fix_media_order(out, fixes, pending)
+
+
+def _msg_kind(item: Any) -> str:
+    """image | button | carousel | text | typing | other (para ordem e espera)."""
+    if isinstance(item, int) and not isinstance(item, bool):
+        return "typing"
+    msg = item.get("message") if isinstance(item, dict) else None
+    if not isinstance(msg, dict):
+        return "other"
+    att = msg.get("attachment")
+    if isinstance(att, dict):
+        payload = att.get("payload") if isinstance(att.get("payload"), dict) else {}
+        if att.get("type") == "template":
+            return {"button": "button", "generic": "carousel"}.get(payload.get("template_type"), "other")
+        if att.get("type") in ("image", "video", "audio", "file"):
+            return "image"
+        return "other"
+    return "text" if isinstance(msg.get("text"), str) else "other"
+
+
+def fix_media_order(out: list[Any], fixes: list[str], pending: list[str]) -> list[Any]:
+    """Imagem + texto com botão sai em 2 blocos com espera de 2s; carrossel precisa de
+    texto antes. A espera é mecânica (corrige); o texto do carrossel é conteúdo (pendência)."""
+    i = 0
+    while i < len(out):
+        k = _msg_kind(out[i])
+        if k == "button" and i > 0:
+            prev = out[i - 1]
+            if _msg_kind(prev) == "image":
+                out.insert(i, MEDIA_WAIT)
+                fixes.append(f"messages[{i}]: espera de {MEDIA_WAIT}s inserida entre a imagem e o "
+                             "botão (sem ela o texto chega antes da imagem)")
+                i += 1
+            elif (_msg_kind(prev) == "typing" and prev != MEDIA_WAIT and i > 1
+                  and _msg_kind(out[i - 2]) == "image"):
+                fixes.append(f"messages[{i - 1}]: espera entre imagem e botão {prev} → {MEDIA_WAIT}")
+                out[i - 1] = MEDIA_WAIT
+        elif k == "carousel":
+            before = next((m for m in reversed(out[:i]) if _msg_kind(m) != "typing"), None)
+            bk = _msg_kind(before) if before is not None else None
+            if bk not in ("text", "button"):
+                pending.append(
+                    f"messages[{i}]: carrossel sem mensagem de texto antes — o WhatsApp manda um '.' "
+                    "antes do cartão. Escrever uma frase curta que diga o que vem nos cartões "
+                    "(ex.: 'Esses são alguns modelos no 38')."
+                )
+            else:
+                body = (before["message"]["text"] if bk == "text"
+                        else before["message"]["attachment"]["payload"].get("text") or "")
+                if len(body) > MAX_CAROUSEL_INTRO:
+                    pending.append(
+                        f"messages[{i}]: texto antes do carrossel com {len(body)} caracteres "
+                        f"(limite {MAX_CAROUSEL_INTRO})."
+                    )
+        i += 1
     return out
 
 
@@ -573,6 +634,15 @@ def fix_actions_array(actions: Any, fixes: list[str],
                     f"{path}.value='{val}' → 'human' (valores suportados: human, bot)"
                 )
                 act["value"] = "human"
+        # resumo_pipeline vai para a equipe, que lê em português: alfabeto não latino
+        # (russo, árabe, chinês...) é sinal de que a IA resumiu no idioma do cliente.
+        if (name == "set_field_value" and act.get("field_name") == "resumo_pipeline"
+                and isinstance(act.get("value"), str) and NON_LATIN.search(act["value"])):
+            pending.append(
+                f"{path}: `resumo_pipeline` escrito em outro idioma/alfabeto. O resumo vai para a "
+                "equipe e é sempre em português do Brasil; reescrever em português (não traduzo "
+                "para não inventar conteúdo)."
+            )
         out.append(act)
     return out
 
@@ -657,8 +727,11 @@ def octobercut_warnings(fixed: dict) -> list[str]:
     kinds = [kind(m) for m in msgs]
     real = [k for k in kinds if k != "typing"]
     out: list[str] = []
-    if "typing" in kinds:
-        out.append(f"{kinds.count('typing')} typing indicator(s): cada um cria bolha nova, "
+    stray = sum(1 for i, k in enumerate(kinds) if k == "typing" and not (
+        msgs[i] == MEDIA_WAIT and 0 < i < len(kinds) - 1
+        and _msg_kind(msgs[i - 1]) == "image" and kinds[i + 1] == "button"))
+    if stray:
+        out.append(f"{stray} typing indicator(s): cada um cria bolha nova, "
                    "cobrada pela Meta. Juntar o texto com \\n\\n num `text` só.")
     if any(p in (("text", "text"), ("text", "button"), ("button", "text"))
            for p in zip(real, real[1:])):

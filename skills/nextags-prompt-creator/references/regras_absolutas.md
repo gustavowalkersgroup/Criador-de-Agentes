@@ -127,25 +127,40 @@ botão `web_url` sem `url`, ou mais de 1 botão `web_url` na mesma mensagem.
 
 ---
 
-## 4. Carrossel com menos de 2 itens
+## 4. Carrossel e vitrine de produto
 
-**Regra:** carrosséis (`template_type: "generic"`) servem para listar 2+
-produtos com imagem. Para 1 item, use texto + attachment de imagem.
+**Regra:**
 
-**Limites oficiais** (docs.nextags.com.br › Mensagens e ações em JSON): título e
-subtítulo do cartão até **80 caracteres**, até **3 botões** por cartão, até **10
-cartões** na galeria. `image_aspect_ratio` é `horizontal` ou `square`. Cartão e galeria
-não vão para Telegram e TikTok. **Carrossel (`generic` com 2 ou mais cartões) funciona no
-WhatsApp pelo JSON do agente:** o dono já tem vários em produção (confirmado em 26/10/2026).
-A restrição da doc ("galeria com mais de um cartão não vai para o WhatsApp") vale para a lista
-de canais do editor de fluxo, não para o JSON. **Um cartão só não é carrossel:** use button
-template (ou imagem + botão).
+1. **Um produto = imagem + texto + botão, em 2 blocos com espera de 2s:**
+   `[imagem, 2, button template]`. A espera é o inteiro `2` (nunca `4`) e é **obrigatória**:
+   sem ela o texto com o botão chega antes da imagem (visto na Ame Pet e na Uzzelui). O
+   `text` do botão leva descrição, preço e a pergunta seguinte; botões `web_url` com título
+   até 20 caracteres.
+2. **Carrossel (`template_type: "generic"`) com 1 cartão é permitido**, mas a vitrine do item 1
+   fica melhor. Para 2 ou mais produtos, o carrossel é o formato certo.
+3. **Todo carrossel precisa de uma mensagem de texto antes**, curta, dizendo o que vem nos
+   cartões (ex.: "Esses são alguns modelos no 38", "Esses são alguns combos do produto X").
+   Sem ela o WhatsApp manda um "." antes do cartão. O texto de abertura é o corpo do template.
+4. **Limites do template do WhatsApp:** texto de abertura até **1024** caracteres; texto do
+   cartão (título + subtítulo) até **160**; botão CTA do cartão até **25**. Pela doc
+   (docs.nextags.com.br › Mensagens e ações em JSON): até **3 botões** por cartão, até **10
+   cartões**, `image_aspect_ratio` `horizontal` ou `square`; cartão e galeria não vão para
+   Telegram e TikTok. O carrossel funciona no WhatsApp pelo JSON do agente (produção do dono,
+   26/10/2026); a restrição da doc vale para a lista de canais do editor de fluxo.
 
-**Como corrigir:** transforme em uma sequência de mensagens com texto e a
-imagem como attachment.
+**Severidade:** **block** para carrossel sem texto antes, texto de abertura, cartão ou botão
+acima dos limites, e imagem seguida direto do button template sem o `2` (check
+`carousel_misuse` e `octobercut_bolhas`).
+
+**Como corrigir:** acrescente a frase de abertura antes do carrossel; troque a espera da
+vitrine por `2`; encurte o que passou do limite sem mudar o sentido.
 
 **Antes:**
 ```json
+{"messages":[
+  {"message":{"attachment":{"type":"image","payload":{"url":"https://..."}}}},
+  {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Produto X, R$ 99\nDescrição","buttons":[{"type":"web_url","title":"Ver produto","url":"https://..."}]}}}}
+]}
 {"messages":[{"message":{"attachment":{"payload":{"elements":[
   {"title":"Produto X","subtitle":"Descrição","image_url":"https://...","buttons":[]}
 ],"template_type":"generic","image_aspect_ratio":"horizontal"},"type":"template"}}}]}
@@ -154,8 +169,15 @@ imagem como attachment.
 **Depois:**
 ```json
 {"messages":[
-  {"message":{"text":"Produto X — Descrição"}},
-  {"message":{"attachment":{"payload":{"url":"https://..."},"type":"image"}}}
+  {"message":{"attachment":{"type":"image","payload":{"url":"https://..."}}}},
+  2,
+  {"message":{"attachment":{"type":"template","payload":{"template_type":"button","text":"Produto X, R$ 99\nDescrição","buttons":[{"type":"web_url","title":"Ver produto","url":"https://..."}]}}}}
+]}
+{"messages":[
+  {"message":{"text":"Esses são alguns modelos no 38:"}},
+  {"message":{"attachment":{"payload":{"elements":[
+    {"title":"Produto X","subtitle":"Descrição","image_url":"https://...","buttons":[{"type":"web_url","title":"Ver modelo","url":"https://..."}]}
+  ],"template_type":"generic","image_aspect_ratio":"horizontal"},"type":"template"}}}
 ]}
 ```
 
@@ -374,7 +396,8 @@ uma por cima.
 canônico por setor), `set_field_value prioridade_pipeline`
 (`baixa|media|alta`), `set_field_value resumo_pipeline` (2-4 frases), nesta
 ordem, com `send_flow` sempre por último. Existe **UM** `<ID_DO_FLUXO_PIPELINE>`
-— a fila é decidida pelo VALOR de `motivo_transferencia`, não pelo `flow_id`.
+— a fila é decidida pelo VALOR de `motivo_transferencia`, não pelo `flow_id`. O `resumo_pipeline` é **sempre em português do Brasil**, mesmo que o cliente fale outro idioma
+(caso Ame Pet: cliente russo, resumo em russo).
 Detalhe completo (enum por setor, critério de prioridade, conteúdo do
 resumo, tabela de legado) em `references/campos_canonicos.md` §2, §2.1-§2.4 —
 não duplicar aqui.
@@ -484,8 +507,8 @@ depois — mas confira, porque na maioria dos casos não vem.
 
 **Regra:** uma resposta = uma mensagem. O texto vai inteiro num único objeto `text`
 (parágrafos com `\n\n`, até ~1.000 caracteres), sem typing indicator entre textos.
-Produto = no máximo imagem + template de botão (descrição, preço, pergunta e CTA no
-`text` do botão). A frase de um link de compra vai dentro do `text` do botão. Sem
+Produto = imagem, espera de 2s (typing `2`, o único permitido) e template de botão
+(descrição, preço, pergunta e CTA no `text` do botão). A frase de um link de compra vai dentro do `text` do botão. Sem
 mensagem de espera ("deixa eu verificar") e sem bolha só de despedida. Abertura já diz
 como o agente ajuda; perguntas agrupadas, no máximo uma rodada antes de indicar
 produto; não pedir o nome só por pedir.
@@ -545,3 +568,39 @@ cada chamada.
 - **Como corrigir:** tirar a variável do bloco `## DADOS DESTA CONVERSA` e reescrever a frase que a chama de "única memória"
   para "as mensagens anteriores desta conversa são sua memória". Não mexer no resto.
 - Decisão do dono, 26/10/2026. Caso real: vendas v3.0 e SAC v1.7 da Degan.
+
+---
+
+## 31. Português sem erro e correção do cliente
+
+**Regra:** nenhuma IA do padrão Walkers pode errar o português. O prompt manda a IA reler cada frase antes de enviar
+(concordância, crase, acentos, pontuação, regência, modo verbal: "caso mude de ideia", nunca "caso mudar") e usar o vocabulário
+do Brasil ("assinatura", "cancelar", "celular"; nada de "subscrição", "anular", "telemóvel").
+
+A IA pode responder ao cliente no idioma dele, mas o que vai para a equipe (`resumo_pipeline`, valores de campos, tags, notas) é **sempre em português do Brasil**.
+
+Quando o cliente **corrigir algo que a IA disse**, a IA responde em **uma frase curta e gentil**, **explica por que falou
+daquele jeito** (se a forma estava certa) ou reconhece o erro sem drama (se o cliente tem razão), e **volta ao assunto
+principal na mesma mensagem**. Sem pedir desculpa várias vezes, sem discutir gramática, sem prolongar a conversa.
+
+- O analisador avisa `correcao_e_portugues` (warn) quando o prompt não traz a seção. Bloco pronto: `prompt_skeleton.md` §9.5.
+- **Como corrigir:** inserir o bloco "PORTUGUÊS E CORREÇÕES DO CLIENTE" depois do controle de conversa. Nos prompts já escritos,
+  revisar também o texto do próprio prompt e dos exemplos: erro de português ali é copiado pela IA.
+- Decisão do dono, 03/11/2026. Caso real: cliente corrigiu "caso mudar de ideia" e a IA só repetiu a frase, e o fluxo de
+  descadastro falava "subscrição" (português de Portugal).
+
+---
+
+## 32. Descadastro de disparos (STOP / SAIR)
+
+**Regra:** os disparos (broadcast) terminam com "Digite STOP para sair", e toda conta tem um **fluxo de descadastro**, que só tira o contato da lista de disparos: **não bloqueia o contato**, que segue sendo atendido normalmente se voltar a falar. Quando o
+cliente escreve STOP, SAIR, "parar", "não quero mais receber" ou "cancelar inscrição" (e quando responde sim ou não à pergunta
+de confirmação desse fluxo), a IA **não responde com texto, não tenta reter, não oferece produto e não pergunta o motivo**:
+dispara só `{"actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DESCADASTRO>"}]}`. Se depois o cliente pedir outra coisa, a IA atende normalmente.
+
+- O analisador avisa `descadastro_stop_sair` (warn) quando o prompt não trata STOP/SAIR. Bloco pronto: `prompt_skeleton.md` §9.6.
+- **O ID do fluxo:** peça ao responsável pela conta ou, com acesso à API (skill `nextags-api`), liste `GET /accounts/flows` e
+  procure por "SAIR" ou "STOP". Sem ID confirmado: placeholder + pendência, nunca inventar.
+- **Como testar:** no **Testar Agora**, mande STOP e depois "sim" e confira que a IA não puxa conversa de vendas por cima do fluxo.
+- Decisão do dono, 03/11/2026. Caso real (Uzzelui): cliente mandou "Stop", o fluxo perguntou se queria sair, ela respondeu "Sim"
+  e a IA respondeu "Você procura sandália, tênis ou bota?".

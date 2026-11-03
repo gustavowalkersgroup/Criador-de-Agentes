@@ -258,13 +258,13 @@ Se for CRM ou outro caso, adaptar. -->
 
 {"messages": [{"message": {"text": "..."}}]}
 
-— Exemplo — texto + imagem (1 produto):
+— Exemplo — 1 produto (imagem, espera de 2 e texto com botão):
 
-{"messages": [{"message": {"text": "..."}},{"message": {"attachment": {"type": "image", "payload": {"url": "https://..."}}}}]}
+{"messages": [{"message": {"attachment": {"type": "image", "payload": {"url": "https://..."}}}},2,{"message": {"attachment": {"type": "template", "payload": {"template_type": "button", "text": "...", "buttons": [{"type": "web_url", "title": "Ver e comprar", "url": "https://..."}]}}}}]}
 
-— Exemplo — carrossel (2+ produtos com botão Comprar):
+— Exemplo — carrossel (texto antes, depois os cartões com botão):
 
-{"messages": [{"message": {"attachment": {"type": "template", "payload": {"template_type": "generic","image_aspect_ratio": "horizontal","elements": [{"title": "...", "subtitle": "R$ ...", "image_url": "https://...", "buttons": [{"type": "web_url", "url": "https://...", "title": "Ver e comprar"}]}]}}}}]}
+{"messages": [{"message": {"text": "Esses são alguns modelos no 38:"}},{"message": {"attachment": {"type": "template", "payload": {"template_type": "generic","image_aspect_ratio": "horizontal","elements": [{"title": "...", "subtitle": "R$ ...", "image_url": "https://...", "buttons": [{"type": "web_url", "url": "https://...", "title": "Ver e comprar"}]}]}}}}]}
 
 — Exemplo — disparo silencioso (NPS, só actions):
 
@@ -276,7 +276,9 @@ Se for CRM ou outro caso, adaptar. -->
 
 ### Regras
 
-- **Carrossel exige no mínimo 2 elements.** Se só 1 produto, use texto + imagem.
+- **Imagem + botão = 2 blocos com espera de 2s** (`imagem, 2, button template`); sem o `2` o texto chega antes da imagem.
+- **Carrossel sempre com mensagem de texto antes** (senão o WhatsApp manda um "." antes do cartão). 1 cartão é permitido, mas imagem + 2 + botão é melhor.
+- **Limites do carrossel:** abertura até 1024, texto do cartão (título + subtítulo) até 160, botão do cartão até 25 caracteres.
 - **Botão de link `web_url`: no máximo 1 por mensagem** (restrição do WhatsApp). Botões `postback` (disparam fluxo ao clicar) são permitidos — até 3, mas a IA raramente usa.
 - **Max 10 elements** por carrossel.
 - **`subtitle`** é texto curto, sem markdown-padrão (marcação WhatsApp `*_~` ok).
@@ -316,7 +318,7 @@ Se for CRM ou outro caso, adaptar. -->
 
 1. Identificar interesse
 2. Consultar catálogo (`<TOOL_INDICE>` se cor/genérico, `<TOOL_BUSCA>` se nome)
-3. Apresentar 1 produto via texto+imagem OU 2+ via carrossel
+3. Apresentar 1 produto via imagem + espera 2 + botão OU 2+ via carrossel (com texto antes)
 4. Cada produto deve ter botão "Ver e comprar" com `web_url`
 5. Mencionar <CUPOM>
 6. CTA pro site

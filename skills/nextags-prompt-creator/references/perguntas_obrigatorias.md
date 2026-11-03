@@ -189,6 +189,16 @@ formulário). Liste cada um (propósito + `flow_id`)."
 gigante (ver "DELEGUE AO FLUXO" no skeleton). A fronteira IA↔fluxo é dirigida
 pelos fluxos que o cliente já tem. Sem `flow_id` confirmado → placeholder + pendência.
 
+### 2.5 Fluxo de descadastro dos disparos (STOP / SAIR)
+Pergunta: "Qual o ID do fluxo que faz o descadastro dos disparos (cliente digita
+STOP ou SAIR)? Toda conta tem um." Com acesso à API (skill `nextags-api`), em vez de
+perguntar, liste `GET /accounts/flows` e procure por "SAIR" ou "STOP" no nome.
+
+O fluxo só tira o contato da lista de disparos: não bloqueia o contato, que segue sendo atendido.
+
+⚠️ Sem ID confirmado → placeholder `<ID_DO_FLUXO_DESCADASTRO>` + pendência. A IA nunca
+responde STOP/SAIR com texto: dispara só esse fluxo (seção 9.6 do skeleton).
+
 ---
 
 ## 3. Conteúdo e regras

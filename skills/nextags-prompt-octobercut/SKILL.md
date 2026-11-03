@@ -39,7 +39,7 @@ texto do atendente humano, imagem, botão, carrossel e mensagens que um fluxo
 | OC-2 | **Abertura proativa.** A primeira mensagem já diz como o agente ajuda, lista os caminhos e indica o próximo passo ("me manda seu CPF que eu já consulto"). | "Oi!" + "Como posso ajudar?" | 1 mensagem com os caminhos |
 | OC-3 | **Conversa orientada por perguntas.** Quem atende conduz: perguntas fechadas ou com opções, pedindo **tudo o que precisa de uma vez** (CPF + nº do pedido, tipo de cabelo + objetivo). No máximo **uma rodada** de diagnóstico antes de indicar produto. | 1 pergunta por vez | perguntas agrupadas |
 | OC-4 | **Não perguntar o nome por perguntar.** Usa `{{first_name}}` quando válido; se vazio/"Guest", saudação neutra, sem pedir nome. Só pede o nome se um processo exige, e junto com os outros dados. | "Qual seu nome?" | saudação neutra |
-| OC-5 | **Vitrine enxuta.** Produto = **1 imagem + 1 button template** (descrição + preço + CTA + pergunta de follow-up no mesmo `text`). Fotos de variações só se a cliente pedir. | imagem + texto + botão + pergunta | imagem + botão |
+| OC-5 | **Vitrine enxuta, em 2 blocos.** Produto = **imagem, espera de 2s (`2`) e 1 button template** (descrição + preço + CTA + pergunta de follow-up no mesmo `text`). A espera é obrigatória: sem ela o texto chega antes da imagem (Ame Pet, Uzzelui). Vários produtos = **texto de abertura + carrossel**. Fotos de variações só se a cliente pedir. | imagem + texto + botão + pergunta | imagem, 2, texto + botão |
 | OC-6 | **Link de compra dentro do botão.** A frase ("Prontinho! Montei seu carrinho 💙") vai no `text` do button template, nunca numa bolha separada. | 2 mensagens | 1 mensagem |
 | OC-7 | **Sem mensagem de espera.** Nada de "Deixa eu verificar…", "Um momento…": chama a tool e responde uma vez com o resultado. | 2 bolhas | 1 bolha |
 | OC-8 | **Fechamento embutido.** "Qualquer coisa, tô por aqui" vai no fim da própria resposta. Sem mensagem só de despedida ou "posso ajudar em algo mais?" separada. Em handoff, se o fluxo de destino já fala com o cliente, `send_flow` vai sem `messages`. | bolha de despedida | frase no fim |
@@ -56,16 +56,22 @@ as Regras Absolutas das outras skills NexTags.
 - Texto simples aceita até 4.096, mas acima de ~1.000 fica cansativo no
   celular. Mire **300–900**; passou de 1.000, enxugue antes de quebrar.
 - Título de botão continua **≤ 20 caracteres** (regra 24 das Regras Absolutas).
-- Carrossel `generic` (≥ 2 cards) é **1 item** em `messages` e funciona no WhatsApp pelo
-  JSON do agente (produção do dono, 26/10/2026). Um card só não é carrossel: use button
-  template. Confira o render no canal da conta antes de padronizar.
+- **Imagem + texto + botão = 2 blocos com espera de 2s:** `[imagem, 2, button template]`. O `2` é o
+  único typing permitido (não gera cobrança) e é obrigatório; sem ele o texto com o botão chega
+  antes da imagem. O `octobercut.py merge` mantém ou insere o `2` e o auditor bloqueia a falta dele.
+- **Carrossel `generic`** é **1 item** em `messages` e funciona no WhatsApp pelo JSON do agente.
+  Um cartão só é permitido, mas imagem + texto + botão (acima) fica melhor. **Sempre precisa de
+  uma mensagem de texto antes**, curta, dizendo o que vem nos cartões (ex.: "Esses são alguns
+  modelos no 38", "Esses são alguns combos do produto X"); sem ela o WhatsApp manda um "." antes do
+  cartão. O `merge` nunca move esse texto para depois do carrossel. Limites do template: texto de
+  abertura até **1024**, texto do cartão (título + subtítulo) até **160**, botão CTA do cartão até
+  **25** caracteres. Confira o render no canal da conta antes de padronizar.
 - Doc oficial dos fluxos: bloco de texto do editor aceita até **640 caracteres**; o botão
   `Telefonar` não existe no WhatsApp; em "Todos os canais" o WhatsApp sai da lista se houver
   mais de um botão com um deles `web_url` (mantenha **1 botão de link** na vitrine e no
   checkout) ou carrossel com mais de um cartão; no WhatsApp, cartão/carrossel só pelo menu
   *Mais conteúdos e ações*, e a prévia mostra só o primeiro cartão. No JSON do agente,
-  carrossel de 2 ou mais cartões funciona no WhatsApp (produção do dono, 26/10/2026); a restrição
-  acima é do editor de fluxo. Em dúvida, valide no celular (`help.nextags.com.br/tutoriais/fluxos/texto-e-botoes`,
+  carrossel funciona no WhatsApp (produção do dono, 26/10/2026); a restrição acima é do editor de fluxo. Em dúvida, valide no celular (`help.nextags.com.br/tutoriais/fluxos/texto-e-botoes`,
   `/cartoes-e-galeria`; `docs.nextags.com.br/comecar/mensagens-e-acoes`).
 
 ## Fluxo de trabalho
@@ -105,7 +111,7 @@ Quando o usuário cola respostas reais do bot:
 python <SKILL_DIR>/scripts/octobercut.py merge <saida.json> --output /tmp/merged.json
 ```
 
-O `merge` remove typing `4`, junta textos consecutivos com `\n\n`, embute
+O `merge` remove typing `4` (mantém só a espera `2` entre imagem e botão), junta textos consecutivos com `\n\n`, embute
 texto vizinho no `text` do button template (se couber em 1.024) e passa o
 texto que vinha antes de uma imagem para a mensagem seguinte. Ele **não
 inventa conteúdo** nem remove imagens. Use o resultado como exemplo de

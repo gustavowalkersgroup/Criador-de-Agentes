@@ -23,6 +23,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 BUTTON_TEXT_MAX = 1024   # body de mensagem interativa no WhatsApp
+CAROUSEL_BODY_MAX = 1024  # texto que abre o carrossel (body do template)
+CARD_TEXT_MAX = 160       # texto do cartão (título + subtítulo)
+CARD_CTA_MAX = 25         # título do botão CTA do cartão
+MEDIA_WAIT = 2            # espera (typing) de 2s entre a imagem e o texto + botão
 TEXT_SOFT_MAX = 1000     # legibilidade (meta da regra OC-1)
 TEXT_HARD_MAX = 4096     # limite de texto simples no WhatsApp
 DEFAULT_RATE_BRL = 0.035
@@ -71,6 +75,23 @@ def _set_button_text(item: Dict[str, Any], text: str) -> None:
     item["message"]["attachment"]["payload"]["text"] = text
 
 
+def card_text(element: Dict[str, Any]) -> str:
+    """Texto do cartão do carrossel: título + subtítulo."""
+    return str(element.get("title") or "") + str(element.get("subtitle") or "")
+
+
+def carousel_elements(item: Dict[str, Any]) -> List[Dict[str, Any]]:
+    els = item["message"]["attachment"]["payload"].get("elements")
+    return [e for e in els if isinstance(e, dict)] if isinstance(els, list) else []
+
+
+def is_media_wait(msgs: List[Any], i: int) -> bool:
+    """O typing `2` que separa imagem e button template é obrigatório, não bolha."""
+    return (msgs[i] == MEDIA_WAIT and not isinstance(msgs[i], bool)
+            and 0 < i < len(msgs) - 1
+            and kind_of(msgs[i - 1]) == "image" and kind_of(msgs[i + 1]) == "button")
+
+
 def _join(*parts: str) -> str:
     return PARAGRAPH.join(p.strip() for p in parts if p and p.strip())
 
@@ -83,12 +104,16 @@ def merge_messages(messages: List[Any]) -> Tuple[List[Any], List[str]]:
     """Funde `messages` no menor número de bolhas sem inventar conteúdo.
 
     Regras:
-    - typing indicator (inteiro) é removido;
+    - typing indicator (inteiro) é removido, menos a espera `2` entre a imagem
+      e o button template, que é obrigatória (sem ela o texto chega antes da
+      imagem); se faltar, é inserida;
     - textos consecutivos viram um só, separados por parágrafo;
     - texto antes de um button template entra no começo do `text` do botão;
     - texto depois de um button template entra no fim do `text` do botão;
-    - texto antes de imagem/carrossel passa para depois da mídia (vai para a
-      próxima mensagem textual), porque o padrão é foto + 1 mensagem;
+    - texto antes de uma imagem passa para depois dela (vai para a próxima
+      mensagem textual), porque o padrão é imagem + espera 2 + texto com botão;
+    - texto antes de um carrossel FICA antes: ele é o corpo do template, e sem
+      ele o WhatsApp manda um "." antes do cartão;
     - nada passa de 1024 (botão) ou 4096 (texto) caracteres: se não couber,
       a bolha fica separada.
     """
@@ -96,7 +121,8 @@ def merge_messages(messages: List[Any]) -> Tuple[List[Any], List[str]]:
     out: List[Any] = []
     buf: List[str] = []  # textos pendentes ainda não emitidos
 
-    removed_typing = sum(1 for m in messages if kind_of(m) == "typing")
+    removed_typing = sum(1 for i, m in enumerate(messages)
+                         if kind_of(m) == "typing" and not is_media_wait(messages, i))
     if removed_typing:
         notes.append(f"Removido(s) {removed_typing} typing indicator(s).")
 
@@ -119,7 +145,7 @@ def merge_messages(messages: List[Any]) -> Tuple[List[Any], List[str]]:
     def last_button() -> Optional[Dict[str, Any]]:
         return out[-1] if out and kind_of(out[-1]) == "button" else None
 
-    for item in messages:
+    for i, item in enumerate(messages):
         k = kind_of(item)
         if k == "typing":
             continue
@@ -144,10 +170,20 @@ def merge_messages(messages: List[Any]) -> Tuple[List[Any], List[str]]:
                     buf.clear()
                 else:
                     flush()
+            if out and kind_of(out[-1]) == "image":
+                out.append(MEDIA_WAIT)
+                notes.append("Espera de 2s mantida entre a imagem e o texto com botão.")
             out.append(item)
-        elif k in ("image", "carousel"):
+        elif k == "image":
             if buf:
-                notes.append("Texto que vinha antes da mídia passou para depois dela.")
+                notes.append("Texto que vinha antes da imagem passou para depois dela.")
+            out.append(item)
+        elif k == "carousel":
+            flush()
+            prev = next((m for m in reversed(out) if kind_of(m) != "typing"), None)
+            if prev is None or kind_of(prev) not in ("text", "button"):
+                notes.append("ATENÇÃO: carrossel sem texto antes; escreva uma frase curta que "
+                             "diga o que vem nos cartões, senão o WhatsApp manda um '.'.")
             out.append(item)
         else:
             flush()
@@ -241,6 +277,54 @@ PROSE_RULES: List[Tuple[str, str, str, str]] = [
 ]
 
 
+def _media_findings(msgs: List[Any], line: int) -> List[Dict[str, Any]]:
+    """Imagem + botão com espera de 2s; carrossel com texto antes e limites do template."""
+    out: List[Dict[str, Any]] = []
+    for i, m in enumerate(msgs):
+        k = kind_of(m)
+        if k == "button" and i > 0:
+            prev = msgs[i - 1]
+            if kind_of(prev) == "image":
+                out.append({"id": "imagem_botao_sem_espera", "severity": "block", "line": line,
+                            "message": "Imagem seguida direto do button template: o texto pode chegar antes "
+                                       f"da imagem. Coloque o typing {MEDIA_WAIT} entre os dois "
+                                       "(imagem, 2, texto + botão)."})
+            elif kind_of(prev) == "typing" and prev != MEDIA_WAIT and i > 1 and kind_of(msgs[i - 2]) == "image":
+                out.append({"id": "imagem_botao_espera_errada", "severity": "block", "line": line,
+                            "message": f"A espera entre imagem e botão é {MEDIA_WAIT} (2s), não {prev}."})
+        if k != "carousel":
+            continue
+        prev = next((x for x in reversed(msgs[:i]) if kind_of(x) != "typing"), None)
+        if prev is None or kind_of(prev) not in ("text", "button"):
+            out.append({"id": "carrossel_sem_texto_antes", "severity": "block", "line": line,
+                        "message": "Carrossel sem mensagem de texto antes: o WhatsApp manda um '.' antes do "
+                                   "cartão. Abra com uma frase curta que diga o que vem nos cartões "
+                                   "(ex.: 'Esses são alguns modelos no 38')."})
+        else:
+            body = prev["message"]["text"] if kind_of(prev) == "text" else _button_text(prev)
+            if len(body) > CAROUSEL_BODY_MAX:
+                out.append({"id": "carrossel_texto_longo", "severity": "block", "line": line,
+                            "message": f"Texto de abertura do carrossel com {len(body)} caracteres "
+                                       f"(máx. {CAROUSEL_BODY_MAX})."})
+        for n, el in enumerate(carousel_elements(m), start=1):
+            ct = card_text(el)
+            if len(ct) > CARD_TEXT_MAX:
+                out.append({"id": "cartao_texto_longo", "severity": "block", "line": line,
+                            "message": f"Cartão {n} com {len(ct)} caracteres de texto "
+                                       f"(título + subtítulo; máx. {CARD_TEXT_MAX})."})
+            for b in el.get("buttons") or []:
+                title = b.get("title") if isinstance(b, dict) else None
+                if isinstance(title, str) and len(title) > CARD_CTA_MAX:
+                    out.append({"id": "cartao_cta_longo", "severity": "block", "line": line,
+                                "message": f"Botão do cartão {n} com {len(title)} caracteres "
+                                           f"(máx. {CARD_CTA_MAX}): '{title}'."})
+    return out
+
+
+MEDIA_EXEMPT = {"blocos_multiplos", "dividir_resposta", "nao_misturar_midia"}
+MEDIA_WORDS = re.compile(r"imagem|foto|carross|bot[aã]o|vitrine|\b(2|dois)\s*(s|seg)", re.IGNORECASE)
+
+
 def audit_examples(text: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     findings: List[Dict[str, Any]] = []
     examples: List[Dict[str, Any]] = []
@@ -262,13 +346,16 @@ def audit_examples(text: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]
         examples.append({"line": line, "parsed": True, "bubbles": bubbles,
                          "merged_bubbles": merged_bubbles, "kinds": kinds})
 
-        if "typing" in kinds:
+        stray = sum(1 for i, k in enumerate(kinds) if k == "typing" and not is_media_wait(msgs, i))
+        if stray:
             findings.append({"id": "exemplo_com_typing", "severity": "block", "line": line,
-                             "message": f"Exemplo usa typing indicator ({kinds.count('typing')}x). OC-1."})
+                             "message": f"Exemplo usa typing indicator ({stray}x). OC-1. "
+                                        "Só a espera `2` entre imagem e botão é permitida."})
         if merged_bubbles < bubbles:
             findings.append({"id": "exemplo_fundivel", "severity": "block", "line": line,
                              "message": f"Exemplo com {bubbles} bolhas pode virar {merged_bubbles}. "
                                         "Rode `octobercut.py merge` nele. OC-1/OC-5/OC-6."})
+        findings.extend(_media_findings(msgs, line))
         for m in msgs:
             k = kind_of(m)
             if k == "button" and len(_button_text(m)) > BUTTON_TEXT_MAX:
@@ -292,6 +379,8 @@ def audit_prose(text: str) -> List[Dict[str, Any]]:
         if not line.strip() or NEGATION.search(line):
             continue
         for rid, sev, rx, msg in PROSE_RULES:
+            if rid in MEDIA_EXEMPT and MEDIA_WORDS.search(line):
+                continue
             if re.search(rx, line, re.IGNORECASE):
                 findings.append({"id": rid, "severity": sev, "line": lineno,
                                  "message": msg, "excerpt": line.strip()[:160]})

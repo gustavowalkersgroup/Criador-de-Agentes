@@ -15,7 +15,7 @@ Use this skill as a **meta-skill**: it creates a deployable prompt and its opera
 4. **Ethical persuasion.** Use diagnosis, comparison, evidence and a clear next step. Never fabricate urgency, scarcity, authority, proof, consensus, fear or guilt, and never pressure after a clear refusal.
 5. **Minimality and readability.** Add a rule only when it changes behavior, prevents a real failure, satisfies an operational requirement or enables a necessary decision. The prompt must be easy for the model to read every turn and easy for any AI (Claude, Codex) or person to edit later: one title, `##` sections named by subject, `###` at most, short prose, raw JSON examples, no decoration lines (`=====`, `#####`), no version/date/changelog inside the prompt (the analyzer blocks these; version lives in the filename and the report).
 6. **No private chain of thought.** Record structured decisions, sources, tools, outcomes and policy results—not hidden reasoning.
-7. **OctoberCut — every message is billed.** Since 2026-10-01 Meta charges each service message. One answer = one message (paragraphs with `\n\n`, no typing `4` between texts), proactive opening, grouped questions (one round max before recommending), no asking the name just to ask, product = image + one button template, purchase sentence inside the button, no waiting or goodbye-only bubbles. Tone and brand rules stay the same. Details: skill `nextags-prompt-octobercut` and Rule 28 in `references/regras_absolutas.md`.
+7. **OctoberCut — every message is billed.** Since 2026-10-01 Meta charges each service message. One answer = one message (paragraphs with `\n\n`, no typing `4` between texts), proactive opening, grouped questions (one round max before recommending), no asking the name just to ask, product = image, a 2-second wait (typing `2`, mandatory, the only typing allowed) and one button template; a carousel always needs a short text message before it (otherwise WhatsApp sends a "." first); purchase sentence inside the button, no waiting or goodbye-only bubbles. Tone and brand rules stay the same. Details: skill `nextags-prompt-octobercut` and Rule 28 in `references/regras_absolutas.md`.
 
 For the consolidated rationale, conflict resolution, state model, action levels, security, sales library, observability and test ladder, read `references/arquitetura_suprema_v7.md`.
 
@@ -163,7 +163,8 @@ Every ordinary agent prompt must contain, in the appropriate order:
 8. sales/SAC modules selected for the archetype;
 9. canonical human handoff when applicable;
 10. anti-injection and anti-hallucination rules;
-11. official NexTags JSON block, the OctoberCut block (“FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)”, see `prompt_skeleton.md` §6) and valid one-message output examples.
+11. Brazilian Portuguese without errors and gentle handling of customer corrections (`prompt_skeleton.md` §9.5, Rule 31), and the STOP/SAIR unsubscribe flow (`prompt_skeleton.md` §9.6, Rule 32; ask for the flow ID or find it by name "SAIR" through `nextags-api`).
+12. official NexTags JSON block, the OctoberCut block (“FORMATO ECONÔMICO DE RESPOSTA (OCTOBERCUT)”, see `prompt_skeleton.md` §6) and valid one-message output examples.
 
 Do not place changelog, version history, TODOs, unresolved internal notes, implementation rationale, metrics or audit text in runtime. Those belong in the report. The only permitted editor note is short and operational, such as “troque somente o ID; mantenha o nome da chave”.
 

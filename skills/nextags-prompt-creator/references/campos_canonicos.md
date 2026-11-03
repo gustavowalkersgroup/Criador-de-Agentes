@@ -184,6 +184,8 @@ Conteúdo obrigatório, **nesta ordem**:
 
 Vai para o comentário/descrição do card no pipeline.
 
+**Idioma: sempre português do Brasil**, mesmo que o cliente fale outro idioma (russo, inglês, espanhol...). A IA pode responder ao cliente no idioma dele, mas o resumo, os valores de campos, as tags e qualquer nota interna são lidos pela equipe em português. Caso real (Ame Pet): cliente russo, a IA respondeu em russo e mandou o resumo para o pipeline também em russo.
+
 **Tamanho:** 2 a 4 frases é a regra; em caracteres, mire **300 a 600**. Não há limite oficial
 da plataforma — os projetos usaram de 400 a 2000, cada um com o seu. Se o fluxo do cliente já
 tiver um teto, ele manda. O que não funciona é resumo de uma linha ("cliente quer cancelar"),
