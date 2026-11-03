@@ -24,9 +24,13 @@ Vitrine e carrossel como a plataforma entrega de verdade, português sem erro e 
 
 - Regra 31 (creator e fixer): português do Brasil sem erro; se o cliente corrigir a IA, uma frase gentil explicando e volta ao
   assunto, sem prolongar. Bloco em `prompt_skeleton.md` §9.5 e seção `correcao_e_portugues` (warn).
-- Regra 32 (creator e fixer): STOP/SAIR dispara só o `send_flow` do fluxo de descadastro da conta, sem texto da IA. Bloco em
+- Regra 32 (creator e fixer): STOP/SAIR dispara só o `send_flow` do fluxo de descadastro da conta, sem texto da IA. O fluxo só
+  tira o contato dos disparos, não bloqueia: depois disso a IA atende normalmente. Bloco em
   `prompt_skeleton.md` §9.6, pergunta 2.5 (ID do fluxo, ou achar por "SAIR" via `nextags-api`) e seção `descadastro_stop_sair` (warn).
-- +9 testes no `octobercut.py`, +4 no analisador, +8 no `fix_json.py`.
+- `resumo_pipeline` sempre em português do Brasil, mesmo com cliente em outro idioma (caso Ame Pet: cliente russo, resumo em russo).
+  Regra 21 e `campos_canonicos.md` (4 cópias), bloco do skeleton, seção `resumo_em_portugues` (warn, só cobra se o prompt grava
+  `resumo_pipeline`) e pendência no `fix_json.py` quando o resumo vem em alfabeto não latino.
+- +9 testes no `octobercut.py`, +5 no analisador, +9 no `fix_json.py`.
 
 ## [1.14.3] - 2026-10-26
 

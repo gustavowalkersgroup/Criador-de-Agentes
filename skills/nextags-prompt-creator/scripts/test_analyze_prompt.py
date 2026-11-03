@@ -741,6 +741,15 @@ def test_secoes_correcao_e_descadastro_warn_e_presentes():
     assert not ({"correcao_e_portugues", "descadastro_stop_sair"} & keys)
 
 
+def test_resumo_em_portugues_so_cobra_se_tem_handoff():
+    def keys(c):
+        return {m["key"] for m in ap.analyze(c)["missing_sections"]}
+    assert "resumo_em_portugues" not in keys("Você é a Ana.\n")
+    assert "resumo_em_portugues" in keys("Grave resumo_pipeline e dispare send_flow.\n")
+    assert "resumo_em_portugues" not in keys(
+        "Grave resumo_pipeline; o resumo é SEMPRE em português do Brasil.\n")
+
+
 def test_skeleton_sem_warn_octobercut():
     from pathlib import Path
     sk = (Path(__file__).resolve().parents[1] / "references" / "prompt_skeleton.md").read_text(encoding="utf-8")

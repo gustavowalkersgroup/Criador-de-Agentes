@@ -259,6 +259,16 @@ REQUIRED_SECTIONS = {
             r"corre[çc][õo]es\s+do\s+cliente",
         ],
     },
+    "resumo_em_portugues": {
+        "label": "resumo_pipeline sempre em português do Brasil, mesmo com cliente em outro idioma",
+        "severity": "warn",
+        "only_if": r"resumo_pipeline",
+        "patterns": [
+            r"resumo[^.\n]{0,120}portugu[êe]s",
+            r"portugu[êe]s[^.\n]{0,120}resumo",
+            r"idioma\s+interno",
+        ],
+    },
     "descadastro_stop_sair": {
         "label": "Descadastro de disparos (STOP / SAIR → send_flow do fluxo da conta, sem texto)",
         "severity": "warn",
@@ -1478,6 +1488,8 @@ def prompt_uses_actions(content: str, blocks: list[dict]) -> bool:
 def check_required_sections(content: str, uses_actions: bool, mode: str = "creator") -> list[dict]:
     missing = []
     for key, info in REQUIRED_SECTIONS.items():
+        if info.get("only_if") and not re.search(info["only_if"], content, re.IGNORECASE):
+            continue
         present = any(
             re.search(pat, content, re.IGNORECASE | re.MULTILINE)
             for pat in info["patterns"]

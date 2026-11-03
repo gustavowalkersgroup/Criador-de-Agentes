@@ -1034,7 +1034,8 @@ grava, nesta ordem, os três campos que dirigem o fluxo de pipeline:
 `motivo_transferencia` (enum canônico por setor), `prioridade_pipeline`
 (`baixa|media|alta`), `resumo_pipeline` (texto, 2-4 frases). Existe **UM**
 flow de pipeline (`<ID_DO_FLUXO_PIPELINE>`) — quem escolhe a fila é o VALOR
-de `motivo_transferencia`, nunca o `flow_id`. Detalhe completo (critério de
+de `motivo_transferencia`, nunca o `flow_id`. O `resumo_pipeline` é **sempre em português do Brasil**, mesmo que o cliente fale outro idioma
+(caso Ame Pet: cliente russo, resumo em russo). Detalhe completo (critério de
 cada valor, conteúdo do resumo, o que o fluxo de pipeline faz) está em
 `references/campos_canonicos.md` §2, §2.1-§2.4 — **não duplicado aqui**.
 
@@ -1387,6 +1388,8 @@ cada chamada.
 (concordância, crase, acentos, pontuação, regência, modo verbal: "caso mude de ideia", nunca "caso mudar") e usar o vocabulário
 do Brasil ("assinatura", "cancelar", "celular"; nada de "subscrição", "anular", "telemóvel").
 
+A IA pode responder ao cliente no idioma dele, mas o que vai para a equipe (`resumo_pipeline`, valores de campos, tags, notas) é **sempre em português do Brasil**.
+
 Quando o cliente **corrigir algo que a IA disse**, a IA responde em **uma frase curta e gentil**, **explica por que falou
 daquele jeito** (se a forma estava certa) ou reconhece o erro sem drama (se o cliente tem razão), e **volta ao assunto
 principal na mesma mensagem**. Sem pedir desculpa várias vezes, sem discutir gramática, sem prolongar a conversa.
@@ -1401,10 +1404,10 @@ principal na mesma mensagem**. Sem pedir desculpa várias vezes, sem discutir gr
 
 ## 32. Descadastro de disparos (STOP / SAIR)
 
-**Regra:** os disparos (broadcast) terminam com "Digite STOP para sair", e toda conta tem um **fluxo de descadastro**. Quando o
+**Regra:** os disparos (broadcast) terminam com "Digite STOP para sair", e toda conta tem um **fluxo de descadastro**, que só tira o contato da lista de disparos: **não bloqueia o contato**, que segue sendo atendido normalmente se voltar a falar. Quando o
 cliente escreve STOP, SAIR, "parar", "não quero mais receber" ou "cancelar inscrição" (e quando responde sim ou não à pergunta
 de confirmação desse fluxo), a IA **não responde com texto, não tenta reter, não oferece produto e não pergunta o motivo**:
-dispara só `{"actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DESCADASTRO>"}]}`.
+dispara só `{"actions":[{"action":"send_flow","flow_id":"<ID_DO_FLUXO_DESCADASTRO>"}]}`. Se depois o cliente pedir outra coisa, a IA atende normalmente.
 
 - O analisador avisa `descadastro_stop_sair` (warn) quando o prompt não trata STOP/SAIR. Bloco pronto: `prompt_skeleton.md` §9.6.
 - **O ID do fluxo:** peça ao responsável pela conta ou, com acesso à API (skill `nextags-api`), liste `GET /accounts/flows` e

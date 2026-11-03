@@ -108,6 +108,7 @@ documenta o schema oficial completo com exemplos validados.
 | `quick_replies` | Preservadas; aviso só se >11. |
 | Cartão: título/subtítulo > 80, título + subtítulo > 160, galeria > 10 cartões, cartão com > 3 botões, botão do cartão > 25, texto antes do carrossel > 1024 | Pendência de aviso (limites do template); não corta. |
 | Imagem seguida direto de button template, ou com espera diferente de `2` | **Corrige:** insere/troca pela espera `2` (imagem, 2, texto + botão); sem ela o texto chega antes da imagem. |
+| `resumo_pipeline` em outro alfabeto (russo, árabe, chinês...) | Pendência: o resumo vai para a equipe e é sempre em português do Brasil. Não traduz (não inventa conteúdo). |
 | Carrossel sem mensagem de texto antes | Pendência: escrever uma frase curta que diga o que vem nos cartões. Não inventa o texto. |
 | `transfer_conversation_to` com `value:"bot"` | **Válido** (devolve ao robô). Só normaliza a caixa. Outro valor desconhecido → `human`. |
 | Carrossel com 1 elemento | **Permitido**, não mexe. Imagem + 2 + botão fica melhor, mas é escolha do prompt. |

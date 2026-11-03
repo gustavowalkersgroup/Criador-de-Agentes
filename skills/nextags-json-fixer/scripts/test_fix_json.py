@@ -295,6 +295,15 @@ def test_cartao_texto_acima_de_160_e_cta_acima_de_25_avisam():
     assert pending == []
 
 
+def test_resumo_pipeline_em_outro_alfabeto_vira_pendencia():
+    def run(valor):
+        return _run_one({"actions": [{"action": "set_field_value", "field_name": "resumo_pipeline",
+                                      "value": valor}]})[2]
+    assert any("outro idioma" in p for p in run("Клиент спрашивает о заказе 123, нужна помощь."))
+    assert run("Cliente russo pergunta sobre o pedido 123 e pede ajuda.") == []
+    assert run("Cliente pediu à equipe: refund (reembolso) do pedido 123.") == []
+
+
 def _img():
     return {"message": {"attachment": {"type": "image", "payload": {"url": "https://x.com/a.jpg"}}}}
 

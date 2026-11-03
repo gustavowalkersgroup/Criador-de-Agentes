@@ -38,6 +38,7 @@ MAX_CARDS = 10              # cartões numa galeria
 MAX_CARD_BODY = 160         # texto do cartão: título + subtítulo
 MAX_CARD_CTA = 25           # título do botão do cartão
 MAX_CAROUSEL_INTRO = 1024   # mensagem de texto que abre o carrossel
+NON_LATIN = re.compile(r"[\u0370-\u03ff\u0400-\u04ff\u0590-\u06ff\u0900-\u0dff\u0e00-\u0eff\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
 MEDIA_WAIT = 2              # espera (typing) de 2s entre imagem e texto + botão
 MAX_QUICK_REPLIES = 11
 VALID_IMAGE_ASPECT_RATIOS = {"horizontal", "square"}
@@ -633,6 +634,15 @@ def fix_actions_array(actions: Any, fixes: list[str],
                     f"{path}.value='{val}' → 'human' (valores suportados: human, bot)"
                 )
                 act["value"] = "human"
+        # resumo_pipeline vai para a equipe, que lê em português: alfabeto não latino
+        # (russo, árabe, chinês...) é sinal de que a IA resumiu no idioma do cliente.
+        if (name == "set_field_value" and act.get("field_name") == "resumo_pipeline"
+                and isinstance(act.get("value"), str) and NON_LATIN.search(act["value"])):
+            pending.append(
+                f"{path}: `resumo_pipeline` escrito em outro idioma/alfabeto. O resumo vai para a "
+                "equipe e é sempre em português do Brasil; reescrever em português (não traduzo "
+                "para não inventar conteúdo)."
+            )
         out.append(act)
     return out
 
