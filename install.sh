@@ -22,7 +22,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${GREEN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║   NexTags Tools — Instalação de 7 Skills      ║${NC}"
+echo -e "${GREEN}║   NexTags Tools — Instalação das skills       ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════╝${NC}"
 echo ""
 
