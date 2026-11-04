@@ -5,6 +5,23 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.15.1] - 2026-11-04
+
+Skill de modelos de WhatsApp na versão 4 (testes de out/2026).
+
+### Alterado
+
+- `whatsapp-template-utilidade` (v4, trazida do Cowork): todo coringa leva 1 botão ("só texto" é sem mídia, não sem botão); rodapé
+  com limite de 60 caracteres e conferência do contador; variante com a chamada "Clique no botão abaixo para saber mais!"
+  (em teste, com plano B); o coringa enxuto só com saudação + variáveis passa a ser o que não usar (reclassificado para
+  Marketing em todos os testes); modelo aprovado não se edita, cria-se nova versão (editar manda de volta para análise e pode
+  perder a categoria).
+- Cadastro: nunca navegar por endereço direto (abriu a conta de outro cliente), conferir "Utilidade · Padrão" antes de preencher,
+  aceitar "•" na checagem do idioma, dividir esperas longas de script, rolar a lista até o fim, não clicar em "Excluir modelo".
+- Lotes: formato novo começa com 1 ou 2 modelos, espera a primeira reclassificação e muda uma variável por vez; preferir "Olá" a "Oi".
+- Mantidos do repo: contestar categoria em 60 dias, alternativa de criar pela NexTags, pausa por qualidade, integração e fontes
+  oficiais. Nomes de clientes e de pessoas ficam fora do texto.
+
 ## [1.15.0] - 2026-11-03
 
 Vitrine e carrossel como a plataforma entrega de verdade, português sem erro e descadastro de disparos.
