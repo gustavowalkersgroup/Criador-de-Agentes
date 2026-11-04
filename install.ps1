@@ -24,7 +24,7 @@ function Write-Status {
 }
 
 Write-Host "╔════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║   NexTags Tools — Instalação de 7 Skills      ║" -ForegroundColor Green
+Write-Host "║   NexTags Tools — Instalação das skills       ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 
