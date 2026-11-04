@@ -5,6 +5,19 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.15.2] - 2026-11-04
+
+Correção na skill de modelos de WhatsApp: a frase de atendimento deixa de ser recomendada.
+
+### Alterado
+
+- `whatsapp-template-utilidade`: "Temos uma atualização sobre o seu atendimento." e "Aqui está uma atualização sobre o seu atendimento."
+  (e variações com "pedido") passam a ser **proibidas** (decisão do dono). A v1.15.1 ainda as recomendava, porque a edição que as
+  proibia não tinha chegado ao repositório.
+- O coringa padrão passa a ser o da **chamada para o botão** ("Clique no botão abaixo para saber mais!" antes de "Atenciosamente",
+  1 botão, rodapé curto). O resultado do v21 e do v22 na Meta segue pendente, com "para continuar" e "para ver os detalhes" de plano B.
+- Lotes alternam o texto do botão, não mais a frase de abertura.
+
 ## [1.15.1] - 2026-11-04
 
 Skill de modelos de WhatsApp na versão 4 (testes de out/2026).
