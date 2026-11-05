@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — instala as 11 skills NexTags no ~/.claude/skills/ (Claude Code) e, se o Codex
+# install.sh — instala as 12 skills NexTags no ~/.claude/skills/ (Claude Code) e, se o Codex
 # estiver instalado (~/.codex) ou INSTALL_CODEX=1, também em ~/.codex/skills/.
 # Uso: curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.sh | bash
 #      ou: bash install.sh (rodando localmente após clone)
@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder" "nextags-prompt-octobercut" "nextags-prompt-instagram" "whatsapp-template-utilidade" "nextags-api" "nextags-prompt-push")
+SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder" "nextags-prompt-octobercut" "nextags-prompt-instagram" "whatsapp-template-utilidade" "nextags-api" "nextags-prompt-push" "nextags-artes-whatsapp")
 CLAUDE_DIR="${HOME}/.claude/skills"
 CODEX_HOME_DIR="${CODEX_HOME:-${HOME}/.codex}"
 TARGETS=("$CLAUDE_DIR")

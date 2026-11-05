@@ -12,7 +12,7 @@
     {
       "name": "nextags-tools",
       "source": ".",
-      "description": "Suite completa de 11 skills NexTags: prompt-creator, prompt-fixer, json-fixer, mcp-builder, webchat-tester, webhook-builder (disparos transacionais), prompt-octobercut (cobrança Meta por mensagem), prompt-instagram (comentários do Instagram), whatsapp-template-utilidade (templates da Meta), api (API REST da NexTags completa), prompt-push (subir prompt no IA Hub pela API). Campos canônicos (roteador/revalidador, handoff, CUFs) compartilhados entre as skills.",
+      "description": "Suite completa de 12 skills NexTags: prompt-creator, prompt-fixer, json-fixer, mcp-builder, webchat-tester, webhook-builder (disparos transacionais), prompt-octobercut (cobrança Meta por mensagem), prompt-instagram (comentários do Instagram), whatsapp-template-utilidade (templates da Meta), api (API REST da NexTags completa), prompt-push (subir prompt no IA Hub pela API), nextags-artes-whatsapp (artes e mensagens em lote). Campos canônicos (roteador/revalidador, handoff, CUFs) compartilhados entre as skills.",
       "version": "1.15.2",
       "category": "ai-agents",
       "keywords": ["nextags", "atendimento", "chatbot", "prompt-engineering", "webhooks", "transacional", "whatsapp-pricing"]

@@ -1,0 +1,97 @@
+MODELOS DE MENSAGEM — NEXTAGS AI
+
+Campos entre {{chaves}} são preenchidos na mensagem. Use a mesma arte fixa para todos os destinatários. Os botões indicam as ações do exemplo.
+
+1. PEDIDO APROVADO (transacional)
+Olá, {{nome}}! Seu pedido foi aprovado!
+
+Entrega: {{endereco_entrega}}
+Número do pedido: #{{numero_pedido}}
+
+Clique no botão abaixo para confirmar o endereço de entrega.
+
+Nextags AI sempre à frente
+
+Botões: Confirmar pedido | Tenho uma dúvida
+
+----------------------------------------
+
+2. PEDIDO ENVIADO (transacional)
+Olá, {{nome}}! Seu pedido foi enviado!
+Número do pedido: #{{numero_pedido}}
+Acompanhe a entrega pelo botão abaixo.
+
+Nextags AI sempre à frente
+
+Botões: Rastrear pedido | Tenho uma dúvida
+
+----------------------------------------
+
+3. EM TRANSPORTE (transacional)
+Olá, {{nome}}! Seu pedido está em transporte.
+Número do pedido: #{{numero_pedido}}
+Acompanhe a entrega pelo botão abaixo.
+
+Nextags AI sempre à frente
+
+Botões: Rastrear pedido | Tenho uma dúvida
+
+----------------------------------------
+
+4. PEDIDO ENTREGUE (transacional)
+Olá, {{nome}}! Seu pedido foi entregue!
+
+Número do pedido: #{{numero_pedido}}
+
+Nextags AI sempre à frente
+
+Botões: Tenho uma dúvida
+
+----------------------------------------
+
+5. CARRINHO ABANDONADO (comercial)
+Oi, {{nome}}! Seu carrinho ainda está aqui. Que tal continuar de onde parou?
+
+Botões: Voltar ao carrinho | Tenho uma dúvida
+
+----------------------------------------
+
+6. RECUPERAÇÃO DE PIX (transacional)
+Oi, {{nome}}! O prazo do Pix acabou. Gere um novo código para concluir o pagamento.
+
+Botões: Gerar novo Pix | Tenho uma dúvida
+
+----------------------------------------
+
+7. UPSELL (comercial)
+Oi, {{nome}}! Troque seu kit básico pelo kit completo e receba tudo no mesmo frete.
+
+Botões: Ver kit completo | Tenho uma dúvida
+
+----------------------------------------
+
+8. CROSS-SELL (comercial)
+Oi, {{nome}}! Use seu cashback para levar uma capa que combina com o seu kit.
+
+Botões: Ver capas | Tenho uma dúvida
+
+----------------------------------------
+
+9. CONTRATO ASSINADO (transacional)
+Oi, {{nome}}! Seu contrato foi assinado com sucesso. Você já pode acessar a sua cópia.
+
+Botões: Ver contrato | Tenho uma dúvida
+
+----------------------------------------
+
+10. ATENDIMENTO RESOLVIDO (transacional)
+Oi, {{nome}}! Seu atendimento foi concluído. Ficou alguma dúvida? É só chamar a gente por aqui.
+
+Botões: Tudo resolvido | Ainda preciso de ajuda
+
+----------------------------------------
+
+11. 1º MÊS NA NEXTAGS (comercial)
+Oi, {{nome}}! Comece na Nextags por R$ 1 no primeiro mês e envie suas campanhas pelo WhatsApp.
+
+Botões: Quero aproveitar | Tenho uma dúvida

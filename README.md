@@ -1,6 +1,6 @@
 # NexTags Tools — Suite de Skills para Claude Code e Codex
 
-Coleção de 11 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
+Coleção de 12 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
 
 | Skill | O que faz |
 |---|---|
@@ -12,6 +12,7 @@ Coleção de 11 skills profissionais para acelerar a criação, auditoria e corr
 | `nextags-prompt-octobercut` | Adapta prompts (e atendimento humano) à cobrança da Meta por mensagem de serviço, vigente desde 01/10/2026: uma resposta = uma mensagem, abertura proativa, perguntas agrupadas, vitrine com 1 foto + 1 mensagem com botão. Audita o prompt, funde o JSON de runtime e estima a economia. |
 | `nextags-prompt-instagram` | Monta a automação de **comentários do Instagram**: resposta pública por IA (@autor, preço do MCP), classificador `CHAMAR`/`NAO` que decide sozinho se chama no direct, e abertura do atendimento com resumo e preço real. Gera os 3 prompts, o desenho do fluxo e a bateria de 12 testes. Padrão validado em produção. |
 | `whatsapp-template-utilidade` | Cadastra e varia **modelos (templates) de WhatsApp** no WhatsApp Manager da Meta para aprovação como **Utilidade**: padrões que passaram (pedido enviado, coringa, carrinho, PIX, reativação), o que a Meta reclassifica para Marketing, passo a passo do cadastro, lotes de teste e riscos. |
+| [`nextags-artes-whatsapp`](skills/nextags-artes-whatsapp/SKILL.md) | Cria artes 1:1 e mensagens para WhatsApp, incluindo a série de sete peças. Veja o [prompt mestre](skills/nextags-artes-whatsapp/references/prompt-geracao.txt). |
 | `nextags-webchat-tester` | Testa o agente PUBLICADO ao vivo, dirigindo o WebSocket do webchat por Python (sem extensão de browser). Exercita a stack real (NexTags + MCP + backend); pega erro de MCP, handoff, transferência fantasma, renderização de card. |
 | `nextags-api` | Referência operacional completa da API REST da NexTags (86 endpoints do contrato oficial em docs.nextags.com.br, inclusive `/tools`): agentes IA, contatos, CUFs, tags, flows, pipelines, e-commerce, broadcasts. Aponta também para a doc oficial (docs e help, com índices `llms.txt`). Traz a tabela "quero fazer X → chamada", o que a API não faz, armadilhas, formas reais de resposta verificadas ao vivo e um script (`call`, `whoami`, `snapshot`, `backup-agents`, `spec-check`) em que toda escrita é dry-run sem `--yes`. |
 | `nextags-prompt-push` | Sobe/atualiza SÓ o prompt de um agente no IA Hub pela API (`POST /agents/{id}` com `{"prompt": ...}`), com simulação, backup do prompt anterior e conferência de que o modelo não mudou. Origem: [LeoALXHIl/nextags-skills](https://github.com/LeoALXHIl/nextags-skills). |
@@ -28,7 +29,7 @@ Todas as skills compartilham a mesma referência de **campos canônicos** (`camp
 # Adiciona o marketplace
 /plugin marketplace add gustavowalkersgroup/Criador-de-Agentes
 
-# Instala todas as 11 skills de uma vez
+# Instala todas as 12 skills de uma vez
 /plugin install nextags-tools@nextags-marketplace
 ```
 
@@ -46,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agen
 irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 ```
 
-Os scripts copiam as 11 skills pra `~/.claude/skills/` e, se o Codex estiver instalado (`~/.codex`), também pra `~/.codex/skills/`. Versões anteriores vão pra `skills-backup/` ao lado de cada destino. Para forçar a instalação no Codex: `INSTALL_CODEX=1` (bash) ou `$env:INSTALL_CODEX = '1'` (PowerShell).
+Os scripts copiam as 12 skills pra `~/.claude/skills/` e, se o Codex estiver instalado (`~/.codex`), também pra `~/.codex/skills/`. Versões anteriores vão pra `skills-backup/` ao lado de cada destino. Para forçar a instalação no Codex: `INSTALL_CODEX=1` (bash) ou `$env:INSTALL_CODEX = '1'` (PowerShell).
 
 ### Opção 3 — Instalação manual (controle total)
 
@@ -73,7 +74,7 @@ As skills usam o formato padrão `SKILL.md` (frontmatter `name` + `description`)
 
 ## 🎯 Como usar
 
-Após instalar, reinicia o Claude Code e usa qualquer uma das 11 skills:
+Após instalar, reinicia o Claude Code e usa qualquer uma das 12 skills:
 
 ```bash
 /nextags-prompt-creator   # gerar prompt do zero
@@ -150,3 +151,7 @@ MIT — veja `LICENSE`.
 ---
 
 Made with 💚 by [Gustavo Walkers Group](https://github.com/gustavowalkersgroup) para a plataforma NexTags.
+
+### Artes de WhatsApp em lote
+
+No Codex, use `$nextags-artes-whatsapp Crie a série completa com as sete artes`. No Claude Code, use `/nextags-artes-whatsapp`. A skill pede as referências e os dados das ofertas em uma única rodada.
