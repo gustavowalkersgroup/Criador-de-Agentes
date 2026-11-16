@@ -5,6 +5,22 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.16.0] - 2026-11-16
+
+Nova skill para preparar o catálogo do cliente para o bot achar o produto por texto ou foto.
+
+### Adicionado
+
+- `nextags-catalogo-visual` (a partir da skill `catalog-visual-matching`, nome em português): enriquece o catálogo de e-commerce com
+  atributos textuais e visuais por produto (tipo, modelo, silhueta, estampa, cores, detalhes), frases de busca do cliente e
+  incertezas, em JSONL com checkpoint e retomada de lotes. Só usa a primeira imagem principal por padrão, separa fato do vendedor
+  de observação visual e nunca trata cor como identificador único.
+- `scripts/validate_checkpoint.py` (em português): confere inventário × resultados, aponta pendentes, IDs duplicados, linhas
+  inválidas e só marca `coverage_complete` com payload real. Corrigido: resultado com `product_id` nulo e `inventory_index` agora
+  aponta para o item certo do inventário. +8 testes. Também entram o prompt-base para retomar no Codex e a integração com as
+  skills de MCP, prompt e OctoberCut (imagem JPEG/PNG, vitrine, carrossel).
+- Os instaladores, o README e os manifestos passam a listar 13 skills (inclui `nextags-artes-whatsapp`, que já estava no repo).
+
 ## [1.15.2] - 2026-11-04
 
 Correção na skill de modelos de WhatsApp: a frase de atendimento deixa de ser recomendada.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — instala as 12 skills NexTags no ~/.claude/skills/ (Claude Code) e, se o Codex
+# install.sh — instala as 13 skills NexTags no ~/.claude/skills/ (Claude Code) e, se o Codex
 # estiver instalado (~/.codex) ou INSTALL_CODEX=1, também em ~/.codex/skills/.
 # Uso: curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.sh | bash
 #      ou: bash install.sh (rodando localmente após clone)
@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder" "nextags-prompt-octobercut" "nextags-prompt-instagram" "whatsapp-template-utilidade" "nextags-api" "nextags-prompt-push" "nextags-artes-whatsapp")
+SKILLS=("nextags-prompt-creator" "nextags-prompt-fixer" "nextags-json-fixer" "nextags-mcp-builder" "nextags-webchat-tester" "nextags-webhook-builder" "nextags-prompt-octobercut" "nextags-prompt-instagram" "whatsapp-template-utilidade" "nextags-api" "nextags-prompt-push" "nextags-artes-whatsapp" "nextags-catalogo-visual")
 CLAUDE_DIR="${HOME}/.claude/skills"
 CODEX_HOME_DIR="${CODEX_HOME:-${HOME}/.codex}"
 TARGETS=("$CLAUDE_DIR")
@@ -98,6 +98,8 @@ echo "  /nextags-prompt-instagram # automação de comentários do Instagram"
 echo "  /whatsapp-template-utilidade # modelos de WhatsApp aprovados como Utilidade"
 echo "  /nextags-api              # API REST da NexTags (referência + script)"
 echo "  /nextags-prompt-push      # subir só o prompt de um agente no IA Hub"
+echo "  /nextags-artes-whatsapp   # artes 1:1 e mensagens para WhatsApp"
+echo "  /nextags-catalogo-visual  # catálogo para matching por texto e imagem"
 echo ""
 echo "No Codex: \$nextags-prompt-octobercut (ou descreva a tarefa; a skill é escolhida pela descrição)"
 echo ""
