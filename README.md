@@ -1,6 +1,6 @@
 # NexTags Tools — Suite de Skills para Claude Code e Codex
 
-Coleção de 12 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
+Coleção de 13 skills profissionais para acelerar a criação, auditoria e correção de agentes de IA da plataforma **NexTags Messenger Messaging Platform**.
 
 | Skill | O que faz |
 |---|---|
@@ -16,6 +16,7 @@ Coleção de 12 skills profissionais para acelerar a criação, auditoria e corr
 | `nextags-webchat-tester` | Testa o agente PUBLICADO ao vivo, dirigindo o WebSocket do webchat por Python (sem extensão de browser). Exercita a stack real (NexTags + MCP + backend); pega erro de MCP, handoff, transferência fantasma, renderização de card. |
 | `nextags-api` | Referência operacional completa da API REST da NexTags (86 endpoints do contrato oficial em docs.nextags.com.br, inclusive `/tools`): agentes IA, contatos, CUFs, tags, flows, pipelines, e-commerce, broadcasts. Aponta também para a doc oficial (docs e help, com índices `llms.txt`). Traz a tabela "quero fazer X → chamada", o que a API não faz, armadilhas, formas reais de resposta verificadas ao vivo e um script (`call`, `whoami`, `snapshot`, `backup-agents`, `spec-check`) em que toda escrita é dry-run sem `--yes`. |
 | `nextags-prompt-push` | Sobe/atualiza SÓ o prompt de um agente no IA Hub pela API (`POST /agents/{id}` com `{"prompt": ...}`), com simulação, backup do prompt anterior e conferência de que o modelo não mudou. Origem: [LeoALXHIl/nextags-skills](https://github.com/LeoALXHIl/nextags-skills). |
+| `nextags-catalogo-visual` | Enriquece o **catálogo de e-commerce** para o bot achar o produto certo por **texto ou foto**: atributos textuais e visuais por item (tipo, modelo, silhueta, estampa, cores, detalhes), frases de busca do cliente, JSONL com checkpoint, retomada de lotes e validador de cobertura (`scripts/validate_checkpoint.py`). Alimenta o MCP de atendimento. |
 
 Todas as skills compartilham a mesma referência de **campos canônicos** (`campos_canonicos.md` — roteador, revalidador, handoff e CUFs transacionais), replicada de forma idêntica entre `nextags-prompt-creator`, `nextags-prompt-fixer`, `nextags-mcp-builder` e `nextags-webhook-builder`.
 
@@ -29,7 +30,7 @@ Todas as skills compartilham a mesma referência de **campos canônicos** (`camp
 # Adiciona o marketplace
 /plugin marketplace add gustavowalkersgroup/Criador-de-Agentes
 
-# Instala todas as 12 skills de uma vez
+# Instala todas as 13 skills de uma vez
 /plugin install nextags-tools@nextags-marketplace
 ```
 
@@ -47,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agen
 irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 ```
 
-Os scripts copiam as 12 skills pra `~/.claude/skills/` e, se o Codex estiver instalado (`~/.codex`), também pra `~/.codex/skills/`. Versões anteriores vão pra `skills-backup/` ao lado de cada destino. Para forçar a instalação no Codex: `INSTALL_CODEX=1` (bash) ou `$env:INSTALL_CODEX = '1'` (PowerShell).
+Os scripts copiam as 13 skills pra `~/.claude/skills/` e, se o Codex estiver instalado (`~/.codex`), também pra `~/.codex/skills/`. Versões anteriores vão pra `skills-backup/` ao lado de cada destino. Para forçar a instalação no Codex: `INSTALL_CODEX=1` (bash) ou `$env:INSTALL_CODEX = '1'` (PowerShell).
 
 ### Opção 3 — Instalação manual (controle total)
 
@@ -74,7 +75,7 @@ As skills usam o formato padrão `SKILL.md` (frontmatter `name` + `description`)
 
 ## 🎯 Como usar
 
-Após instalar, reinicia o Claude Code e usa qualquer uma das 12 skills:
+Após instalar, reinicia o Claude Code e usa qualquer uma das 13 skills:
 
 ```bash
 /nextags-prompt-creator   # gerar prompt do zero
@@ -88,6 +89,8 @@ Após instalar, reinicia o Claude Code e usa qualquer uma das 12 skills:
 /whatsapp-template-utilidade # modelos de WhatsApp aprovados como Utilidade
 /nextags-api             # usar a API REST da NexTags (referência + script)
 /nextags-prompt-push     # subir só o prompt de um agente no IA Hub
+/nextags-artes-whatsapp  # artes 1:1 e mensagens para WhatsApp
+/nextags-catalogo-visual # catálogo para matching por texto e imagem
 ```
 
 Para alinhar as skills antigas ao OctoberCut, use o prompt pronto em [`prompts/ajustar-skills-octobercut.md`](prompts/ajustar-skills-octobercut.md).
@@ -128,7 +131,9 @@ Criador-de-Agentes/
 │   ├── nextags-prompt-instagram/
 │   ├── whatsapp-template-utilidade/
 │   ├── nextags-api/
-│   └── nextags-prompt-push/
+│   ├── nextags-prompt-push/
+│   ├── nextags-artes-whatsapp/
+│   └── nextags-catalogo-visual/
 ├── prompts/
 │   └── ajustar-skills-octobercut.md  # prompt p/ alinhar as skills ao OctoberCut
 ├── install.sh                   # instalador Linux/macOS

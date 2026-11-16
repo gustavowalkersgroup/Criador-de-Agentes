@@ -1,4 +1,4 @@
-# install.ps1 — instala as 12 skills NexTags no ~/.claude/skills/ (Claude Code) no Windows e,
+# install.ps1 — instala as 13 skills NexTags no ~/.claude/skills/ (Claude Code) no Windows e,
 # se o Codex estiver instalado (~/.codex) ou $env:INSTALL_CODEX = "1", também em ~/.codex/skills/.
 # Uso: irm https://raw.githubusercontent.com/gustavowalkersgroup/Criador-de-Agentes/main/install.ps1 | iex
 #      ou: .\install.ps1 (rodando localmente após clone)
@@ -9,7 +9,7 @@
 $ErrorActionPreference = "Continue"
 
 $RepoUrl = "https://github.com/gustavowalkersgroup/Criador-de-Agentes.git"
-$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester", "nextags-webhook-builder", "nextags-prompt-octobercut", "nextags-prompt-instagram", "whatsapp-template-utilidade", "nextags-api", "nextags-prompt-push", "nextags-artes-whatsapp")
+$Skills = @("nextags-prompt-creator", "nextags-prompt-fixer", "nextags-json-fixer", "nextags-mcp-builder", "nextags-webchat-tester", "nextags-webhook-builder", "nextags-prompt-octobercut", "nextags-prompt-instagram", "whatsapp-template-utilidade", "nextags-api", "nextags-prompt-push", "nextags-artes-whatsapp", "nextags-catalogo-visual")
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE ".codex" }
 $Targets = @($ClaudeDir)
@@ -161,6 +161,8 @@ Write-Host "  /nextags-prompt-instagram # automação de comentários do Instagr
 Write-Host "  /whatsapp-template-utilidade # modelos de WhatsApp aprovados como Utilidade"
 Write-Host "  /nextags-api              # API REST da NexTags (referência + script)"
 Write-Host "  /nextags-prompt-push      # subir só o prompt de um agente no IA Hub"
+Write-Host "  /nextags-artes-whatsapp   # artes 1:1 e mensagens para WhatsApp"
+Write-Host "  /nextags-catalogo-visual  # catálogo para matching por texto e imagem"
 Write-Host ""
 Write-Host "No Codex: `$nextags-prompt-octobercut (ou descreva a tarefa; a skill é escolhida pela descrição)"
 Write-Host ""
