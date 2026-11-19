@@ -5,6 +5,12 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.16.0] - 2026-11-19
+
+### Adicionado
+
+- `nextags-mcp-builder`: `references/busca_catalogo_ranqueada.md`, padrão de busca de catálogo por descrição ou foto no n8n (Data Table, ranking por termos cobertos e pesos, no máximo 3 fichas por modelo, atualização diária automática, regra de roteamento no prompt). Inclui a armadilha de recriar o servidor MCP no IA Hub quando o agente não chama a tool.
+
 ## [1.15.1] - 2026-11-04
 
 Skill de modelos de WhatsApp na versão 4 (testes de out/2026).

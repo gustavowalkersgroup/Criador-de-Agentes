@@ -300,6 +300,8 @@ Lê `references/arquitetura_padrao.md` pra ver o esqueleto correspondente.
 
 **Use defaults sensatos da recipe**. Não pergunta ao usuário. Recipe diz quais operações fazem sentido pra atendimento (ex: buscar_produtos, obter_produto, buscar_pedidos, obter_pedido, buscar_cliente).
 
+**Catálogo grande em que o cliente descreve a peça ou manda foto** (moda, decoração): além de `buscar_produtos`, expor `buscar_catalogo_visual` (Data Table + Code de ranking + atualização diária, com no máximo 3 fichas por modelo na entrega). Padrão completo em `references/busca_catalogo_ranqueada.md`. Não usar arquivo de base de conhecimento no IA Hub: o cliente não consegue mantê-lo.
+
 Se o usuário quer operações específicas extras (ex: "também precisa criar pedido"), aí sim escuta. Mas não inicia perguntando.
 
 ### Fase 4 — Gerar workflows
@@ -550,6 +552,7 @@ nextags-mcp-builder/
 │   ├── model_config_checklist.md         ← config canônica de modelo (Sonnet/reasoning alta/verbosity média)
 │   ├── tokens_em_docs.md                 ← NUNCA token real em docs da skill (placeholders + onde ficam)
 │   ├── no_hardcode_with_tools.md         ← NUNCA hardcode no prompt o dado que a tool retorna (causa #1 de "agente não usa tool")
+│   ├── busca_catalogo_ranqueada.md       ← busca visual de catálogo no n8n: Data Table + ranking + diversificação por modelo + atualização diária
 │   ├── image_validation.md               ← JPEG/PNG só; limites da Meta (5 MB imagem, 15 MB vídeo) e como converter
 │   └── api_recipes/                      ← recipes específicas
 │       ├── _TEMPLATE.md
