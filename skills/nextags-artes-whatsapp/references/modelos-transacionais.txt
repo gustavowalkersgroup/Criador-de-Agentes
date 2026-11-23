@@ -2,6 +2,8 @@ MODELOS DE MENSAGEM — NEXTAGS AI
 
 Campos entre {{chaves}} são preenchidos na mensagem. Use a mesma arte fixa para todos os destinatários. Os botões indicam as ações do exemplo.
 
+ATENÇÃO: a arte fixa NÃO pode ter nome de pessoa, número de pedido, endereço, valor nem celular com conversa. Esses dados só existem no TEXTO, nos campos {{...}}. Se a arte tiver "Juliana" e "#20261105", todo cliente recebe os dados de outra pessoa. A arte leva só logo, título e uma sacola/caixa.
+
 1. PEDIDO APROVADO (transacional)
 Olá, {{nome}}! Seu pedido foi aprovado!
 
