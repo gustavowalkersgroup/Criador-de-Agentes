@@ -5,6 +5,18 @@ Todas as mudanças notáveis das **NexTags Tools** são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o
 projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.16.1] - 2026-11-23
+
+Correção na skill `nextags-artes-whatsapp`: a arte é o anexo fixo enviado igual a todos os clientes e não pode ter dados de uma pessoa.
+
+### Corrigido
+
+- Uma loja copiou o exemplo com nome ("Juliana") e número de pedido (#20261105) dentro da imagem e todo cliente recebia os dados de outra pessoa. O prompt pedia pedido e nome de exemplo e um celular com conversa.
+- Regra nº 1 no prompt mestre e no `SKILL.md`: a imagem leva só logo, título, apoio e uma sacola ou caixa da marca. Proibido celular, balão, nome, número, "#", endereço, preço, rastreio, QR/Pix e qualquer dígito. Nome e pedido ficam só no texto, com `{{nome}}` e `{{numero_pedido}}`.
+- Aviso em linguagem simples (com exemplo certo e errado) na primeira resposta da skill, "Trava antes de entregar" com 6 perguntas e lembrete "Como usar" na entrega.
+- Arte de referência vale só para composição e cor; a skill ignora celular, nomes e números dela. Não pede mais print de conversa nem nome de exemplo. Modelo é opcional e segura a sacola ou caixa.
+- `assets/pedido-aprovado.png` trocado por versão sem celular. Apoios de cross-sell e upsell sem repetir o título. `modelos-transacionais.txt` ganhou o aviso. `dist/nextags-artes-whatsapp.zip` regenerado.
+
 ## [1.16.0] - 2026-11-16
 
 Nova skill para preparar o catálogo do cliente para o bot achar o produto por texto ou foto.
